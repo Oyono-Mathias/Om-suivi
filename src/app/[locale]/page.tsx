@@ -555,7 +555,11 @@ export default function TimeTrackingPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('locationConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription dangerouslySetInnerHTML={{ __html: t('locationConfirmDescription', {suggestedLocation: suggestedLocation || ''}) }} />
+            <AlertDialogDescription>
+              {t('locationConfirmDescriptionPart1')}
+              <strong className="text-foreground">{suggestedLocation || ''}</strong>
+              {t('locationConfirmDescriptionPart2')}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => handleConfirmLocation(false)}>{t('locationConfirmCancel')}</AlertDialogCancel>
