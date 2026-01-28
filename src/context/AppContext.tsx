@@ -17,6 +17,8 @@ interface AppContextType {
 const defaultProfile: Profile = {
   name: "Mathias Oyono",
   baseHours: 35,
+  hourlyRate: 1500,
+  currency: "FCFA",
   overtimeRates: {
     weekday: 1.25,
     saturday: 1.5,

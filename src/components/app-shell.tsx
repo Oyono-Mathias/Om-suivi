@@ -38,7 +38,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar className="no-print">
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-3">
             <Briefcase className="w-8 h-8 text-sidebar-primary" />
@@ -79,7 +79,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:hidden">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:hidden no-print">
           <SidebarTrigger />
           <h1 className="text-lg font-semibold">OM Suivi</h1>
         </header>

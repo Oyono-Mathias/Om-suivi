@@ -29,6 +29,8 @@ import { useToast } from "@/hooks/use-toast";
 const profileSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   baseHours: z.coerce.number().min(1, { message: "Base hours must be positive." }),
+  hourlyRate: z.coerce.number().min(1, { message: "Hourly rate must be positive." }),
+  currency: z.string().min(1, { message: "Currency symbol is required."}),
   overtimeRates: z.object({
     weekday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
     saturday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
@@ -70,7 +72,7 @@ export default function ProfilePage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
+              <CardTitle>Personal & Financial Information</CardTitle>
               <CardDescription>
                 Manage your personal and contractual details.
               </CardDescription>
@@ -89,22 +91,47 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="baseHours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Base Weekly Hours</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g., 35" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Your standard number of work hours per week.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="baseHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base Weekly Hours</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 40" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="hourlyRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base Hourly Rate</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 1500" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+               <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Currency Symbol</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., FCFA" {...field} className="w-auto" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </CardContent>
           </Card>
 

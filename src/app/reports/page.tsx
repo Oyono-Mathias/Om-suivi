@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useContext, useMemo } from "react";
+import Link from 'next/link';
 import { AppContext } from "@/context/AppContext";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -17,37 +19,52 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
-  isThisWeek,
   isThisMonth,
-  isToday,
   eachDayOfInterval,
   format,
   parseISO,
   startOfWeek,
   endOfWeek,
+  getDay,
+  isThisWeek,
 } from "date-fns";
 import type { TimeEntry } from "@/lib/types";
 
 export default function ReportsPage() {
-  const { timeEntries } = useContext(AppContext);
+  const { timeEntries, profile } = useContext(AppContext);
 
-  const todayEntries = timeEntries.filter((entry) => isToday(parseISO(entry.date)));
-  const weekEntries = timeEntries.filter((entry) => isThisWeek(parseISO(entry.date), { weekStartsOn: 1 }));
   const monthEntries = timeEntries.filter((entry) => isThisMonth(parseISO(entry.date)));
+  const weekEntries = timeEntries.filter((entry) => isThisWeek(parseISO(entry.date), { weekStartsOn: 1 }));
 
-  const calculateTotals = (entries: TimeEntry[]) => {
-    const totalMinutes = entries.reduce((sum, entry) => sum + entry.duration, 0);
-    const totalOvertimeMinutes = entries.reduce((sum, entry) => sum + entry.overtimeDuration, 0);
+  const calculateMonthlyTotals = (entries: TimeEntry[]) => {
+    let totalMinutes = 0;
+    let totalOvertimeMinutes = 0;
+    let estimatedPayout = 0;
+
+    entries.forEach(entry => {
+        totalMinutes += entry.duration;
+        totalOvertimeMinutes += entry.overtimeDuration;
+
+        if (entry.overtimeDuration > 0) {
+            const dayOfWeek = getDay(parseISO(entry.date)); // Sunday - 0, ...
+            let multiplier = profile.overtimeRates.weekday;
+            if (dayOfWeek === 0) { // Sunday
+                multiplier = profile.overtimeRates.sunday;
+            } else if (dayOfWeek === 6) { // Saturday
+                multiplier = profile.overtimeRates.saturday;
+            }
+            estimatedPayout += (entry.overtimeDuration / 60) * profile.hourlyRate * multiplier;
+        }
+    });
 
     return {
-      totalHours: (totalMinutes / 60).toFixed(2),
+      regularHours: ((totalMinutes - totalOvertimeMinutes) / 60).toFixed(2),
       overtimeHours: (totalOvertimeMinutes / 60).toFixed(2),
+      estimatedPayout: estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     };
   };
 
-  const todayTotals = calculateTotals(todayEntries);
-  const weekTotals = calculateTotals(weekEntries);
-  const monthTotals = calculateTotals(monthEntries);
+  const monthTotals = calculateMonthlyTotals(monthEntries);
 
   const weeklyChartData = useMemo(() => {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -82,44 +99,44 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-headline font-bold">Reports</h1>
-      <p className="text-muted-foreground">
-        Here's a summary of your worked hours and overtime.
-      </p>
-      
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Today</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-3xl font-bold">{todayTotals.totalHours} hrs</p>
-            <p className="text-sm text-muted-foreground">{todayTotals.overtimeHours} hrs overtime</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>This Week</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-3xl font-bold">{weekTotals.totalHours} hrs</p>
-            <p className="text-sm text-muted-foreground">{weekTotals.overtimeHours} hrs overtime</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>This Month</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-3xl font-bold">{monthTotals.totalHours} hrs</p>
-            <p className="text-sm text-muted-foreground">{monthTotals.overtimeHours} hrs overtime</p>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 className="text-3xl font-headline font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">
+                A summary of your earnings and work hours.
+            </p>
+        </div>
+        <Link href="/reports/export" passHref>
+          <Button>Export Report</Button>
+        </Link>
       </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>This Month's Financial Summary</CardTitle>
+          <CardDescription>
+            An overview of your regular hours, overtime, and estimated earnings for the current month.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-6 text-center md:grid-cols-3">
+          <div className="flex flex-col gap-2 rounded-lg border p-4">
+            <p className="text-sm font-medium text-muted-foreground">Regular Hours</p>
+            <p className="text-3xl font-bold">{monthTotals.regularHours} hrs</p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-lg border p-4">
+            <p className="text-sm font-medium text-muted-foreground">Overtime Hours</p>
+            <p className="text-3xl font-bold text-destructive">{monthTotals.overtimeHours} hrs</p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-lg border bg-primary/10 p-4">
+            <p className="text-sm font-medium text-muted-foreground">Estimated Overtime Payout</p>
+            <p className="text-3xl font-bold text-primary">{monthTotals.estimatedPayout} {profile.currency}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Hours</CardTitle>
+          <CardTitle>Weekly Hours Breakdown</CardTitle>
           <CardDescription>
             Regular vs. overtime hours logged each day of the current week.
           </CardDescription>
