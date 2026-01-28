@@ -60,16 +60,22 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       form.reset(profile);
+    } else if (user) {
+      // Pre-fill name and email for new users
+      form.reset({
+        name: user.displayName || '',
+        ...form.getValues()
+      });
     }
-  }, [profile, form]);
+  }, [profile, user, form]);
 
   function onSubmit(values: z.infer<typeof profileSchema>) {
-    if (!userProfileRef) return;
+    if (!userProfileRef || !user) return;
     
-    const updatedProfile: Omit<Profile, 'id'> = {
+    const updatedProfile = {
       ...values,
-      email: user?.email || '',
-      name: values.name,
+      id: user.uid,
+      email: user.email || '',
     };
     
     setDocumentNonBlocking(userProfileRef, updatedProfile, { merge: true });

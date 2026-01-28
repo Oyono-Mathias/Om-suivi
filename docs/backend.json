@@ -4,19 +4,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's profile with contractual and personal information.",
+      "description": "Represents a user's profile with personal and financial information.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the user profile."
-        },
-        "baseHours": {
-          "type": "number",
-          "description": "The user's contractual base hours."
-        },
-        "overtimeRate": {
-          "type": "number",
-          "description": "The user's overtime rate."
+          "description": "Unique identifier for the user profile, matches Firebase Auth UID."
         },
         "email": {
           "type": "string",
@@ -27,18 +19,31 @@
           "type": "string",
           "description": "The user's full name."
         },
-        "teamId": {
+        "monthlyBaseSalary": {
+          "type": "number",
+          "description": "The user's monthly base salary used to calculate hourly rates."
+        },
+        "currency": {
           "type": "string",
-          "description": "Reference to Team. (Relationship: Team 1:N UserProfile)"
+          "description": "The currency symbol for monetary values (e.g., FCFA)."
+        },
+        "reminders": {
+          "type": "object",
+          "description": "Settings for time entry reminders.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether reminders are enabled."
+            },
+            "time": {
+              "type": "string",
+              "description": "The time of day for the reminder (e.g., '17:00')."
+            }
+          },
+          "required": ["enabled", "time"]
         }
       },
-      "required": [
-        "id",
-        "baseHours",
-        "overtimeRate",
-        "email",
-        "name"
-      ]
+      "required": ["id", "email", "name", "monthlyBaseSalary", "currency", "reminders"]
     },
     "TimeEntry": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -187,8 +192,7 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "google"
     ]
   },
   "firestore": {
