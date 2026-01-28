@@ -1,16 +1,16 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format, parseISO, getDay, startOfMonth, endOfMonth, getWeek } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
-import { shifts } from '@/lib/shifts';
 import type { TimeEntry, Profile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Briefcase } from 'lucide-react';
 import { Link } from '@/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -41,20 +41,22 @@ export default function ExportReportPage() {
         return collection(firestore, 'users', user.uid, 'timeEntries');
     }, [firestore, user]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
-
+    
+    const reportId = useMemo(() => `REP-${Date.now()}-${user?.uid.slice(0, 4)}`, [user]);
 
     const handlePrint = () => {
         window.print();
     };
 
-    const { sortedEntries, totalOvertime, totalPayout, reportMonth, overtimeBreakdown } = useMemo(() => {
+    const { sortedEntries, totalDuration, totalOvertime, totalPayout, reportMonth, overtimeBreakdown } = useMemo(() => {
         if (!timeEntries || !profile) {
             return {
                 sortedEntries: [],
+                totalDuration: 0,
                 totalOvertime: 0,
                 totalPayout: 0,
                 reportMonth: format(new Date(), 'MMMM yyyy', {locale: dateFnsLocale}),
-                overtimeBreakdown: { tier1: { minutes: 0 }, tier2: { minutes: 0 }, sunday: { minutes: 0 }, holiday: { minutes: 0 } },
+                overtimeBreakdown: { tier1: { minutes: 0, rate: 1.2, payout: 0 }, tier2: { minutes: 0, rate: 1.3, payout: 0 }, sunday: { minutes: 0, rate: 1.4, payout: 0 }, holiday: { minutes: 0, rate: 1.5, payout: 0 } },
             };
         }
 
@@ -73,10 +75,10 @@ export default function ExportReportPage() {
         const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
 
         const breakdown = {
-            tier1: { minutes: 0, rate: OVERTIME_RATES.tier1 },
-            tier2: { minutes: 0, rate: OVERTIME_RATES.tier2 },
-            sunday: { minutes: 0, rate: OVERTIME_RATES.sunday },
-            holiday: { minutes: 0, rate: OVERTIME_RATES.holiday },
+            tier1: { minutes: 0, rate: OVERTIME_RATES.tier1, payout: 0 },
+            tier2: { minutes: 0, rate: OVERTIME_RATES.tier2, payout: 0 },
+            sunday: { minutes: 0, rate: OVERTIME_RATES.sunday, payout: 0 },
+            holiday: { minutes: 0, rate: OVERTIME_RATES.holiday, payout: 0 },
         };
 
         const entriesByWeek: { [week: number]: TimeEntry[] } = {};
@@ -88,7 +90,10 @@ export default function ExportReportPage() {
             entriesByWeek[week].push(entry);
         });
 
-        let totalOvertimeMinutes = 0;
+        let grandTotalOvertimeMinutes = 0;
+        let grandTotalDuration = 0;
+
+        sorted.forEach(entry => grandTotalDuration += entry.duration);
 
         for (const weekEntries of Object.values(entriesByWeek)) {
             let weeklyOvertimeMinutes = 0;
@@ -96,7 +101,7 @@ export default function ExportReportPage() {
 
             for (const entry of weekEntries) {
                 if (entry.overtimeDuration <= 0) continue;
-                totalOvertimeMinutes += entry.overtimeDuration;
+                grandTotalOvertimeMinutes += entry.overtimeDuration;
 
                 const dayOfWeek = getDay(parseISO(entry.date)); // Sunday is 0
 
@@ -109,44 +114,55 @@ export default function ExportReportPage() {
                     breakdown.sunday.minutes += entry.overtimeDuration;
                     continue;
                 }
+                
+                const weeklyTier1CapInMinutes = 8 * 60;
+                const remainingTier1Capacity = weeklyTier1CapInMinutes - weeklyOvertimeMinutes;
 
-                const remainingWeeklyTier1Cap = (8 * 60) - weeklyOvertimeMinutes;
-                if (remainingWeeklyTier1Cap > 0) {
-                    const toTier1 = Math.min(entry.overtimeDuration, remainingWeeklyTier1Cap);
-                    breakdown.tier1.minutes += toTier1;
-                    weeklyOvertimeMinutes += toTier1;
+                if (remainingTier1Capacity > 0) {
+                    const minutesForTier1 = Math.min(entry.overtimeDuration, remainingTier1Capacity);
+                    breakdown.tier1.minutes += minutesForTier1;
                     
-                    const toTier2 = entry.overtimeDuration - toTier1;
-                    if (toTier2 > 0) {
-                        breakdown.tier2.minutes += toTier2;
-                        weeklyOvertimeMinutes += toTier2;
+                    const minutesForTier2 = entry.overtimeDuration - minutesForTier1;
+                    if (minutesForTier2 > 0) {
+                        breakdown.tier2.minutes += minutesForTier2;
                     }
                 } else {
                     breakdown.tier2.minutes += entry.overtimeDuration;
-                    weeklyOvertimeMinutes += toTier2;
                 }
+                weeklyOvertimeMinutes += entry.overtimeDuration;
             }
         }
         
-        let payout = 0;
-        payout += (breakdown.tier1.minutes / 60) * hourlyRate * breakdown.tier1.rate;
-        payout += (breakdown.tier2.minutes / 60) * hourlyRate * breakdown.tier2.rate;
-        payout += (breakdown.sunday.minutes / 60) * hourlyRate * breakdown.sunday.rate;
-        payout += (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
+        breakdown.tier1.payout = (breakdown.tier1.minutes / 60) * hourlyRate * breakdown.tier1.rate;
+        breakdown.tier2.payout = (breakdown.tier2.minutes / 60) * hourlyRate * breakdown.tier2.rate;
+        breakdown.sunday.payout = (breakdown.sunday.minutes / 60) * hourlyRate * breakdown.sunday.rate;
+        breakdown.holiday.payout = (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
+        
+        const totalPayout = breakdown.tier1.payout + breakdown.tier2.payout + breakdown.sunday.payout + breakdown.holiday.payout;
 
         const month = sorted.length > 0 ? format(parseISO(sorted[0].date), 'MMMM yyyy', {locale: dateFnsLocale}) : format(new Date(), 'MMMM yyyy', {locale: dateFnsLocale});
 
         return {
             sortedEntries: sorted,
-            totalOvertime: totalOvertimeMinutes,
-            totalPayout: payout,
+            totalDuration: grandTotalDuration,
+            totalOvertime: grandTotalOvertimeMinutes,
+            totalPayout: totalPayout,
             reportMonth: month,
             overtimeBreakdown: breakdown,
         };
 
     }, [timeEntries, profile, dateFnsLocale]);
+    
+    useEffect(() => {
+        if (profile && reportMonth) {
+            const safeName = profile.name.replace(/\s+/g, '-');
+            const safeMonth = reportMonth.replace(/\s+/g, '-');
+            document.title = `rapport-${safeName}-${safeMonth}`.toLowerCase();
+        }
+    }, [profile, reportMonth]);
 
-    const formatMinutes = (minutes: number) => (minutes / 60).toFixed(2);
+    const formatMinutesToHours = (minutes: number) => (minutes / 60).toFixed(2);
+    const formatCurrency = (amount: number) => amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
     if (isUserLoading || isLoadingProfile || isLoadingEntries) {
         return (
@@ -179,7 +195,7 @@ export default function ExportReportPage() {
     }
 
     return (
-        <div className="bg-background text-foreground min-h-screen p-4 font-body sm:p-8 print:p-0">
+        <div className="bg-background text-foreground min-h-screen p-4 font-body sm:p-8 print:p-0 print:bg-white print:text-black">
             <style jsx global>{`
                 @media print {
                     body {
@@ -207,81 +223,105 @@ export default function ExportReportPage() {
                 </header>
 
                 <div className="border rounded-lg p-6 sm:p-8 print:border-none print:shadow-none print:rounded-none">
-                    <div className="flex justify-between items-start mb-8">
-                        <div>
-                            <h2 className="text-2xl font-bold text-primary font-headline">{t('appName')}</h2>
-                            <h3 className="text-lg font-semibold">{t('reportTitle')}</h3>
-                            <p className="text-muted-foreground">{profile.name}</p>
+                    <header className="flex justify-between items-start mb-8 border-b pb-6">
+                        <div className="flex items-center gap-4">
+                           <Briefcase className="w-12 h-12 text-primary shrink-0" />
+                            <div>
+                                <h2 className="text-2xl font-bold text-primary font-headline">{t('appName')}</h2>
+                                <h3 className="text-lg font-semibold">{t('reportTitle')}</h3>
+                                <p className="text-sm text-muted-foreground">{profile.name}</p>
+                                <p className="text-sm text-muted-foreground">{profile.email}</p>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <p className="font-semibold">{reportMonth}</p>
+                        <div className="text-right shrink-0 ml-4">
+                            <p className="font-semibold text-lg">{reportMonth}</p>
                             <p className="text-sm text-muted-foreground">{t('hourlyRateLabel')}: {Math.round(profile.monthlyBaseSalary / 173.33).toLocaleString('fr-FR')} {profile.currency}</p>
                         </div>
-                    </div>
+                    </header>
                     
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>{t('tableDate')}</TableHead>
-                                <TableHead>{t('tableShift')}</TableHead>
-                                <TableHead>{t('tableCheckIn')}</TableHead>
-                                <TableHead>{t('tableCheckOut')}</TableHead>
-                                <TableHead>{t('tableLocation')}</TableHead>
-                                <TableHead className="text-right">{t('tableOvertime')}</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedEntries.length > 0 ? (
-                                sortedEntries.map(entry => (
-                                    <TableRow key={entry.id}>
-                                        <TableCell>{format(parseISO(entry.date), 'EEE, d MMM', {locale: dateFnsLocale})} {entry.isPublicHoliday ? '(Férié)' : ''}</TableCell>
-                                        <TableCell>{shifts.find(s => s.id === entry.shiftId)?.name || 'N/A'}</TableCell>
-                                        <TableCell>{entry.startTime}</TableCell>
-                                        <TableCell>{entry.endTime}</TableCell>
-                                        <TableCell>{entry.location || 'N/A'}</TableCell>
-                                        <TableCell className="text-right font-medium">{entry.overtimeDuration > 0 ? entry.overtimeDuration : '-'}</TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
+                    <main>
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">{t('noEntries')}</TableCell>
+                                    <TableHead>{t('tableDate')}</TableHead>
+                                    <TableHead>{t('tableType')}</TableHead>
+                                    <TableHead>{t('tableCheckIn')}</TableHead>
+                                    <TableHead>{t('tableCheckOut')}</TableHead>
+                                    <TableHead>{t('tableLocation')}</TableHead>
+                                    <TableHead className="text-right">{t('tableDuration')}</TableHead>
+                                    <TableHead className="text-right">{t('tableOvertime')}</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                        <TableFooter>
-                            <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeTier1', {rate: overtimeBreakdown.tier1.rate * 100})}</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier1.minutes)} {t('hourUnit')}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeTier2', {rate: overtimeBreakdown.tier2.rate * 100})}</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier2.minutes)} {t('hourUnit')}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeSunday', {rate: overtimeBreakdown.sunday.rate * 100})}</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.sunday.minutes)} {t('hourUnit')}</TableCell>
-                            </TableRow>
-                             <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeHoliday', {rate: overtimeBreakdown.holiday.rate * 100})}</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.holiday.minutes)} {t('hourUnit')}</TableCell>
-                            </TableRow>
-                            <TableRow className="bg-muted/50">
-                                <TableCell colSpan={5} className="text-right font-bold">{t('totalOvertime')}</TableCell>
-                                <TableCell className="text-right font-bold">{formatMinutes(totalOvertime)} {t('hourUnit')}</TableCell>
-                            </TableRow>
-                            <TableRow className="bg-primary/10">
-                                <TableCell colSpan={5} className="text-right font-bold text-primary">{t('estimatedPayout')}</TableCell>
-                                <TableCell className="text-right font-bold text-primary">{totalPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</TableCell>
-                            </TableRow>
-                        </TableFooter>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {sortedEntries.length > 0 ? (
+                                    sortedEntries.map(entry => (
+                                        <TableRow key={entry.id} className="even:bg-muted/20">
+                                            <TableCell className="font-medium">{format(parseISO(entry.date), 'EEE, d MMM', {locale: dateFnsLocale})} {entry.isPublicHoliday ? '(Férié)' : ''}</TableCell>
+                                            <TableCell>{entry.location === 'Mission' ? t('typeMission') : t('typeNormal')}</TableCell>
+                                            <TableCell>{entry.startTime}</TableCell>
+                                            <TableCell>{entry.endTime}</TableCell>
+                                            <TableCell>{entry.location || 'N/A'}</TableCell>
+                                            <TableCell className="text-right">{entry.duration}</TableCell>
+                                            <TableCell className="text-right font-medium">{entry.overtimeDuration > 0 ? entry.overtimeDuration : '-'}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">{t('noEntries')}</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                            <TableFooter>
+                                <TableRow className="bg-muted/50 font-bold">
+                                    <TableCell colSpan={5}>{t('totalLabel')}</TableCell>
+                                    <TableCell className="text-right">{totalDuration}</TableCell>
+                                    <TableCell className="text-right">{totalOvertime}</TableCell>
+                                </TableRow>
+                            </TableFooter>
+                        </Table>
 
-                    <footer className="mt-12 text-center text-xs text-muted-foreground">
+                        <div className="grid md:grid-cols-2 gap-8 mt-8">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>{t('overtimeBreakdownTitle')}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between"><span>{t('overtimeTier1', {rate: overtimeBreakdown.tier1.rate * 100})}</span> <span className="font-medium">{formatMinutesToHours(overtimeBreakdown.tier1.minutes)} {t('hourUnit')}</span></div>
+                                        <div className="flex justify-between"><span>{t('overtimeTier2', {rate: overtimeBreakdown.tier2.rate * 100})}</span> <span className="font-medium">{formatMinutesToHours(overtimeBreakdown.tier2.minutes)} {t('hourUnit')}</span></div>
+                                        <div className="flex justify-between"><span>{t('overtimeSunday', {rate: overtimeBreakdown.sunday.rate * 100})}</span> <span className="font-medium">{formatMinutesToHours(overtimeBreakdown.sunday.minutes)} {t('hourUnit')}</span></div>
+                                        <div className="flex justify-between"><span>{t('overtimeHoliday', {rate: overtimeBreakdown.holiday.rate * 100})}</span> <span className="font-medium">{formatMinutesToHours(overtimeBreakdown.holiday.minutes)} {t('hourUnit')}</span></div>
+                                        <div className="flex justify-between border-t pt-2 mt-2 font-bold"><span>{t('totalOvertime')}</span> <span>{formatMinutesToHours(totalOvertime)} {t('hourUnit')}</span></div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle>{t('financialSummaryTitle')}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between"><span>{t('overtimeTier1', {rate: overtimeBreakdown.tier1.rate * 100})}</span> <span className="font-medium">{formatCurrency(overtimeBreakdown.tier1.payout)} {profile.currency}</span></div>
+                                        <div className="flex justify-between"><span>{t('overtimeTier2', {rate: overtimeBreakdown.tier2.rate * 100})}</span> <span className="font-medium">{formatCurrency(overtimeBreakdown.tier2.payout)} {profile.currency}</span></div>
+                                        <div className="flex justify-between"><span>{t('overtimeSunday', {rate: overtimeBreakdown.sunday.rate * 100})}</span> <span className="font-medium">{formatCurrency(overtimeBreakdown.sunday.payout)} {profile.currency}</span></div>
+                                        <div className="flex justify-between"><span>{t('overtimeHoliday', {rate: overtimeBreakdown.holiday.rate * 100})}</span> <span className="font-medium">{formatCurrency(overtimeBreakdown.holiday.payout)} {profile.currency}</span></div>
+                                        <div className="flex justify-between border-t pt-2 mt-2 font-bold text-lg text-primary"><span>{t('estimatedPayout')}</span> <span>{formatCurrency(totalPayout)} {profile.currency}</span></div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </main>
+
+                    <footer className="mt-12 pt-6 border-t text-center text-xs text-muted-foreground space-y-2">
+                        <p>{t('locationDisclaimer')}</p>
+                        <p>{t('tamperProof')}</p>
+                        <p className="font-mono text-xs">{t('reportId')}: {reportId}</p>
                         <p>{t('footerGenerated', {date: format(new Date(), 'PPP p', {locale: dateFnsLocale})})}</p>
-                        <p>{t('footerDisclaimer')}</p>
                     </footer>
                 </div>
             </div>
         </div>
     );
 }
+
+    

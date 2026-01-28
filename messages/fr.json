@@ -165,21 +165,30 @@
     "reportTitle": "Rapport de Feuille de Temps",
     "hourlyRateLabel": "Taux Horaire",
     "tableDate": "Date",
-    "tableShift": "Poste",
     "tableCheckIn": "Heure d'arrivée",
     "tableCheckOut": "Heure de départ",
     "tableLocation": "Lieu",
     "tableOvertime": "Heures sup. (min)",
+    "tableType": "Type",
+    "tableDuration": "Durée (min)",
     "noEntries": "Aucune entrée pour ce mois.",
     "overtimeTier1": "Heures sup. à {rate}%",
     "overtimeTier2": "Heures sup. à {rate}%",
     "overtimeSunday": "Heures sup. (Dimanche) à {rate}%",
     "overtimeHoliday": "Heures sup. (Férié) à {rate}%",
     "totalOvertime": "Total Heures Sup.",
+    "totalDuration": "Durée Totale",
     "estimatedPayout": "Paiement Estimé des Heures Sup.",
     "hourUnit": "h",
     "footerGenerated": "Généré le {date}",
-    "footerDisclaimer": "Ce document est une preuve de travail générée automatiquement pour les services rendus."
+    "reportId": "ID du Rapport",
+    "locationDisclaimer": "Les données de géolocalisation ont été enregistrées automatiquement lorsque disponibles.",
+    "tamperProof": "Ce document est généré automatiquement et scellé numériquement. Toute altération le rend invalide.",
+    "typeNormal": "Travail",
+    "typeMission": "Mission",
+    "overtimeBreakdownTitle": "Détail des Heures Supplémentaires",
+    "financialSummaryTitle": "Résumé Financier",
+    "totalLabel": "Total"
   },
   "TeamPage": {
     "title": "Aperçu de l'Équipe",
@@ -217,3 +226,5 @@
     "description": "La page que vous recherchez n'existe pas."
   }
 }
+
+    

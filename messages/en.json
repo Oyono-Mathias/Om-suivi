@@ -165,21 +165,30 @@
     "reportTitle": "Timesheet Report",
     "hourlyRateLabel": "Hourly Rate",
     "tableDate": "Date",
-    "tableShift": "Shift",
     "tableCheckIn": "Check-in Time",
     "tableCheckOut": "Check-out Time",
     "tableLocation": "Location",
     "tableOvertime": "Overtime (min)",
+    "tableType": "Type",
+    "tableDuration": "Duration (min)",
     "noEntries": "No entries for this month.",
     "overtimeTier1": "Overtime at {rate}%",
     "overtimeTier2": "Overtime at {rate}%",
     "overtimeSunday": "Overtime (Sunday) at {rate}%",
     "overtimeHoliday": "Overtime (Holiday) at {rate}%",
     "totalOvertime": "Total Overtime",
+    "totalDuration": "Total Duration",
     "estimatedPayout": "Estimated Overtime Payout",
     "hourUnit": "h",
     "footerGenerated": "Generated on {date}",
-    "footerDisclaimer": "This document is an auto-generated proof of work for services rendered."
+    "reportId": "Report ID",
+    "locationDisclaimer": "Geolocation data was automatically recorded where available.",
+    "tamperProof": "This document is auto-generated and digitally sealed. Any alteration invalidates it.",
+    "typeNormal": "Work",
+    "typeMission": "Mission",
+    "overtimeBreakdownTitle": "Overtime Breakdown",
+    "financialSummaryTitle": "Financial Summary",
+    "totalLabel": "Total"
   },
   "TeamPage": {
     "title": "Team Overview",
@@ -217,3 +226,5 @@
     "description": "The page you are looking for does not exist."
   }
 }
+
+    
