@@ -13,6 +13,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Form,
@@ -30,10 +39,11 @@ import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useTranslations } from 'next-intl';
 
 export default function AuthPage() {
@@ -45,6 +55,11 @@ export default function AuthPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  
+  const [isResetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+
 
   const loginSchema = z.object({
     email: z.string().email({ message: t('emailInvalidError') }),
@@ -82,11 +97,20 @@ export default function AuthPage() {
   }
 
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.replace('/');
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const loggedInUser = userCredential.user;
+
+      const userDocRef = doc(firestore, 'users', loggedInUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists() && userDoc.data().role === 'admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/');
+      }
     } catch (error) {
       if (error instanceof FirebaseError) {
         toast({
@@ -145,6 +169,25 @@ export default function AuthPage() {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!auth || !resetEmail) return;
+    setIsResetting(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      toast({ title: t('resetSuccessTitle'), description: t('resetSuccessDescription') });
+      setResetPasswordOpen(false);
+      setResetEmail('');
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t('resetErrorTitle'),
+        description: t('resetErrorDescription'),
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background via-slate-900 to-zinc-900 p-4 md:p-0">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
@@ -160,7 +203,7 @@ export default function AuthPage() {
             </TabsList>
             <TabsContent value="login">
               <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-6">
+                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                   <FormField
                     control={loginForm.control}
                     name="email"
@@ -193,6 +236,11 @@ export default function AuthPage() {
                       </FormItem>
                     )}
                   />
+                   <div className="text-right">
+                    <Button variant="link" type="button" onClick={() => setResetPasswordOpen(true)} className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-primary">
+                      {t('forgotPasswordLink')}
+                    </Button>
+                  </div>
                   <Button type="submit" className="w-full text-lg h-14" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                     {t('loginButton')}
@@ -261,6 +309,34 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </Tabs>
+      
+      <Dialog open={isResetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('resetPasswordTitle')}</DialogTitle>
+            <DialogDescription>{t('resetPasswordDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Label htmlFor="reset-email">{t('emailLabel')}</Label>
+            <Input
+              id="reset-email"
+              placeholder={t('emailPlaceholder')}
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              type="email"
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Annuler</Button>
+            </DialogClose>
+            <Button onClick={handlePasswordReset} disabled={isResetting}>
+              {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('resetPasswordButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

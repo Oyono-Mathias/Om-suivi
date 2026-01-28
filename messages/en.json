@@ -21,7 +21,15 @@
     "loginErrorGeneric": "An error occurred.",
     "registerErrorTitle": "Registration Error",
     "registerErrorInUse": "This email address is already in use.",
-    "registerErrorGeneric": "An error occurred."
+    "registerErrorGeneric": "An error occurred.",
+    "forgotPasswordLink": "Forgot password?",
+    "resetPasswordTitle": "Reset Password",
+    "resetPasswordDescription": "Enter your email to receive a password reset link.",
+    "resetPasswordButton": "Send Reset Link",
+    "resetSuccessTitle": "Email Sent",
+    "resetSuccessDescription": "Check your inbox to reset your password.",
+    "resetErrorTitle": "Error",
+    "resetErrorDescription": "Could not send reset email. Please check the address."
   },
   "AppShell": {
     "appName": "OM Suivi",

@@ -21,7 +21,15 @@
     "loginErrorGeneric": "Une erreur s'est produite.",
     "registerErrorTitle": "Erreur d'inscription",
     "registerErrorInUse": "Cette adresse e-mail est déjà utilisée.",
-    "registerErrorGeneric": "Une erreur s'est produite."
+    "registerErrorGeneric": "Une erreur s'est produite.",
+    "forgotPasswordLink": "Mot de passe oublié ?",
+    "resetPasswordTitle": "Réinitialiser le mot de passe",
+    "resetPasswordDescription": "Saisissez votre e-mail pour recevoir un lien de réinitialisation.",
+    "resetPasswordButton": "Envoyer le lien",
+    "resetSuccessTitle": "E-mail envoyé",
+    "resetSuccessDescription": "Vérifiez votre boîte de réception pour réinitialiser votre mot de passe.",
+    "resetErrorTitle": "Erreur",
+    "resetErrorDescription": "Impossible d'envoyer l'e-mail. Veuillez vérifier l'adresse."
   },
   "AppShell": {
     "appName": "OM Suivi",
