@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "mathias-oyono",
+      "description": "Avatar for Mathias Oyono",
+      "imageUrl": "https://picsum.photos/seed/101/100/100",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "jean-dupont",
+      "description": "Avatar for Jean Dupont",
+      "imageUrl": "https://picsum.photos/seed/102/100/100",
+      "imageHint": "man smiling"
+    },
+    {
+      "id": "marie-curie",
+      "description": "Avatar for Marie Curie",
+      "imageUrl": "https://picsum.photos/seed/103/100/100",
+      "imageHint": "woman glasses"
+    },
+    {
+      "id": "ahmed-khan",
+      "description": "Avatar for Ahmed Khan",
+      "imageUrl": "https://picsum.photos/seed/104/100/100",
+      "imageHint": "person happy"
+    }
+  ]
 }
