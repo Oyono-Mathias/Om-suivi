@@ -45,11 +45,12 @@ service cloud.firestore {
     }
 
     function canUpdateOwnProfile() {
-      // A user can update their profile, but cannot change immutable or protected fields.
-      return !('id' in request.resource.data) &&
-             !('email' in request.resource.data) &&
-             !('role' in request.resource.data) &&
-             !('createdAt' in request.resource.data);
+      // The 'id', 'email', 'role', and 'createdAt' fields are immutable by the user.
+      // On an update, the new document's values for these fields must match the existing ones.
+      return request.resource.data.id == resource.data.id
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdAt == resource.data.createdAt;
     }
 
     // --------------------------------------------------------------------
