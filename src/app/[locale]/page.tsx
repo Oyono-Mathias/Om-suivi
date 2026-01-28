@@ -72,6 +72,8 @@ export default function TimeTrackingPage() {
   const [suggestedLocation, setSuggestedLocation] = useState<string | null>(null);
   const [currentCoordinates, setCurrentCoordinates] = useState<{lat: number, lon: number} | null>(null);
   const [showGeofenceAlert, setShowGeofenceAlert] = useState(false);
+  const [currentLocationAddress, setCurrentLocationAddress] = useState<string | null>(null);
+  const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(true);
 
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -93,6 +95,40 @@ export default function TimeTrackingPage() {
     setElapsedTime(0);
     setActiveTimeEntryId(null);
   }, [activeTimer, setIsShiftActive]);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setCurrentCoordinates({ lat: latitude, lon: longitude });
+          try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+            if (!response.ok) throw new Error('Failed to fetch address');
+            const data = await response.json();
+            setCurrentLocationAddress(data.display_name);
+          } catch (error) {
+            console.error("Reverse geocoding failed:", error);
+            setCurrentLocationAddress(t('locationUnavailable'));
+          } finally {
+            setIsFetchingLocation(false);
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          toast({ variant: 'destructive', title: t('geoFailedTitle'), description: t('geoFailedDescription') });
+          setCurrentLocationAddress(t('locationUnavailable'));
+          setIsFetchingLocation(false);
+          setCurrentCoordinates(null);
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      toast({ variant: 'destructive', title: t('geoNotSupportedTitle'), description: t('geoNotSupportedDescription') });
+      setIsFetchingLocation(false);
+      setCurrentLocationAddress(t('locationUnavailable'));
+    }
+  }, [t, toast]);
 
   useEffect(() => {
     return () => {
@@ -124,46 +160,34 @@ export default function TimeTrackingPage() {
     }
   }, [status, profile, user]);
 
-  const handleStart = async (withGeo: boolean) => {
+  const handleStart = async () => {
     if (!selectedShiftId) {
       toast({ variant: 'destructive', title: t('shiftNotSelectedTitle'), description: t('shiftNotSelectedDescription') });
       return;
     }
     if (!user || !firestore) return;
 
+    if (!currentCoordinates) {
+        toast({ variant: 'destructive', title: t('geoFailedTitle'), description: t('geoFailedDescription') });
+        return;
+    }
+    
     const shift = shifts.find(s => s.id === selectedShiftId);
     if (!shift) return;
-    
-    let locationString: string | undefined = undefined;
 
-    if (withGeo) {
-        try {
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                });
-            });
-            setCurrentCoordinates({ lat: position.coords.latitude, lon: position.coords.longitude });
-            
-            const { suggestedLocation: aiSuggestion } = await suggestWorkLocation({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-            });
+    try {
+        const { suggestedLocation: aiSuggestion } = await suggestWorkLocation({
+            latitude: currentCoordinates.lat,
+            longitude: currentCoordinates.lon,
+        });
 
-            setSuggestedLocation(aiSuggestion);
-            setShowLocationConfirm(true);
-            // The process will continue in handleLocationConfirm
-            return; 
+        setSuggestedLocation(aiSuggestion);
+        setShowLocationConfirm(true);
 
-        } catch (error) {
-            console.error("Geolocation failed or was denied:", error);
-            toast({ variant: 'destructive', title: t('geoFailedTitle'), description: t('geoFailedDescription') });
-            // Fallback to manual start
-            await startShift(shift, undefined);
-        }
-    } else {
-        await startShift(shift, t('manualLocation'));
+    } catch (error) {
+        console.error("AI suggestion failed:", error);
+        toast({ variant: 'destructive', title: t('geoSuggestErrorTitle'), description: t('geoSuggestErrorDescription') });
+        await startShift(shift, currentLocationAddress || `Lat: ${currentCoordinates.lat}, Lon: ${currentCoordinates.lon}`);
     }
   };
 
@@ -207,7 +231,6 @@ export default function TimeTrackingPage() {
       const locationString = useLocation ? suggestedLocation ?? undefined : undefined;
       await startShift(shift, locationString);
       setSuggestedLocation(null);
-      setCurrentCoordinates(null);
   };
 
 
@@ -300,7 +323,6 @@ export default function TimeTrackingPage() {
                   </div>
                   <div className="flex gap-2 w-full md:w-auto">
                       <Skeleton className="h-12 flex-1" />
-                      <Skeleton className="h-12 flex-1" />
                   </div>
               </div>
               <Skeleton className="h-40 w-full" />
@@ -326,7 +348,7 @@ export default function TimeTrackingPage() {
   }
 
   return (
-    <div className="pb-24 space-y-6">
+    <div className="pb-48 md:pb-24 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
@@ -366,32 +388,28 @@ export default function TimeTrackingPage() {
         </CardContent>
       </Card>
       
-      <div className="fixed bottom-20 md:bottom-4 left-4 right-4 z-10 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto grid grid-cols-2 gap-4">
-        <Button
-          className="h-16 text-xl"
-          onClick={() => handleStart(false)}
-          disabled={isShiftActive}
-        >
-          {t('startButton')}
-        </Button>
-        <Button
-          className="h-16 text-xl"
-          onClick={() => handleStart(true)}
-          disabled={isShiftActive}
-        >
-          {t('geoClockInButton')}
-        </Button>
-      </div>
-
-       <div className="fixed bottom-20 md:bottom-4 left-4 right-4 z-10 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto">
-        <Button
-            className="w-full h-16 text-xl"
-            variant="destructive"
-            onClick={handleStopClick}
-            disabled={!isShiftActive}
-        >
-            {t('stopButton')}
-        </Button>
+      <div className="space-y-2 fixed bottom-20 md:bottom-4 left-4 right-4 z-10 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto bg-background/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none -mx-4 px-4 pt-4 md:p-0 md:m-0 rounded-t-lg">
+        <div className="text-center text-sm text-muted-foreground mb-2 px-4 md:px-0">
+          <span className='font-medium'>{t('currentLocationLabel')}:</span> {isFetchingLocation ? tShared('loading') : (currentLocationAddress || t('locationUnavailable'))}
+        </div>
+        {!isShiftActive ? (
+            <Button
+                className="w-full h-16 text-xl"
+                onClick={handleStart}
+                disabled={isShiftActive || isFetchingLocation || !currentCoordinates}
+            >
+                {t('startShiftButton')}
+            </Button>
+        ) : (
+            <Button
+                className="w-full h-16 text-xl"
+                variant="destructive"
+                onClick={handleStopClick}
+                disabled={!isShiftActive}
+            >
+                {t('endShiftButton')}
+            </Button>
+        )}
       </div>
 
       <Card>
@@ -500,5 +518,3 @@ export default function TimeTrackingPage() {
     </div>
   );
 }
-
-    
