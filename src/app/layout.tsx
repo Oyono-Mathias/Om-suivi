@@ -1,26 +1,13 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import AppShell from '@/components/app-shell';
-import { Toaster } from '@/components/ui/toaster';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
-import { ShiftProvider } from '@/context/ShiftContext';
 import { ReactNode } from 'react';
+import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'OM Suivi',
-  description: 'Une application pour le suivi des heures supplémentaires.',
-};
-
-export default async function RootLayout({
+export default function RootLayout({
   children,
+  params: { locale }
 }: {
   children: ReactNode;
+  params: { locale: string };
 }) {
-  const locale = await getLocale();
-  const messages = await getMessages();
-
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
@@ -32,14 +19,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <FirebaseClientProvider>
-            <ShiftProvider>
-              <AppShell>{children}</AppShell>
-            </ShiftProvider>
-            <Toaster />
-          </FirebaseClientProvider>
-        </NextIntlClientProvider>
+        {children}
       </body>
     </html>
   );

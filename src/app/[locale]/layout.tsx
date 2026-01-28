@@ -1,5 +1,34 @@
+import type { Metadata } from 'next';
+import AppShell from '@/components/app-shell';
+import { Toaster } from '@/components/ui/toaster';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+import { ShiftProvider } from '@/context/ShiftContext';
 import { ReactNode } from 'react';
 
-export default function LocaleLayout({ children }: { children: ReactNode }) {
-  return children;
+export const metadata: Metadata = {
+  title: 'OM Suivi',
+  description: 'Une application pour le suivi des heures supplémentaires.',
+};
+
+export default async function LocaleLayout({
+  children,
+  params: { locale }
+}: {
+  children: ReactNode;
+  params: { locale: string };
+}) {
+  const messages = await getMessages();
+
+  return (
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <FirebaseClientProvider>
+        <ShiftProvider>
+          <AppShell>{children}</AppShell>
+        </ShiftProvider>
+        <Toaster />
+      </FirebaseClientProvider>
+    </NextIntlClientProvider>
+  );
 }
