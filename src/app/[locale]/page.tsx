@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -37,7 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
 import type { TimeEntry, Profile, Shift } from '@/lib/types';
 import { shifts } from '@/lib/shifts';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
@@ -65,15 +64,15 @@ export default function TimeTrackingPage() {
   const [activeTimer, setActiveTimer] = useState<NodeJS.Timeout | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [activeTimeEntryId, setActiveTimeEntryId] = useState<string | null>(null);
-  const [status, setStatus] = useState<'idle' | 'in_progress' | 'on_mission'>('idle');
+  const [status, setStatus] = useState<'idle' | 'in_progress'>('idle');
   
   const [isManualEntryOpen, setManualEntryOpen] = useState(false);
   const [showLocationConfirm, setShowLocationConfirm] = useState(false);
   const [suggestedLocation, setSuggestedLocation] = useState<string | null>(null);
   const [currentCoordinates, setCurrentCoordinates] = useState<{lat: number, lon: number} | null>(null);
-  const [showGeofenceAlert, setShowGeofenceAlert] = useState(false);
   const [currentLocationAddress, setCurrentLocationAddress] = useState<string | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(true);
+  const [lastCheckedZoneStatus, setLastCheckedZoneStatus] = useState<boolean | null>(null);
 
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -145,67 +144,7 @@ export default function TimeTrackingPage() {
     }
   }, [isShiftActive, profile?.workplace]);
 
-  useEffect(() => {
-    // Geofencing check
-    if (status === 'in_progress' && profile?.workplace && user) {
-        const intervalId = setInterval(() => {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const distance = getDistanceFromLatLonInKm(
-                        position.coords.latitude,
-                        position.coords.longitude,
-                        profile.workplace!.latitude,
-                        profile.workplace!.longitude
-                    );
-
-                    if (distance * 1000 > profile.workplace!.radius) {
-                        setShowGeofenceAlert(true);
-                         if (Notification.permission === 'granted') {
-                            new Notification(t('geoFenceAlertTitle'), {
-                                body: t('geoFenceAlertDescription'),
-                            });
-                        }
-                    }
-                }
-            );
-        }, 30000); // Check every 30 seconds
-
-        return () => clearInterval(intervalId);
-    }
-  }, [status, profile, user, t]);
-
-  const handleStart = async () => {
-    if (!selectedShiftId) {
-      toast({ variant: 'destructive', title: t('shiftNotSelectedTitle'), description: t('shiftNotSelectedDescription') });
-      return;
-    }
-    if (!user || !firestore) return;
-
-    if (!currentCoordinates) {
-        toast({ variant: 'destructive', title: t('geoFailedTitle'), description: t('geoFailedDescription') });
-        return;
-    }
-    
-    const shift = shifts.find(s => s.id === selectedShiftId);
-    if (!shift) return;
-
-    try {
-        const { suggestedLocation: aiSuggestion } = await suggestWorkLocation({
-            latitude: currentCoordinates.lat,
-            longitude: currentCoordinates.lon,
-        });
-
-        setSuggestedLocation(aiSuggestion);
-        setShowLocationConfirm(true);
-
-    } catch (error) {
-        console.error("AI suggestion failed:", error);
-        toast({ variant: 'destructive', title: t('geoSuggestErrorTitle'), description: t('geoSuggestErrorDescription') });
-        await startShift(shift, currentLocationAddress || `Lat: ${currentCoordinates.lat}, Lon: ${currentCoordinates.lon}`);
-    }
-  };
-
-  const startShift = async (shift: Shift, locationString?: string) => {
+  const startShift = useCallback(async (shift: Shift, locationString?: string) => {
     if (!user || !firestore) return;
 
     const now = new Date();
@@ -232,60 +171,35 @@ export default function TimeTrackingPage() {
         }, 1000);
         setActiveTimer(timer);
         toast({ title: t('timerStartedTitle'), description: locationString ? t('timerStartedLocationDescription', {location: locationString}) : t('timerStartedDescription') });
+        return docRef.id;
     } catch (error) {
         console.error("Failed to start shift:", error);
+        return null;
     }
-  }
-
-  const handleLocationConfirm = async (useLocation: boolean) => {
-      setShowLocationConfirm(false);
-      const shift = shifts.find(s => s.id === selectedShiftId);
-      if (!shift) return;
-
-      const locationString = useLocation ? suggestedLocation ?? undefined : undefined;
-      await startShift(shift, locationString);
-      setSuggestedLocation(null);
-  };
+  }, [user, firestore, setIsShiftActive, t, toast]);
 
 
-  const [showStopConfirm, setShowStopConfirm] = useState(false);
-
-  const handleStopClick = () => {
-    if (status === 'on_mission') {
-      handleEndShift();
-    } else {
-      setShowStopConfirm(true);
-    }
-  };
-
-  const handleGoOnMission = () => {
-    if (!activeTimeEntryId || !user) return;
-    setStatus('on_mission');
-    setShowStopConfirm(false);
-    setShowGeofenceAlert(false);
-
-    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
-    updateDocumentNonBlocking(entryRef, { location: 'Mission' });
-
-    toast({ title: t('statusUpdatedTitle'), description: t('statusUpdatedDescription') });
-  };
-  
-  const handleEndShift = () => {
-    setShowStopConfirm(false);
-    setShowGeofenceAlert(false);
-    if (!activeTimeEntryId || !selectedShiftId || !user) {
+  const handleEndShift = useCallback(() => {
+    if (!activeTimeEntryId || !user) {
       stopTimer();
       return;
     }
+
+    const activeEntry = timeEntries?.find(e => e.id === activeTimeEntryId);
+    const shiftId = activeEntry?.shiftId || selectedShiftId;
+    if (!shiftId) {
+        stopTimer();
+        return;
+    }
   
-    const shift = shifts.find(s => s.id === selectedShiftId);
+    const shift = shifts.find(s => s.id === shiftId);
     if (!shift) return;
   
     const now = new Date();
     const endTimeStr = format(now, 'HH:mm');
     const today = format(now, 'yyyy-MM-dd');
   
-    const entryToUpdate = timeEntries?.find(e => e.id === activeTimeEntryId) || {
+    const entryToUpdate = activeEntry || {
         date: today,
         startTime: format(new Date(now.getTime() - elapsedTime * 1000), 'HH:mm'),
     };
@@ -308,7 +222,140 @@ export default function TimeTrackingPage() {
     });
   
     toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
+
+    if (Notification.permission === 'granted') {
+        const overtimeHours = (overtimeDuration / 60).toFixed(2);
+        new Notification('OM Suivi: Fin de Service', {
+            body: `Service terminé. ${overtimeHours} heures supplémentaires enregistrées.`,
+            icon: '/icons/icon-192x192.png',
+        });
+    }
+
     stopTimer();
+  }, [activeTimeEntryId, user, stopTimer, timeEntries, selectedShiftId, firestore, elapsedTime, t, toast]);
+
+
+  const handleGeofenceEnter = useCallback(async () => {
+    if (isShiftActive || !firestore || !user) return; // Don't start if already active or services unavailable
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    let shiftToStart: Shift | undefined;
+
+    // Time Matching
+    if (currentHour >= 5 && currentHour < 7) { // 05:00 - 06:59
+        shiftToStart = shifts.find(s => s.id === 'morningA');
+    } else if (currentHour >= 13 && currentHour < 15) { // 13:00 - 14:59
+        shiftToStart = shifts.find(s => s.id === 'afternoon');
+    } else if (currentHour >= 21 && currentHour < 23) { // 21:00 - 22:59
+        shiftToStart = shifts.find(s => s.id === 'night');
+    }
+
+    if (!shiftToStart) return;
+
+    // Anti-Duplication Check
+    const q = query(
+        collection(firestore, 'users', user.uid, 'timeEntries'),
+        where('date', '==', todayStr),
+        where('shiftId', '==', shiftToStart.id)
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        console.log("Auto-start prevented: Shift already exists for today.");
+        return;
+    }
+
+    // All checks passed, auto-start shift
+    const newEntryId = await startShift(shiftToStart, profile?.workplace?.address || 'Workplace');
+    if (newEntryId && Notification.permission === 'granted') {
+        new Notification('OM Suivi: Pointage Automatique', {
+            body: `Votre service '${shiftToStart.name}' a démarré automatiquement à ${format(now, 'HH:mm')}.`,
+            icon: '/icons/icon-192x192.png',
+        });
+    }
+  }, [isShiftActive, firestore, user, profile?.workplace, startShift]);
+
+
+  const handleGeofenceExit = useCallback(() => {
+    if (!isShiftActive) return;
+    handleEndShift();
+  }, [isShiftActive, handleEndShift]);
+
+
+  useEffect(() => {
+    if (!profile?.workplace) return;
+
+    const monitorLocation = () => {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                if (!profile.workplace) return;
+                const distance = getDistanceFromLatLonInKm(
+                    position.coords.latitude,
+                    position.coords.longitude,
+                    profile.workplace.latitude,
+                    profile.workplace.longitude
+                );
+                const currentlyInZone = distance * 1000 <= profile.workplace.radius;
+
+                if (lastCheckedZoneStatus !== null && lastCheckedZoneStatus !== currentlyInZone) {
+                    if (currentlyInZone) {
+                        handleGeofenceEnter();
+                    } else {
+                        handleGeofenceExit();
+                    }
+                }
+                setLastCheckedZoneStatus(currentlyInZone);
+            },
+            (error) => { console.error("Periodic location check failed:", error); },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    const intervalId = setInterval(monitorLocation, 60000); // Check every minute
+    return () => clearInterval(intervalId);
+  }, [profile, lastCheckedZoneStatus, handleGeofenceEnter, handleGeofenceExit]);
+  
+  
+  const handleManualStart = async () => {
+    if (!selectedShiftId) {
+      toast({ variant: 'destructive', title: t('shiftNotSelectedTitle'), description: t('shiftNotSelectedDescription') });
+      return;
+    }
+    if (!user || !firestore) return;
+
+    if (!currentCoordinates) {
+        toast({ variant: 'destructive', title: t('geoFailedTitle'), description: t('geoFailedDescription') });
+        return;
+    }
+    
+    try {
+        const { suggestedLocation: aiSuggestion } = await suggestWorkLocation({
+            latitude: currentCoordinates.lat,
+            longitude: currentCoordinates.lon,
+        });
+
+        setSuggestedLocation(aiSuggestion);
+        setShowLocationConfirm(true);
+
+    } catch (error) {
+        console.error("AI suggestion failed:", error);
+        toast({ variant: 'destructive', title: t('geoSuggestErrorTitle'), description: t('geoSuggestErrorDescription') });
+        const shift = shifts.find(s => s.id === selectedShiftId);
+        if (shift) {
+            await startShift(shift, currentLocationAddress || `Lat: ${currentCoordinates.lat}, Lon: ${currentCoordinates.lon}`);
+        }
+    }
+  };
+
+  const handleLocationConfirm = async (useLocation: boolean) => {
+      setShowLocationConfirm(false);
+      const shift = shifts.find(s => s.id === selectedShiftId);
+      if (!shift) return;
+
+      const locationString = useLocation ? suggestedLocation ?? undefined : undefined;
+      await startShift(shift, locationString);
+      setSuggestedLocation(null);
   };
 
   const formatElapsedTime = (seconds: number) => {
@@ -321,7 +368,6 @@ export default function TimeTrackingPage() {
   const currentStatus = useMemo(() => {
     switch(status) {
       case 'in_progress': return t('statusInProgress');
-      case 'on_mission': return t('statusOnMission');
       default: return t('statusIdle');
     }
   }, [status, t]);
@@ -409,7 +455,7 @@ export default function TimeTrackingPage() {
         {!isShiftActive ? (
             <Button
                 className="w-full h-16 text-xl"
-                onClick={handleStart}
+                onClick={handleManualStart}
                 disabled={isShiftActive || isFetchingLocation || !currentCoordinates}
             >
                 {t('startShiftButton')}
@@ -418,7 +464,7 @@ export default function TimeTrackingPage() {
             <Button
                 className="w-full h-16 text-xl"
                 variant="destructive"
-                onClick={handleStopClick}
+                onClick={handleEndShift}
                 disabled={!isShiftActive}
             >
                 {t('endShiftButton')}
@@ -501,32 +547,6 @@ export default function TimeTrackingPage() {
                   <AlertDialogAction onClick={() => handleLocationConfirm(true)}>{t('locationConfirmAction')}</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>{t('stopConfirmTitle')}</AlertDialogTitle>
-                <AlertDialogDescription>{t('stopConfirmDescription')}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogAction onClick={handleGoOnMission} className="bg-blue-600 hover:bg-blue-700">{t('onMissionButton')}</AlertDialogAction>
-                <AlertDialogAction onClick={handleEndShift}>{t('endShiftButtonConfirm')}</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showGeofenceAlert} onOpenChange={setShowGeofenceAlert}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>{t('geoFenceAlertTitle')}</AlertDialogTitle>
-                <AlertDialogDescription>{t('geoFenceAlertDescription')}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogAction onClick={handleGoOnMission} className="bg-blue-600 hover:bg-blue-700">{t('startMissionButton')}</AlertDialogAction>
-                <AlertDialogAction onClick={handleEndShift}>{t('endShiftButton')}</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
       </AlertDialog>
 
     </div>

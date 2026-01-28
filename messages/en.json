@@ -1,4 +1,3 @@
-
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
@@ -44,13 +43,11 @@
   "TimeTrackingPage": {
     "title": "Time Tracking",
     "statusInProgress": "Your work session is in progress.",
-    "statusOnMission": "You are currently on a mission.",
     "statusIdle": "Select your shift and start tracking.",
     "selectShiftPlaceholder": "Select your shift for the day",
     "holidayMode": "Holiday",
     "startShiftButton": "Start Shift",
     "endShiftButton": "End Shift",
-    "stopButton": "Stop",
     "manualEntryButton": "Add Manual Entry",
     "recentEntriesTitle": "Recent Entries",
     "recentEntriesDescription": "A log of your recent work sessions.",
@@ -80,18 +77,9 @@
     "locationConfirmDescriptionPart2": ". Do you want to associate this location with your time entry?",
     "locationConfirmCancel": "Use without location",
     "locationConfirmAction": "Confirm and Start",
-    "stopConfirmTitle": "What is your status?",
-    "stopConfirmDescription": "You are stopping the timer. Are you ending your shift or on a delivery mission?",
-    "onMissionButton": "On Mission",
-    "endShiftButtonConfirm": "End of Shift",
-    "statusUpdatedTitle": "Status Updated",
-    "statusUpdatedDescription": "You are now on a mission. The timer continues.",
     "minutes": "min",
     "noLocation": "N/A",
     "manualLocation": "Manual Entry",
-    "geoFenceAlertTitle": "You have left the work zone",
-    "geoFenceAlertDescription": "You seem to have left your work zone. What is your status?",
-    "startMissionButton": "Start Mission",
     "currentLocationLabel": "Current Location",
     "locationUnavailable": "Location unavailable"
   },

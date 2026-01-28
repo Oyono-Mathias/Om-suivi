@@ -1,4 +1,3 @@
-
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
@@ -44,13 +43,11 @@
   "TimeTrackingPage": {
     "title": "Suivi du Temps",
     "statusInProgress": "Votre session de travail est en cours.",
-    "statusOnMission": "Vous êtes actuellement en mission.",
     "statusIdle": "Sélectionnez votre poste et commencez le suivi.",
     "selectShiftPlaceholder": "Sélectionnez votre poste du jour",
     "holidayMode": "Jour Férié",
     "startShiftButton": "Démarrer le Service",
     "endShiftButton": "Fin de Service",
-    "stopButton": "Arrêter",
     "manualEntryButton": "Ajouter une entrée manuelle",
     "recentEntriesTitle": "Entrées Récentes",
     "recentEntriesDescription": "Un journal de vos récentes sessions de travail.",
@@ -80,18 +77,9 @@
     "locationConfirmDescriptionPart2": ". Voulez-vous associer cet emplacement à votre entrée de temps ?",
     "locationConfirmCancel": "Utiliser sans emplacement",
     "locationConfirmAction": "Confirmer et Démarrer",
-    "stopConfirmTitle": "Quel est votre statut ?",
-    "stopConfirmDescription": "Vous arrêtez le compteur. Terminez-vous votre service ou êtes-vous en mission de livraison ?",
-    "onMissionButton": "En Mission",
-    "endShiftButtonConfirm": "Fin de Service",
-    "statusUpdatedTitle": "Statut Mis à Jour",
-    "statusUpdatedDescription": "Vous êtes maintenant en mission. Le compteur continue.",
     "minutes": "min",
     "noLocation": "N/A",
     "manualLocation": "Entrée Manuelle",
-    "geoFenceAlertTitle": "Vous avez quitté la zone de travail",
-    "geoFenceAlertDescription": "Il semble que vous ayez quitté votre zone de travail. Quel est votre statut ?",
-    "startMissionButton": "Démarrer une Mission",
     "currentLocationLabel": "Position actuelle",
     "locationUnavailable": "Position non disponible"
   },
