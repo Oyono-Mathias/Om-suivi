@@ -169,7 +169,7 @@ export default function ReportsPage() {
                 A summary of your earnings and work hours.
             </p>
         </div>
-        <Link href="/reports/export" passHref>
+        <Link href="/reports/export">
           <Button>Export Report</Button>
         </Link>
       </div>
