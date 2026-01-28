@@ -92,7 +92,8 @@
       "description": "Votre appareil a été déconnecté. Avez-vous terminé votre service vers {time} ?",
       "confirmButton": "Oui, terminer",
       "cancelButton": "Non, je travaille encore"
-    }
+    },
+    "exceptionalOvertimeLabel": "Heures Sup Exceptionnelles"
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
@@ -122,6 +123,14 @@
     "currencyLabel": "Symbole de la devise",
     "currencyPlaceholder": "ex: FCFA",
     "currencyRequiredError": "Le symbole de la devise est requis.",
+    "professionLabel": "Profession",
+    "professionPlaceholder": "Sélectionnez une profession",
+    "professions": {
+      "storekeeper": "Magasinier",
+      "deliveryDriver": "Livreur",
+      "machinist": "Machiniste",
+      "other": "Autre"
+    },
     "remindersTitle": "Rappels",
     "remindersDescription": "Configurez des alertes pour éviter d'oublier de pointer.",
     "enableRemindersLabel": "Activer les rappels",
@@ -168,7 +177,8 @@
     "weeklyBreakdownDescription": "Heures normales vs heures supplémentaires enregistrées chaque jour de la semaine en cours.",
     "chartRegular": "Normales",
     "chartOvertime": "Heures Sup.",
-    "hourUnit": "h"
+    "hourUnit": "h",
+    "jobTitleLabel": "Profession"
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -177,6 +187,7 @@
     "appName": "OM Suivi",
     "reportTitle": "Rapport de Feuille de Temps",
     "hourlyRateLabel": "Taux Horaire",
+    "jobTitleLabel": "Profession",
     "tableDate": "Date",
     "tableCheckIn": "Heure d'arrivée",
     "tableCheckOut": "Heure de départ",
@@ -239,5 +250,4 @@
     "description": "La page que vous recherchez n'existe pas."
   }
 }
-
     

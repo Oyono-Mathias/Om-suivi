@@ -49,6 +49,8 @@ import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry'
 import ManualEntryDialog from '@/components/manual-entry-dialog';
 import { getDistanceFromLatLonInKm } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 const LOCAL_STORAGE_KEY = 'activeShiftState';
 
@@ -83,6 +85,7 @@ export default function TimeTrackingPage() {
   const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(true);
   const [lastCheckedZoneStatus, setLastCheckedZoneStatus] = useState<boolean | null>(null);
   const [recoveryData, setRecoveryData] = useState<ActiveShiftState | null>(null);
+  const [isExceptionalOvertime, setIsExceptionalOvertime] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
@@ -151,6 +154,7 @@ export default function TimeTrackingPage() {
     setIsShiftActive(false);
     setElapsedTime(0);
     setActiveTimeEntryId(null);
+    setIsExceptionalOvertime(false);
     clearActiveShiftFromLocal();
   }, [activeTimer, setIsShiftActive]);
 
@@ -249,7 +253,7 @@ export default function TimeTrackingPage() {
   }, [user, firestore, setIsShiftActive, t, toast]);
 
 
-  const handleEndShift = useCallback((manualEndTime?: Date) => {
+  const handleEndShift = useCallback((manualEndTime?: Date, exceptionalOvertime: boolean = false) => {
     const entryId = activeTimeEntryId || recoveryData?.activeTimeEntryId;
     if (!entryId || !user) {
       stopTimer();
@@ -280,7 +284,10 @@ export default function TimeTrackingPage() {
   
     const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
     let overtimeDuration = 0;
-    if (endDateTime > shiftEndDateTime) {
+    
+    const shouldCalculateOvertime = profile?.profession !== 'machinist' || (profile?.profession === 'machinist' && exceptionalOvertime);
+
+    if (shouldCalculateOvertime && endDateTime > shiftEndDateTime) {
       overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
     }
   
@@ -303,7 +310,7 @@ export default function TimeTrackingPage() {
     }
 
     stopTimer();
-  }, [activeTimeEntryId, user, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData]);
+  }, [activeTimeEntryId, user, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, profile]);
 
   const handleGeofenceEnter = useCallback(async () => {
     if (isShiftActive || !firestore || !user) return;
@@ -561,6 +568,21 @@ export default function TimeTrackingPage() {
         </CardContent>
       </Card>
       
+      {profile?.profession === 'machinist' && isShiftActive && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="exceptional-overtime" className="font-medium">{t('exceptionalOvertimeLabel')}</Label>
+              <Switch
+                id="exceptional-overtime"
+                checked={isExceptionalOvertime}
+                onCheckedChange={setIsExceptionalOvertime}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <div className="space-y-2 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto bg-background/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none rounded-t-lg">
         <div className="text-center text-sm text-muted-foreground mb-2 px-4 md:px-0">
           <span className='font-medium'>{t('currentLocationLabel')}:</span> {isFetchingLocation ? tShared('loading') : (currentLocationAddress || t('locationUnavailable'))}
@@ -577,7 +599,7 @@ export default function TimeTrackingPage() {
             <Button
                 className="w-full h-16 text-xl"
                 variant="destructive"
-                onClick={() => handleEndShift()}
+                onClick={() => handleEndShift(undefined, isExceptionalOvertime)}
                 disabled={!isShiftActive}
             >
                 {t('endShiftButton')}
@@ -679,5 +701,4 @@ export default function TimeTrackingPage() {
     </div>
   );
 }
-
     

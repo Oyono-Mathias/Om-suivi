@@ -92,7 +92,8 @@
       "description": "Your device was disconnected. Did you finish your shift around {time}?",
       "confirmButton": "Yes, End Shift",
       "cancelButton": "No, I'm still working"
-    }
+    },
+    "exceptionalOvertimeLabel": "Exceptional Overtime"
   },
   "ManualEntryDialog": {
     "title": "Add Manual Entry",
@@ -122,6 +123,14 @@
     "currencyLabel": "Currency Symbol",
     "currencyPlaceholder": "e.g. FCFA",
     "currencyRequiredError": "Currency symbol is required.",
+    "professionLabel": "Profession",
+    "professionPlaceholder": "Select a profession",
+    "professions": {
+      "storekeeper": "Storekeeper",
+      "deliveryDriver": "Delivery Driver",
+      "machinist": "Machinist",
+      "other": "Other"
+    },
     "remindersTitle": "Reminders",
     "remindersDescription": "Set up alerts to avoid forgetting to clock in/out.",
     "enableRemindersLabel": "Enable reminders",
@@ -168,7 +177,8 @@
     "weeklyBreakdownDescription": "Regular vs. overtime hours logged each day of the current week.",
     "chartRegular": "Regular",
     "chartOvertime": "Overtime",
-    "hourUnit": "h"
+    "hourUnit": "h",
+    "jobTitleLabel": "Job Title"
   },
   "ExportReportPage": {
     "title": "Export Report",
@@ -177,6 +187,7 @@
     "appName": "OM Suivi",
     "reportTitle": "Timesheet Report",
     "hourlyRateLabel": "Hourly Rate",
+    "jobTitleLabel": "Job Title",
     "tableDate": "Date",
     "tableCheckIn": "Check-in Time",
     "tableCheckOut": "Check-out Time",
@@ -239,5 +250,4 @@
     "description": "The page you are looking for does not exist."
   }
 }
-
     

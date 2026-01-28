@@ -28,6 +28,16 @@
             "admin"
           ]
         },
+        "profession": {
+          "type": "string",
+          "description": "The user's job title.",
+          "enum": [
+            "storekeeper",
+            "deliveryDriver",
+            "machinist",
+            "other"
+          ]
+        },
         "monthlyBaseSalary": {
           "type": "number",
           "description": "The user's monthly base salary used to calculate hourly rates."
@@ -49,7 +59,8 @@
         "role",
         "monthlyBaseSalary",
         "currency",
-        "createdAt"
+        "createdAt",
+        "profession"
       ]
     },
     "TimeEntry": {
@@ -182,5 +193,4 @@
     ]
   }
 }
-
     

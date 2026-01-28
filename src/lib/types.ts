@@ -26,11 +26,14 @@ export interface Workplace {
   address?: string;
 }
 
+export type Profession = 'storekeeper' | 'deliveryDriver' | 'machinist' | 'other';
+
 export interface Profile {
   id: string;
   email: string;
   name: string;
   role?: 'admin' | 'user';
+  profession?: Profession;
   monthlyBaseSalary: number;
   currency: string;
   createdAt: any; // serverTimestamp

@@ -23,6 +23,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -39,7 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { doc, collection, serverTimestamp } from "firebase/firestore";
 import { Loader2, MapPin } from "lucide-react";
-import type { Profile } from "@/lib/types";
+import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
 import { useShift } from "@/context/ShiftContext";
@@ -61,6 +68,7 @@ export default function ProfilePage() {
   
   const profileSchema = z.object({
     name: z.string().min(2, { message: t('nameMinLengthError') }),
+    profession: z.enum(['storekeeper', 'deliveryDriver', 'machinist', 'other']),
     monthlyBaseSalary: z.coerce.number().min(0, { message: t('salaryMinError') }),
     currency: z.string().min(1, { message: t('currencyRequiredError')}),
     reminders: z.object({
@@ -80,6 +88,7 @@ export default function ProfilePage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
+      profession: 'other',
       monthlyBaseSalary: 0,
       currency: 'FCFA',
       reminders: { enabled: false, time: '17:00' }
@@ -90,6 +99,7 @@ export default function ProfilePage() {
     if (profile) {
       form.reset({
         name: profile.name || user?.displayName || '',
+        profession: profile.profession || 'other',
         monthlyBaseSalary: profile.monthlyBaseSalary || 0,
         currency: profile.currency || 'FCFA',
         reminders: profile.reminders || { enabled: false, time: '17:00' },
@@ -255,6 +265,13 @@ export default function ProfilePage() {
     </Button>
   );
 
+  const professions: { value: Profession, label: string }[] = [
+    { value: 'storekeeper', label: t('professions.storekeeper') },
+    { value: 'deliveryDriver', label: t('professions.deliveryDriver') },
+    { value: 'machinist', label: t('professions.machinist') },
+    { value: 'other', label: t('professions.other') },
+  ];
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
@@ -278,6 +295,28 @@ export default function ProfilePage() {
                     <FormControl>
                       <Input placeholder={t('namePlaceholder')} {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="profession"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('professionLabel')}</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('professionPlaceholder')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {professions.map(p => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -430,3 +469,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+    

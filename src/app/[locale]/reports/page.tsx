@@ -47,6 +47,7 @@ const OVERTIME_RATES = {
 export default function ReportsPage() {
     const t = useTranslations('ReportsPage');
     const tShared = useTranslations('Shared');
+    const tProfile = useTranslations('ProfilePage');
     
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -204,7 +205,7 @@ export default function ReportsPage() {
     );
   }
 
-  if (!profile || profile.monthlyBaseSalary === 0) {
+  if (!profile || profile.monthlyBaseSalary === 0 || !profile.profession) {
     return (
         <div className="flex flex-col justify-center items-center h-screen gap-4">
             <p className="text-xl text-center">{tShared('pleaseCompleteProfile')}</p>
@@ -215,13 +216,15 @@ export default function ReportsPage() {
     )
   }
 
+  const professionLabel = profile.profession ? tProfile(`professions.${profile.profession}`) : 'N/A';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
             <p className="text-muted-foreground">
-                {t('description')}
+                {t('description')} - <span className="font-semibold">{t('jobTitleLabel')}: {professionLabel}</span>
             </p>
         </div>
         <Link href="/reports/export">
@@ -288,3 +291,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+    

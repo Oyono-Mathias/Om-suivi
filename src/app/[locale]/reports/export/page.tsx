@@ -24,6 +24,7 @@ const OVERTIME_RATES = {
 export default function ExportReportPage() {
     const t = useTranslations('ExportReportPage');
     const tShared = useTranslations('Shared');
+    const tProfile = useTranslations('ProfilePage');
     const locale = useLocale();
     const dateFnsLocale = locale === 'fr' ? fr : enUS;
 
@@ -194,6 +195,8 @@ export default function ExportReportPage() {
         )
     }
 
+    const professionLabel = profile.profession ? tProfile(`professions.${profile.profession}`) : 'N/A';
+
     return (
         <div className="bg-background text-foreground min-h-screen p-4 font-body sm:p-8 print:p-0 print:bg-white print:text-black">
             <style jsx global>{`
@@ -236,7 +239,7 @@ export default function ExportReportPage() {
                                 <h2 className="text-2xl font-bold text-primary font-headline">{t('appName')}</h2>
                                 <h3 className="text-lg font-semibold">{t('reportTitle')}</h3>
                                 <p className="text-sm text-muted-foreground">{profile.name}</p>
-                                <p className="text-sm text-muted-foreground">{profile.email}</p>
+                                <p className="text-sm text-muted-foreground">{t('jobTitleLabel')}: {professionLabel}</p>
                             </div>
                         </div>
                         <div className="text-right shrink-0 ml-4">
@@ -318,3 +321,4 @@ export default function ExportReportPage() {
         </div>
     );
 }
+    
