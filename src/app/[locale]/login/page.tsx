@@ -146,9 +146,9 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background via-slate-900 to-zinc-900 p-4">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background via-slate-900 to-zinc-900 p-4 md:p-0">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
-        <Card className="rounded-xl border-border/20 bg-card/60 shadow-2xl shadow-black/20 backdrop-blur-lg">
+        <Card className="w-full rounded-xl border-border/20 bg-card/60 shadow-2xl shadow-black/20 backdrop-blur-lg sm:w-full">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold">{t('title')}</CardTitle>
             <CardDescription>{t('description')}</CardDescription>
@@ -170,7 +170,7 @@ export default function AuthPage() {
                         <div className="relative">
                           <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <FormControl>
-                            <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10" />
+                            <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10 h-12 text-base" />
                           </FormControl>
                         </div>
                         <FormMessage />
@@ -186,14 +186,14 @@ export default function AuthPage() {
                         <div className="relative">
                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <FormControl>
-                            <Input type="password" {...field} className="pl-10" />
+                            <Input type="password" {...field} className="pl-10 h-12 text-base" />
                           </FormControl>
                         </div>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full text-lg h-12 bg-primary hover:bg-primary/90" disabled={isLoading}>
+                  <Button type="submit" className="w-full text-lg h-14" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                     {t('loginButton')}
                   </Button>
@@ -212,7 +212,7 @@ export default function AuthPage() {
                          <div className="relative">
                            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <FormControl>
-                            <Input placeholder={t('namePlaceholder')} {...field} className="pl-10"/>
+                            <Input placeholder={t('namePlaceholder')} {...field} className="pl-10 h-12 text-base"/>
                           </FormControl>
                         </div>
                         <FormMessage />
@@ -228,7 +228,7 @@ export default function AuthPage() {
                         <div className="relative">
                           <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <FormControl>
-                            <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10" />
+                            <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10 h-12 text-base" />
                           </FormControl>
                         </div>
                         <FormMessage />
@@ -244,14 +244,14 @@ export default function AuthPage() {
                          <div className="relative">
                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <FormControl>
-                            <Input type="password" {...field} className="pl-10"/>
+                            <Input type="password" {...field} className="pl-10 h-12 text-base"/>
                           </FormControl>
                         </div>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full text-lg h-12 bg-primary hover:bg-primary/90" disabled={isLoading}>
+                  <Button type="submit" className="w-full text-lg h-14" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                     {t('registerButton')}
                   </Button>

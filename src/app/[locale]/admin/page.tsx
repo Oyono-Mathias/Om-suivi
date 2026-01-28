@@ -1,14 +1,14 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldX, User, ShieldCheck, Search } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { Profile } from '@/lib/types';
@@ -33,6 +33,7 @@ export default function AdminPage() {
   const tShared = useTranslations('Shared');
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -47,6 +48,11 @@ export default function AdminPage() {
   }, [firestore, profile?.role]);
 
   const { data: allProfiles, isLoading: isLoadingAllProfiles } = useCollection<Profile>(allProfilesQuery);
+
+  const filteredProfiles = allProfiles?.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const isLoading = isUserLoading || isLoadingProfile;
 
@@ -84,53 +90,53 @@ export default function AdminPage() {
           <CardDescription>{t('usersDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="sticky top-14 md:top-0 z-10 bg-background/95 backdrop-blur-sm py-2 mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input 
+                placeholder="Rechercher par nom ou email..."
+                className="pl-10 h-12"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
           {isLoadingAllProfiles ? (
             <div className="flex justify-center items-center h-40">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('tableUser')}</TableHead>
-                  <TableHead>{t('tableEmail')}</TableHead>
-                  <TableHead>{t('tableRole')}</TableHead>
-                  <TableHead className="text-right">{t('tableSalary')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allProfiles && allProfiles.length > 0 ? (
-                  allProfiles.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{p.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{p.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1">
+            <div className="space-y-4">
+              {filteredProfiles && filteredProfiles.length > 0 ? (
+                filteredProfiles.map((p) => (
+                  <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center p-4 gap-4">
+                    <div className="flex items-center gap-4 flex-1">
+                      <Avatar className="h-12 w-12">
+                          <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-sm text-muted-foreground">{p.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0">
+                      <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs">
                           {p.role === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                           {p.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')} ${p.currency}` : 'N/A'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center h-24">
-                      {t('noUsers')}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                      </Badge>
+                      <div className="text-right text-sm">
+                        <span className="font-medium">{p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')}` : 'N/A'}</span>
+                        <span className="text-muted-foreground"> {p.currency}</span>
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center h-24 flex items-center justify-center">
+                  {t('noUsers')}
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +61,7 @@ import { useCollection } from "@/firebase";
 import { Link, useRouter } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useShift } from "@/context/ShiftContext";
-import { getDistanceFromLatLonInKm } from "@/lib/utils";
+import { getDistanceFromLatLonInKm, cn } from "@/lib/utils";
 
 const ManualEntryDialog = ({
   open,
@@ -507,7 +506,10 @@ export default function TimeTrackingPage() {
 
   return (
     <div className="space-y-8">
-      <Card className="text-center shadow-lg">
+      <Card className={cn(
+        "text-center shadow-lg transition-all",
+        isRunning && (onMission ? "bg-orange-500/10 border-orange-500" : "bg-green-500/10 border-green-500")
+      )}>
         <CardHeader>
           <CardTitle className="text-4xl font-headline">{t('title')}</CardTitle>
           <CardDescription>
@@ -518,38 +520,47 @@ export default function TimeTrackingPage() {
               : t('statusIdle')}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="text-6xl font-bold font-mono text-primary my-8">
-            {formatTime(timer)}
-          </div>
-           {!isRunning ? (
-            <div className="max-w-xs mx-auto mb-4">
-                <Select value={selectedShiftId} onValueChange={setSelectedShiftId} >
-                    <SelectTrigger>
-                        <SelectValue placeholder={t('selectShiftPlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {shifts.map((shift: Shift) => (
-                            <SelectItem key={shift.id} value={shift.id}>
-                                {shift.name} ({shift.startTime} - {shift.endTime})
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+        <CardContent className="flex flex-col items-center justify-center">
+            <div className={cn(
+                "text-6xl font-bold font-mono my-8 transition-colors",
+                isRunning ? "text-primary" : "text-muted-foreground",
+                onMission && "text-orange-500"
+            )}>
+                {formatTime(timer)}
             </div>
-          ) : (
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Switch id="holiday-mode" checked={isPublicHoliday} onCheckedChange={setIsPublicHoliday} />
-              <Label htmlFor="holiday-mode">{t('holidayMode')}</Label>
-            </div>
-          )}
-          <div className="flex justify-center gap-4">
+
             {!isRunning ? (
-              <>
-                <Button size="lg" onClick={() => handleStart()} disabled={!selectedShiftId}>
+                <div className="w-full max-w-xs mx-auto mb-4">
+                    <Select value={selectedShiftId} onValueChange={setSelectedShiftId} >
+                        <SelectTrigger className="h-12">
+                            <SelectValue placeholder={t('selectShiftPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {shifts.map((shift: Shift) => (
+                                <SelectItem key={shift.id} value={shift.id}>
+                                    {shift.name} ({shift.startTime} - {shift.endTime})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            ) : (
+                <div className="flex items-center justify-center space-x-2 mb-4">
+                <Switch id="holiday-mode" checked={isPublicHoliday} onCheckedChange={setIsPublicHoliday} />
+                <Label htmlFor="holiday-mode">{t('holidayMode')}</Label>
+                </div>
+            )}
+        </CardContent>
+      </Card>
+      
+      {/* Action Buttons - Sticky for Mobile */}
+      <div className="md:flex md:justify-center md:gap-4 fixed bottom-20 left-0 right-0 p-4 bg-background/80 backdrop-blur-sm border-t md:static md:bg-transparent md:backdrop-blur-none md:border-none md:p-0">
+          {!isRunning ? (
+              <div className="flex justify-center gap-4 w-full">
+                <Button size="lg" onClick={() => handleStart()} disabled={!selectedShiftId} className="h-14 flex-1">
                   <Clock className="mr-2" /> {t('startButton')}
                 </Button>
-                <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading || !selectedShiftId}>
+                <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading || !selectedShiftId} className="h-14 flex-1">
                   {isGeoLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -557,20 +568,14 @@ export default function TimeTrackingPage() {
                   )}
                   {t('geoClockInButton')}
                 </Button>
-              </>
+              </div>
             ) : (
-              <Button size="lg" variant="destructive" onClick={handleStop}>
+              <Button size="lg" variant="destructive" onClick={handleStop} className="w-full h-14">
                 {t('stopButton')}
               </Button>
             )}
-          </div>
-        </CardContent>
-        <CardFooter className="justify-center">
-            <Button variant="ghost" onClick={() => setManualEntryOpen(true)}>
-              <Plus className="mr-2" /> {t('manualEntryButton')}
-            </Button>
-        </CardFooter>
-      </Card>
+      </div>
+
 
       <Card>
         <CardHeader>
@@ -578,27 +583,39 @@ export default function TimeTrackingPage() {
           <CardDescription>{t('recentEntriesDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex justify-end mb-4">
+             <Button variant="ghost" size="sm" onClick={() => setManualEntryOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> {t('manualEntryButton')}
+            </Button>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>{t('tableDate')}</TableHead>
-                <TableHead>{t('tableShift')}</TableHead>
-                <TableHead>{t('tableHours')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('tableShift')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('tableHours')}</TableHead>
                 <TableHead>{t('tableDuration')}</TableHead>
-                <TableHead>{t('tableOvertime')}</TableHead>
-                <TableHead>{t('tableLocation')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('tableLocation')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedTimeEntries.length > 0 ? (
                 sortedTimeEntries.slice(0, 5).map((entry: TimeEntry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>{format(parseISO(entry.date), "PPP", {locale: dateFnsLocale})}{entry.isPublicHoliday ? ` ${t('holidaySuffix')}` : ''}</TableCell>
-                    <TableCell>{shifts.find(s => s.id === entry.shiftId)?.name || t('noLocation')}</TableCell>
-                    <TableCell>{entry.startTime} - {entry.endTime}</TableCell>
-                    <TableCell>{entry.duration} {t('minutes')}</TableCell>
-                    <TableCell>{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} ${t('minutes')}` : '-'}</TableCell>
-                    <TableCell>{entry.location || t('noLocation')}</TableCell>
+                    <TableCell>
+                      {format(parseISO(entry.date), "PPP", {locale: dateFnsLocale})}
+                      <div className="text-muted-foreground md:hidden">
+                        {shifts.find(s => s.id === entry.shiftId)?.name || ''}
+                      </div>
+                      {entry.isPublicHoliday && <div className="text-xs text-orange-500">{t('holidaySuffix')}</div>}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{shifts.find(s => s.id === entry.shiftId)?.name || t('noLocation')}</TableCell>
+                    <TableCell className="hidden md:table-cell">{entry.startTime} - {entry.endTime}</TableCell>
+                    <TableCell>
+                      {entry.duration} {t('minutes')}
+                      {entry.overtimeDuration > 0 && <div className="text-xs text-destructive">+{entry.overtimeDuration} {t('minutes')} {t('tableOvertime')}</div>}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{entry.location || t('noLocation')}</TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -640,7 +657,7 @@ export default function TimeTrackingPage() {
                     {t('stopConfirmDescription')}
                 </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="gap-2 sm:justify-end">
+            <DialogFooter className="gap-2 sm:justify-center">
                 <Button variant="outline" onClick={() => { setOnMission(true); setConfirmStopOpen(false); toast({ title: t('statusUpdatedTitle'), description: t('statusUpdatedDescription')}) }}>
                     <Truck className="mr-2" /> {t('onMissionButton')}
                 </Button>

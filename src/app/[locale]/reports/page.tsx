@@ -17,7 +17,7 @@ import {
   ChartTooltipContent,
   ChartConfig,
 } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend, ResponsiveContainer } from "recharts";
 import {
   eachDayOfInterval,
   format,
@@ -53,7 +53,7 @@ export default function ReportsPage() {
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user) return null;
-        return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
+        return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
@@ -237,11 +237,11 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-6 text-center md:grid-cols-3">
-          <div className="flex flex-col gap-2 rounded-lg border p-4">
+          <div className="flex flex-col gap-2 rounded-lg border bg-background/50 p-4">
             <p className="text-sm font-medium text-muted-foreground">{t('regularHours')}</p>
             <p className="text-3xl font-bold">{monthTotals.regularHours} {t('hourUnit')}</p>
           </div>
-          <div className="flex flex-col gap-2 rounded-lg border p-4">
+          <div className="flex flex-col gap-2 rounded-lg border bg-background/50 p-4">
             <p className="text-sm font-medium text-muted-foreground">{t('overtimeHours')}</p>
             <p className="text-3xl font-bold text-destructive">{monthTotals.overtimeHours} {t('hourUnit')}</p>
           </div>
@@ -260,27 +260,29 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={chartConfig} className="h-64">
-            <BarChart data={weeklyChartData} accessibilityLayer>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-              />
-               <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickMargin={10}
-                unit={t('hourUnit')}
-              />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Legend />
-              <Bar dataKey="regular" fill="var(--color-regular)" radius={4} stackId="a" />
-              <Bar dataKey="overtime" fill="var(--color-overtime)" radius={4} stackId="a" />
-            </BarChart>
-          </ChartContainer>
+          <div className="w-full overflow-x-auto">
+            <ChartContainer config={chartConfig} className="h-64 min-w-[300px]">
+              <BarChart data={weeklyChartData} accessibilityLayer>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  unit={t('hourUnit')}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend />
+                <Bar dataKey="regular" fill="var(--color-regular)" radius={4} stackId="a" />
+                <Bar dataKey="overtime" fill="var(--color-overtime)" radius={4} stackId="a" />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </CardContent>
       </Card>
     </div>

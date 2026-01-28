@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -33,13 +32,17 @@ import { Button } from "./ui/button";
 import LanguageSwitcher from "./language-switcher";
 import { useTranslations } from "next-intl";
 import type { Profile } from "@/lib/types";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileBottomNav from "./mobile-bottom-nav";
+import { Skeleton } from "./ui/skeleton";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
   const t = useTranslations("AppShell");
+  const isMobile = useIsMobile();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -65,9 +68,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
   
-  // Do not render sidebar-dependent layout for the login page
-  if (pathname.includes('/login')) {
+  if (pathname.includes('/login') || pathname.includes('/reports/export')) {
     return <>{children}</>;
+  }
+
+  if (isMobile === undefined) {
+    return <Skeleton className="w-full h-screen" />;
+  }
+
+  if (isMobile) {
+    return (
+       <div className="flex flex-col min-h-screen bg-background">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <Briefcase className="w-6 h-6 text-primary" />
+            <h1 className="text-lg font-semibold">{t('appName')}</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+          </div>
+        </header>
+        <main className="flex-1 p-4 pb-24">{children}</main>
+        {user && <MobileBottomNav />}
+      </div>
+    )
   }
 
   return (
@@ -141,7 +165,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:hidden no-print">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm no-print">
           <SidebarTrigger />
           <h1 className="text-lg font-semibold">{t('appName')}</h1>
         </header>

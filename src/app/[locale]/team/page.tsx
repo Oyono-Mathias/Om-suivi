@@ -9,14 +9,6 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Image from "next/image";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -47,31 +39,17 @@ export default function TeamPage() {
 
   const teamMembersQuery = useMemoFirebase(() => {
     if (!teamId) return null;
-    // This is a simplified query. In a real app, you'd likely fetch profiles based on memberIds.
-    // For now, we are assuming a 'profiles' collection exists with documents whose IDs match the UIDs.
     return collection(firestore, 'users');
   }, [firestore, teamId]);
   
   const { data: allUsers, isLoading: isLoadingMembers } = useCollection<Profile>(teamMembersQuery);
 
-  const teamTimeEntriesQuery = useMemoFirebase(() => {
-    if (!teamId || !teams?.[0]?.memberIds) return null;
-    
-    // This is not efficient for large teams. A better approach would be needed for production.
-    // For this prototype, we'll fetch all time entries and filter client-side.
-    // This assumes a flat `timeEntries` collection or requires multiple queries.
-    // This part is complex and depends heavily on the final data structure.
-    // For now, we will stick with the placeholder data.
-    return null;
-  }, [firestore, teamId, teams]);
-  
-  // Using placeholder data since real-time team data aggregation is complex
   const teamMembers: TeamMember[] = PlaceHolderImages.map(p => ({
       id: p.id,
       name: p.description.replace('Avatar for ', ''),
       avatarUrl: p.imageUrl,
       avatarHint: p.imageHint,
-      totalHours: Math.random() * 40 + 5, // random data
+      totalHours: Math.random() * 40 + 5,
       overtimeHours: Math.random() * 10
   }));
 
@@ -119,34 +97,29 @@ export default function TeamPage() {
           <CardDescription>{t('weeklySummaryDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('tableMember')}</TableHead>
-                <TableHead>{t('tableTotalHours')}</TableHead>
-                <TableHead>{t('tableOvertimeHours')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+           <div className="space-y-4">
               {teamMembers.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
+                <Card key={member.id} className="flex items-center p-4 gap-4">
+                   <Avatar className="h-12 w-12">
                         <AvatarImage asChild src={member.avatarUrl}>
-                          <Image src={member.avatarUrl} alt={member.name} width={40} height={40} data-ai-hint={member.avatarHint} />
+                          <Image src={member.avatarUrl} alt={member.name} width={48} height={48} data-ai-hint={member.avatarHint} />
                         </AvatarImage>
                         <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{member.name}</span>
+                    </Avatar>
+                    <div className="flex-1">
+                        <p className="font-medium">{member.name}</p>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                            <span>{t('tableTotalHours')}:</span>
+                            <span>{member.totalHours.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                            <span>{t('tableOvertimeHours')}:</span>
+                            <span className="font-medium text-destructive">{member.overtimeHours.toFixed(2)}</span>
+                        </div>
                     </div>
-                  </TableCell>
-                  <TableCell>{member.totalHours.toFixed(2)}</TableCell>
-                  <TableCell>{member.overtimeHours.toFixed(2)}</TableCell>
-                </TableRow>
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
         </CardContent>
       </Card>
     </div>
