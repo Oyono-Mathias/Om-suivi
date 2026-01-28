@@ -41,6 +41,22 @@
             }
           },
           "required": ["enabled", "time"]
+        },
+        "workplace": {
+          "type": "object",
+          "description": "Geofence for the user's primary workplace.",
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            },
+            "radius": {
+              "type": "number",
+              "description": "Radius of the geofence in meters."
+            }
+          }
         }
       },
       "required": ["id", "email", "name", "monthlyBaseSalary", "currency", "reminders"]

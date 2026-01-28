@@ -29,6 +29,11 @@ export interface Profile {
     enabled: boolean;
     time: string; // e.g., "17:00"
   };
+  workplace?: {
+    latitude: number;
+    longitude: number;
+    radius: number;
+  };
 }
 
 export interface TeamMember {

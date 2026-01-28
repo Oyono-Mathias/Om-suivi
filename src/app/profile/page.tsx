@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,12 +22,22 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import Link from "next/link";
 
@@ -39,12 +49,23 @@ const profileSchema = z.object({
     enabled: z.boolean(),
     time: z.string(),
   }),
+  workplace: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    radius: z.number(),
+  }).optional(),
 });
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  const [location, setLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [showLocationConfirm, setShowLocationConfirm] = useState(false);
+  const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -55,13 +76,15 @@ export default function ProfilePage() {
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
+    defaultValues: {
+      reminders: { enabled: false, time: '17:00' }
+    }
   });
   
   useEffect(() => {
     if (profile) {
       form.reset(profile);
     } else if (user) {
-      // Pre-fill name and email for new users
       form.reset({
         name: user.displayName || '',
         ...form.getValues()
@@ -69,10 +92,22 @@ export default function ProfilePage() {
     }
   }, [profile, user, form]);
 
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+        setPermissionState(status.state);
+        status.onchange = () => {
+          setPermissionState(status.state);
+        };
+      });
+    }
+  }, []);
+
   function onSubmit(values: z.infer<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
     
     const updatedProfile = {
+      ...profile,
       ...values,
       id: user.uid,
       email: user.email || '',
@@ -85,6 +120,48 @@ export default function ProfilePage() {
       description: "Your information has been saved successfully.",
     });
   }
+
+  const handleSetWorkplace = () => {
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setIsLocating(false);
+        setShowLocationConfirm(true);
+      },
+      () => {
+        toast({
+          variant: 'destructive',
+          title: 'Location Error',
+          description: 'Could not get your location. Please check browser permissions.',
+        });
+        setIsLocating(false);
+      }
+    );
+  };
+
+  const handleConfirmWorkplace = () => {
+    if (!location || !userProfileRef) return;
+
+    const newWorkplace = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      radius: 200, // 200m radius
+    };
+    
+    setDocumentNonBlocking(userProfileRef, { workplace: newWorkplace }, { merge: true });
+    
+    toast({
+      title: "Workplace Set!",
+      description: "Your work zone has been saved successfully.",
+    });
+    
+    setShowLocationConfirm(false);
+    setLocation(null);
+  };
   
   if (isUserLoading || isLoadingProfile) {
     return (
@@ -210,10 +287,74 @@ export default function ProfilePage() {
               />
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Workplace Setup</CardTitle>
+              <CardDescription>
+                Set your primary work location for geofence-based features.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profile?.workplace ? (
+                <div>
+                  <div className="rounded-lg border bg-muted p-4 text-center">
+                      <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
+                      <p className="mt-2 text-sm font-semibold">Workplace Location Set</p>
+                      <p className="text-xs text-muted-foreground">
+                          Lat: {profile.workplace.latitude.toFixed(4)}, Lon: {profile.workplace.longitude.toFixed(4)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                          Radius: {profile.workplace.radius}m
+                      </p>
+                      <div className="mt-2 h-32 w-full rounded bg-background flex items-center justify-center text-muted-foreground text-sm">
+                          [Visual map placeholder]
+                      </div>
+                  </div>
+                  <Button variant="outline" className="mt-4 w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied'}>
+                      {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
+                      Update Work Zone
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <Button className="w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied'}>
+                      {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
+                      Set Current Location as Work Zone
+                  </Button>
+                  {permissionState === 'denied' && (
+                      <p className="mt-2 text-center text-sm text-destructive">
+                          Location access denied. Please enable it in your browser settings.
+                      </p>
+                  )}
+                  {permissionState === 'prompt' && (
+                      <p className="mt-2 text-center text-sm text-muted-foreground">
+                          You will be asked for location permission.
+                      </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
           
           <Button type="submit">Save Changes</Button>
         </form>
       </Form>
+
+      <AlertDialog open={showLocationConfirm} onOpenChange={setShowLocationConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you currently at your workplace?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This location (Lat: {location?.latitude.toFixed(4)}, Lon: {location?.longitude.toFixed(4)}) will be used to track your shifts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmWorkplace}>Confirm Location</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
