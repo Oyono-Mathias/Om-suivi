@@ -1,13 +1,17 @@
 
 "use client";
 
-import React, { useContext, useMemo } from 'react';
-import { AppContext } from '@/context/AppContext';
+import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { format, parseISO, getDay, startOfMonth, endOfMonth, getWeek } from "date-fns";
 import { shifts } from '@/lib/shifts';
-import type { TimeEntry } from '@/lib/types';
+import type { TimeEntry, Profile } from '@/lib/types';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collection } from "firebase/firestore";
+import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
+
 
 const OVERTIME_RATES = {
   tier1: 1.2,
@@ -17,13 +21,37 @@ const OVERTIME_RATES = {
 };
 
 export default function ExportReportPage() {
-    const { timeEntries, profile } = useContext(AppContext);
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
+    }, [firestore, user]);
+    const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
+
+    const timeEntriesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, 'users', user.uid, 'timeEntries');
+    }, [firestore, user]);
+    const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+
 
     const handlePrint = () => {
         window.print();
     };
 
     const { sortedEntries, totalOvertime, totalPayout, reportMonth, overtimeBreakdown } = useMemo(() => {
+        if (!timeEntries || !profile) {
+            return {
+                sortedEntries: [],
+                totalOvertime: 0,
+                totalPayout: 0,
+                reportMonth: format(new Date(), 'MMMM yyyy'),
+                overtimeBreakdown: { tier1: { minutes: 0 }, tier2: { minutes: 0 }, sunday: { minutes: 0 }, holiday: { minutes: 0 } },
+            };
+        }
+
         const currentMonthStart = startOfMonth(new Date());
         const currentMonthEnd = endOfMonth(new Date());
 
@@ -113,6 +141,36 @@ export default function ExportReportPage() {
     }, [timeEntries, profile]);
 
     const formatMinutes = (minutes: number) => (minutes / 60).toFixed(2);
+    
+    if (isUserLoading || isLoadingProfile || isLoadingEntries) {
+        return (
+          <div className="flex justify-center items-center h-screen">
+            <Loader2 className="h-16 w-16 animate-spin" />
+          </div>
+        );
+      }
+    
+    if (!user) {
+        return (
+            <div className="flex flex-col justify-center items-center h-screen gap-4">
+            <p className="text-xl">Please sign in to continue.</p>
+            <Link href="/login">
+                <Button>Sign In</Button>
+            </Link>
+            </div>
+        );
+    }
+    
+    if (!profile) {
+        return (
+            <div className="flex flex-col justify-center items-center h-screen gap-4">
+                <p className="text-xl text-center">Please complete your profile before viewing reports.</p>
+                <Link href="/profile">
+                    <Button>Go to Profile</Button>
+                </Link>
+            </div>
+        )
+    }
 
     return (
         <div className="bg-background text-foreground min-h-screen p-4 font-body sm:p-8 print:p-0">

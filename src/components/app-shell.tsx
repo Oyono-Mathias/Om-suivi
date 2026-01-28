@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -21,9 +21,12 @@ import {
   Settings,
   Users,
   Briefcase,
+  LogOut,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AppContext } from "@/context/AppContext";
+import { useUser, useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { Button } from "./ui/button";
 
 const navItems = [
   { href: "/", label: "Time Tracking", icon: Clock },
@@ -34,7 +37,12 @@ const navItems = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { profile } = useContext(AppContext);
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  
+  const handleSignOut = () => {
+    signOut(auth);
+  };
 
   return (
     <SidebarProvider>
@@ -51,9 +59,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {navItems.map((item) => (
+            {user && navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
+                 <SidebarMenuButton
                   asChild
                   isActive={pathname === item.href}
                   tooltip={item.label}
@@ -67,16 +75,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter className="p-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src="https://picsum.photos/seed/101/100/100" data-ai-hint="person portrait" alt={profile.name} />
-              <AvatarFallback>{profile.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <span className="font-medium text-sm text-sidebar-foreground">
-              {profile.name}
-            </span>
-          </div>
+        <SidebarFooter className="p-4 flex flex-col gap-2">
+            {user && (
+                <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                    <AvatarImage src={user.photoURL || "https://picsum.photos/seed/101/100/100"} data-ai-hint="person portrait" alt={user.displayName || 'User'} />
+                    <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium text-sm text-sidebar-foreground truncate">
+                    {user.displayName || user.email}
+                    </span>
+              </div>
+            )}
+             {user && (
+                <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleSignOut}>
+                    <LogOut className="mr-2" /> Sign Out
+                </Button>
+            )}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>

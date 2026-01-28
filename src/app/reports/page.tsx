@@ -1,9 +1,8 @@
 
 "use client";
 
-import React, { useContext, useMemo } from "react";
+import React, { useMemo } from "react";
 import Link from 'next/link';
-import { AppContext } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,7 +19,6 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
-  isThisMonth,
   eachDayOfInterval,
   format,
   parseISO,
@@ -32,7 +30,11 @@ import {
   startOfMonth,
   endOfMonth,
 } from "date-fns";
-import type { TimeEntry } from "@/lib/types";
+import type { TimeEntry, Profile } from "@/lib/types";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collection } from "firebase/firestore";
+import { Loader2 } from "lucide-react";
+
 
 const OVERTIME_RATES = {
   tier1: 1.2,
@@ -42,9 +44,26 @@ const OVERTIME_RATES = {
 };
 
 export default function ReportsPage() {
-  const { timeEntries, profile } = useContext(AppContext);
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
+    }, [firestore, user]);
+    const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
+
+    const timeEntriesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, 'users', user.uid, 'timeEntries');
+    }, [firestore, user]);
+    const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
   const monthTotals = useMemo(() => {
+    if (!timeEntries || !profile) {
+        return { regularHours: '0.00', overtimeHours: '0.00', estimatedPayout: '0.00' };
+    }
+
     const currentMonthStart = startOfMonth(new Date());
     const currentMonthEnd = endOfMonth(new Date());
 
@@ -129,6 +148,8 @@ export default function ReportsPage() {
 
 
   const weeklyChartData = useMemo(() => {
+    if (!timeEntries) return [];
+
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEntries = timeEntries.filter((entry) => isThisWeek(parseISO(entry.date), { weekStartsOn: 1 }));
@@ -159,6 +180,36 @@ export default function ReportsPage() {
       color: "hsl(var(--chart-2))",
     },
   } satisfies ChartConfig;
+
+  if (isUserLoading || isLoadingProfile || isLoadingEntries) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-16 w-16 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen gap-4">
+        <p className="text-xl">Please sign in to continue.</p>
+        <Link href="/login">
+            <Button>Sign In</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+        <div className="flex flex-col justify-center items-center h-screen gap-4">
+            <p className="text-xl text-center">Please complete your profile before viewing reports.</p>
+            <Link href="/profile">
+                <Button>Go to Profile</Button>
+            </Link>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

@@ -16,9 +16,12 @@ export interface TimeEntry {
   location?: string;
   shiftId: string;
   isPublicHoliday?: boolean;
+  userProfileId: string;
 }
 
 export interface Profile {
+  id: string;
+  email: string;
   name: string;
   monthlyBaseSalary: number;
   currency: string;

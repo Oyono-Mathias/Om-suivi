@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -50,21 +50,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Clock, MapPin, Plus, Loader2, Truck } from "lucide-react";
-import { AppContext } from "@/context/AppContext";
+import { useFirebase, useUser, useFirestore, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { collection } from "firebase/firestore";
 import { format, parse, differenceInMinutes, addDays, isAfter, parseISO } from "date-fns";
 import type { TimeEntry, Shift } from "@/lib/types";
 import { shifts } from "@/lib/shifts";
 import { suggestWorkLocation } from "@/ai/flows/geolocation-assisted-time-entry";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection } from "@/firebase";
+import Link from "next/link";
+
 
 const ManualEntryDialog = ({
   open,
   onOpenChange,
+  addTimeEntry,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  addTimeEntry: (entry: Omit<TimeEntry, 'id' | 'duration' | 'overtimeDuration'>) => void;
 }) => {
-  const { addTimeEntry } = useContext(AppContext);
   const [startTime, setStartTime] = useState(format(new Date(), "HH:mm"));
   const [endTime, setEndTime] = useState(format(new Date(), "HH:mm"));
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -87,7 +92,8 @@ const ManualEntryDialog = ({
         endTime: format(endDateTime, "HH:mm"),
         shiftId: shiftId,
         location: 'Manual Entry',
-        isPublicHoliday
+        isPublicHoliday,
+        userProfileId: '' // Will be set in addTimeEntry
       });
       onOpenChange(false);
     } else {
@@ -100,7 +106,8 @@ const ManualEntryDialog = ({
                 endTime: format(nextDayEnd, "HH:mm"),
                 shiftId: shiftId,
                 location: 'Manual Entry',
-                isPublicHoliday
+                isPublicHoliday,
+                userProfileId: '' // Will be set in addTimeEntry
             });
             onOpenChange(false);
         } else {
@@ -182,7 +189,16 @@ const ManualEntryDialog = ({
 };
 
 export default function TimeTrackingPage() {
-  const { timeEntries, addTimeEntry } = useContext(AppContext);
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const timeEntriesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, 'users', user.uid, 'timeEntries');
+  }, [firestore, user]);
+
+  const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+
   const [timer, setTimer] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -212,6 +228,47 @@ export default function TimeTrackingPage() {
       if (interval) clearInterval(interval);
     };
   }, [isRunning, timer]);
+
+  const addTimeEntry = (newEntryData: Omit<TimeEntry, 'id' | 'duration' | 'overtimeDuration'>) => {
+    if (!user || !timeEntriesQuery) return;
+    
+    const startDateTime = parse(`${newEntryData.date}T${newEntryData.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+    let endDateTime = parse(`${newEntryData.date}T${newEntryData.endTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+    
+    if (isAfter(startDateTime, endDateTime)) {
+      endDateTime = addDays(endDateTime, 1);
+    }
+
+    const duration = differenceInMinutes(endDateTime, startDateTime);
+
+    const selectedShift = shifts.find(s => s.id === newEntryData.shiftId);
+    let overtimeDuration = 0;
+
+    if (selectedShift) {
+        let shiftEndDateTime = parse(`${newEntryData.date}T${selectedShift.endTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+
+        if (selectedShift.id === 'night') {
+            const shiftStartDateTime = parse(`${newEntryData.date}T${selectedShift.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+            if(isAfter(shiftStartDateTime, shiftEndDateTime)){
+              shiftEndDateTime = addDays(shiftEndDateTime, 1);
+            }
+        }
+        
+        if (isAfter(endDateTime, shiftEndDateTime)) {
+            overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
+        }
+    }
+    
+    const newEntry: Omit<TimeEntry, 'id'> = {
+        ...newEntryData,
+        userProfileId: user.uid,
+        duration: duration > 0 ? duration : 0,
+        overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+        endTime: format(endDateTime, "HH:mm"),
+    }
+    
+    addDocumentNonBlocking(timeEntriesQuery, newEntry);
+  };
 
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -259,6 +316,7 @@ export default function TimeTrackingPage() {
         shiftId: selectedShiftId,
         location: onMission ? 'Mission' : (suggestedLocation || "N/A"),
         isPublicHoliday,
+        userProfileId: user?.uid || ''
       });
 
       const duration = differenceInMinutes(endTime, startTime);
@@ -340,9 +398,28 @@ export default function TimeTrackingPage() {
     }
   }
 
-  const sortedTimeEntries = [...timeEntries].sort(
+  if (isUserLoading || isLoadingEntries) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-16 w-16 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen gap-4">
+        <p className="text-xl">Please sign in to continue.</p>
+        <Link href="/login">
+            <Button>Sign In</Button>
+        </Link>
+      </div>
+    );
+  }
+  
+  const sortedTimeEntries = timeEntries ? [...timeEntries].sort(
     (a, b) => new Date(`${b.date}T${b.startTime}`).getTime() - new Date(`${a.date}T${a.startTime}`).getTime()
-  );
+  ) : [];
 
   return (
     <div className="space-y-8">
@@ -452,7 +529,7 @@ export default function TimeTrackingPage() {
         </CardContent>
       </Card>
       
-      <ManualEntryDialog open={isManualEntryOpen} onOpenChange={setManualEntryOpen} />
+      <ManualEntryDialog open={isManualEntryOpen} onOpenChange={setManualEntryOpen} addTimeEntry={addTimeEntry} />
       
       <AlertDialog open={locationConfirmationOpen} onOpenChange={setLocationConfirmationOpen}>
         <AlertDialogContent>
