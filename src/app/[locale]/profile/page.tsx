@@ -34,13 +34,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
+import { doc, collection, serverTimestamp } from "firebase/firestore";
 import { Loader2, MapPin } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
+import { useShift } from "@/context/ShiftContext";
 
 export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
@@ -49,6 +51,7 @@ export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { isShiftActive } = useShift();
 
   const [location, setLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -147,14 +150,24 @@ export default function ProfilePage() {
   };
 
   const handleConfirmWorkplace = () => {
-    if (!location || !userProfileRef) return;
+    if (!location || !userProfileRef || !user || !firestore) return;
 
     const newWorkplace = {
       latitude: location.latitude,
       longitude: location.longitude,
       radius: 200, // 200m radius
     };
+
+    // Log the change for audit purposes
+    const workplaceUpdateLogCollectionRef = collection(firestore, 'users', user.uid, 'workplaceUpdateLogs');
+    addDocumentNonBlocking(workplaceUpdateLogCollectionRef, {
+      userProfileId: user.uid,
+      timestamp: serverTimestamp(),
+      previousWorkplace: profile?.workplace || null,
+      newWorkplace: newWorkplace,
+    });
     
+    // Update the profile with the new workplace
     setDocumentNonBlocking(userProfileRef, { workplace: newWorkplace }, { merge: true });
     
     toast({
@@ -185,6 +198,17 @@ export default function ProfilePage() {
     );
   }
 
+  const updateButton = (
+    <Button 
+        variant="outline" 
+        className="mt-4 w-full" 
+        onClick={handleSetWorkplace} 
+        disabled={isShiftActive || isLocating || permissionState === 'denied'}
+    >
+        {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
+        {t('updateWorkZoneButton')}
+    </Button>
+  );
 
   return (
     <div className="space-y-6">
@@ -314,14 +338,26 @@ export default function ProfilePage() {
                           {t('mapPlaceholder')}
                       </div>
                   </div>
-                  <Button variant="outline" className="mt-4 w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied'}>
-                      {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
-                      {t('updateWorkZoneButton')}
-                  </Button>
+                  
+                  {isShiftActive ? (
+                      <TooltipProvider>
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <span tabIndex={0} className="inline-block w-full">{updateButton}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                  <p>{t('updateDisabledTooltip')}</p>
+                              </TooltipContent>
+                          </Tooltip>
+                      </TooltipProvider>
+                  ) : (
+                      updateButton
+                  )}
+
                 </div>
               ) : (
                 <div>
-                  <Button className="w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied'}>
+                  <Button className="w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied' || isShiftActive}>
                       {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
                       {t('setWorkZoneButton')}
                   </Button>

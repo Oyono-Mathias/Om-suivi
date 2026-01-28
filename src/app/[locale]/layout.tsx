@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
+import { ShiftProvider } from '@/context/ShiftContext';
 
 export const metadata: Metadata = {
   title: 'OM Suivi',
@@ -33,7 +34,9 @@ export default async function LocaleLayout({
       <body className="font-body antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <FirebaseClientProvider>
-            <AppShell>{children}</AppShell>
+            <ShiftProvider>
+              <AppShell>{children}</AppShell>
+            </ShiftProvider>
             <Toaster />
           </FirebaseClientProvider>
         </NextIntlClientProvider>

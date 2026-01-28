@@ -204,6 +204,46 @@
         "reminderTime",
         "message"
       ]
+    },
+    "WorkplaceUpdateLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkplaceUpdateLog",
+      "type": "object",
+      "description": "Logs changes to a user's workplace location for audit purposes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the log entry."
+        },
+        "userProfileId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N WorkplaceUpdateLog)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time the workplace was changed."
+        },
+        "previousWorkplace": {
+          "type": "object",
+          "description": "The workplace geofence before the change. Null if it's the first time being set.",
+          "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" },
+            "radius": { "type": "number" }
+          }
+        },
+        "newWorkplace": {
+          "type": "object",
+          "description": "The workplace geofence after the change.",
+           "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" },
+            "radius": { "type": "number" }
+          }
+        }
+      },
+      "required": ["id", "userProfileId", "timestamp", "newWorkplace"]
     }
   },
   "auth": {
@@ -289,6 +329,26 @@
             {
               "name": "reminderId",
               "description": "The unique identifier for the reminder."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/workplaceUpdateLogs/{logId}",
+        "definition": {
+          "entityName": "WorkplaceUpdateLog",
+          "schema": {
+            "$ref": "#/backend/entities/WorkplaceUpdateLog"
+          },
+          "description": "Stores an audit trail of changes to a user's workplace geofence. Documents are immutable to preserve history.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user, corresponding to their Firebase Auth UID."
+            },
+            {
+              "name": "logId",
+              "description": "The unique identifier for the log entry."
             }
           ]
         }

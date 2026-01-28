@@ -61,6 +61,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/firebase";
 import { Link, useRouter } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
+import { useShift } from "@/context/ShiftContext";
 
 const ManualEntryDialog = ({
   open,
@@ -204,6 +205,7 @@ export default function TimeTrackingPage() {
 
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { setIsShiftActive } = useShift();
 
   const timeEntriesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -241,6 +243,10 @@ export default function TimeTrackingPage() {
       if (interval) clearInterval(interval);
     };
   }, [isRunning, timer]);
+
+  useEffect(() => {
+    setIsShiftActive(isRunning);
+  }, [isRunning, setIsShiftActive]);
 
   const addTimeEntry = (newEntryData: Omit<TimeEntry, 'id' | 'duration' | 'overtimeDuration'>) => {
     if (!user || !timeEntriesQuery) return;

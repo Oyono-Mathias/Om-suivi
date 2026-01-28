@@ -19,6 +19,12 @@ export interface TimeEntry {
   userProfileId: string;
 }
 
+export interface Workplace {
+  latitude: number;
+  longitude: number;
+  radius: number;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -29,11 +35,15 @@ export interface Profile {
     enabled: boolean;
     time: string; // e.g., "17:00"
   };
-  workplace?: {
-    latitude: number;
-    longitude: number;
-    radius: number;
-  };
+  workplace?: Workplace;
+}
+
+export interface WorkplaceUpdateLog {
+  id: string;
+  userProfileId: string;
+  timestamp: any; // serverTimestamp
+  previousWorkplace?: Workplace | null;
+  newWorkplace: Workplace;
 }
 
 export interface TeamMember {

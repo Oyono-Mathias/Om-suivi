@@ -1,3 +1,4 @@
+
 /**
  * This ruleset enforces a strict user-ownership model for all personal data,
  * complemented by a collaborative model for shared team data. It is designed
@@ -208,6 +209,22 @@ service cloud.firestore {
         allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
         allow delete: if isExistingOwner(userId);
       }
+      
+      /**
+       * @description Secures the audit trail for workplace changes. Users can
+       *              only create new log entries for themselves. Entries are
+       *              immutable to ensure audit integrity.
+       * @path        /users/{userId}/workplaceUpdateLogs/{logId}
+       * @allow       (create) User 'user123' logs a change to their workplace.
+       * @deny        (update) A user tries to alter a past log entry.
+       * @deny        (delete) A user tries to delete a log entry.
+       * @principle   Immutable audit trail, user ownership.
+       */
+      match /workplaceUpdateLogs/{logId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
+        allow update, delete: if false; // Logs are immutable
+      }
     }
 
     // --------------------------------------------------------------------
@@ -237,5 +254,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
