@@ -46,7 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Clock, MapPin, Plus, Loader2 } from "lucide-react";
+import { Clock, MapPin, Plus, Loader2, Truck } from "lucide-react";
 import { AppContext } from "@/context/AppContext";
 import { format, parse, differenceInMinutes, addDays, isAfter, parseISO } from "date-fns";
 import type { TimeEntry, Shift } from "@/lib/types";
@@ -180,6 +180,10 @@ export default function TimeTrackingPage() {
   const [suggestedLocation, setSuggestedLocation] = useState<string | null>(null);
   const [locationConfirmationOpen, setLocationConfirmationOpen] = useState(false);
 
+  const [onMission, setOnMission] = useState(false);
+  const [confirmStopOpen, setConfirmStopOpen] = useState(false);
+
+
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isRunning) {
@@ -229,7 +233,7 @@ export default function TimeTrackingPage() {
     }
   };
 
-  const handleStop = () => {
+  const executeStop = () => {
     if (startTime && selectedShiftId) {
       const endTime = new Date();
       
@@ -238,19 +242,25 @@ export default function TimeTrackingPage() {
         startTime: format(startTime, "HH:mm"),
         endTime: format(endTime, "HH:mm"),
         shiftId: selectedShiftId,
-        location: suggestedLocation || "N/A",
+        location: onMission ? 'Mission' : (suggestedLocation || "N/A"),
       });
 
       const duration = differenceInMinutes(endTime, startTime);
       setIsRunning(false);
       setStartTime(null);
       setSuggestedLocation(null);
-      // We don't reset selectedShiftId, user might work same shift again.
+      setOnMission(false);
+      setConfirmStopOpen(false);
+      
       toast({
         title: "Timer Stopped",
         description: `Work session of ${duration} minutes logged.`,
       });
     }
+  };
+
+  const handleStop = () => {
+    setConfirmStopOpen(true);
   };
 
   const handleGeoClockIn = () => {
@@ -323,7 +333,11 @@ export default function TimeTrackingPage() {
         <CardHeader>
           <CardTitle className="text-4xl font-headline">Time Tracker</CardTitle>
           <CardDescription>
-            {isRunning ? "Your work session is in progress." : "Select your shift and start tracking."}
+            {isRunning
+              ? onMission
+                ? "You are currently on a mission."
+                : "Your work session is in progress."
+              : "Select your shift and start tracking."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -432,6 +446,24 @@ export default function TimeTrackingPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={confirmStopOpen} onOpenChange={setConfirmStopOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>What is your status?</DialogTitle>
+                <DialogDescription>
+                    You are stopping the timer. Are you ending your shift, or are you on a delivery mission?
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:justify-end">
+                <Button variant="outline" onClick={() => { setOnMission(true); setConfirmStopOpen(false); toast({ title: "Status Updated", description: "You are now on a mission. The timer continues."}) }}>
+                    <Truck className="mr-2" /> On Mission
+                </Button>
+                <Button variant="destructive" onClick={executeStop}>End Shift</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
     </div>
   );
 }

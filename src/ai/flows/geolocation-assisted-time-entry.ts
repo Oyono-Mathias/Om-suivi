@@ -30,7 +30,7 @@ const prompt = ai.definePrompt({
   name: 'geolocationAssistedTimeEntryPrompt',
   input: {schema: GeolocationAssistedTimeEntryInputSchema},
   output: {schema: GeolocationAssistedTimeEntryOutputSchema},
-  prompt: `You are a geolocation expert. Given the latitude and longitude, suggest a work location.
+  prompt: `You are an AI assistant for a driver. The main work location is a warehouse in "Douala, Yassa". If the provided latitude and longitude are near this area, suggest "Warehouse". For other locations, suggest the city or a prominent nearby area (e.g., "Edea", "Bonabéri"). Your goal is to provide a concise location name for a time entry log.
 
 Latitude: {{{latitude}}}
 Longitude: {{{longitude}}}
