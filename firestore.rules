@@ -45,15 +45,16 @@ service cloud.firestore {
     }
 
     function canUpdateOwnProfile() {
-      // The 'id', 'email', 'role', and 'createdAt' fields are immutable by the user.
-      // On an update, the new document's values for these fields must match the existing ones.
-      let isImmutableId = request.resource.data.id == resource.data.id;
-      let isImmutableEmail = request.resource.data.email == resource.data.email;
-      let isImmutableRole = request.resource.data.role == resource.data.role;
-      let isImmutableCreationDate = request.resource.data.createdAt == resource.data.createdAt;
-
-      // Allow updates only if critical fields are NOT being changed
-      return isImmutableId && isImmutableEmail && isImmutableRole && isImmutableCreationDate;
+      // A user can update their profile as long as they are not changing protected fields.
+      // We get the set of fields that are being changed in the update.
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      
+      // We define the set of fields that are not allowed to be changed by the user.
+      let protectedKeys = ['id', 'email', 'role', 'createdAt'];
+      
+      // The update is allowed if the set of changed keys does not contain any of the protected keys.
+      // This is checked by ensuring the size of the intersection between the two sets is 0.
+      return changedKeys.intersection(protectedKeys).size() == 0;
     }
 
     // --------------------------------------------------------------------
@@ -91,5 +92,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
