@@ -10,15 +10,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Languages } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Skeleton } from './ui/skeleton';
 
 export default function LanguageSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   const onSelectChange = (value: string) => {
     router.replace(pathname, { locale: value });
   };
+
+  if (!isClient) {
+    return <Skeleton className="h-10 w-full" />;
+  }
 
   return (
     <Select onValueChange={onSelectChange} defaultValue={locale}>
