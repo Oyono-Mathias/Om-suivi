@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
   BarChart3,
@@ -22,19 +23,30 @@ import {
   Users,
   Briefcase,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, useAuth } from "@/firebase";
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { signOut } from "firebase/auth";
+import { doc } from "firebase/firestore";
 import { Button } from "./ui/button";
 import LanguageSwitcher from "./language-switcher";
 import { useTranslations } from "next-intl";
+import type { Profile } from "@/lib/types";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const t = useTranslations("AppShell");
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
+  }, [firestore, user]);
+
+  const { data: profile } = useDoc<Profile>(userProfileRef);
 
   const navItems = [
     { href: "/", label: t('timeTracking'), icon: Clock },
@@ -43,6 +55,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/profile", label: t('settings'), icon: Settings },
   ];
   
+  const adminNavItems = [
+    { href: "/admin", label: t('administration'), icon: Shield },
+  ];
+
   const handleSignOut = () => {
     if (auth) {
       signOut(auth);
@@ -53,7 +69,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (pathname.includes('/login')) {
     return <>{children}</>;
   }
-
 
   return (
     <SidebarProvider>
@@ -84,6 +99,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+            {profile?.role === 'admin' && (
+              <>
+                <SidebarSeparator />
+                {adminNavItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.href}
+                      tooltip={item.label}
+                    >
+                      <Link href={item.href}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-4 flex flex-col gap-4">
@@ -116,3 +150,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+

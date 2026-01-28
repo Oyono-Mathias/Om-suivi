@@ -1,40 +1,4 @@
 
-/**
- * This ruleset enforces a strict user-ownership model for all personal data,
- * complemented by a collaborative model for shared team data. It is designed
- * for security, performance, and clarity, prioritizing rapid development in a
- * prototyping phase by focusing on authorization over strict schema validation.
- *
- * Core Philosophy:
- * Data is either private to a user or shared within a defined team. There is
- * no public or anonymous write access anywhere. All operations require a user
- * to be authenticated.
- *
- * Data Structure:
- * - /users/{userId}/... : A hierarchical structure where all of a user's
- *   private data (profiles, time entries, reports, reminders) is nested
- *   under their unique user ID. This enables simple, powerful, path-based
- *   security rules.
- * - /teams/{teamId}: A top-level collection for shared team documents. Access
- *   is controlled by a list of member UIDs stored directly on each team document.
- *
- * Key Security Decisions:
- * - Deny-by-Default: No access is granted unless explicitly allowed by a rule.
- * - Path-Based Ownership: The primary security mechanism for user data is
- *   `request.auth.uid == userId`, ensuring users can only access their own
- *   data trees. This is highly performant as it requires no database reads.
- * - Denormalization for Authorization: Team membership is stored in a `memberIds`
- *   array directly on the `/teams/{teamId}` document. This allows for simple,
- *   performant checks (`uid in memberIds`) without needing slow and costly `get`
- *   calls to other documents.
- * - Immutable Ownership Links: On creation, documents in a user's data tree
- *   (e.g., TimeEntry) must contain a `userProfileId` that matches the {userId}
- *   from the path. This field is then enforced as immutable on updates,
- *   permanently locking the document to its owner.
- * - No User Listing: It is not possible to list all documents in the top-level
- *   `/users` or `/teams` collections, protecting user privacy and preventing
- *   data scraping.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -99,129 +63,83 @@ service cloud.firestore {
     }
 
     /**
-     * A composite function that checks for team membership on an existing document.
-     * Used for update and delete operations on team documents.
+     * Retrieves the role of a given user from their profile.
+     * Defaults to 'user' if the role is not set.
      */
-    function isExistingTeamMember() {
-      return isExistingDoc() && isTeamMember();
-    }
-    
-    /**
-     * On create, checks if the creating user is including themselves
-     * in the new team's member list.
-     */
-    function isCreatingAsTeamMember() {
-      return isSignedIn() && request.auth.uid in request.resource.data.memberIds;
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)/userProfiles/$(userId)).data.get('role', 'user');
     }
 
     /**
-     * On update, ensures the list of team members cannot be changed. This is a
-     * safe default for prototyping, forcing a more robust implementation for
-     * member management (e.g., via Cloud Functions with an invitation system).
+     * Checks if the currently authenticated user has the 'admin' role.
      */
-    function areTeamMembersImmutable() {
-      return request.resource.data.memberIds == resource.data.memberIds;
+    function isAdmin() {
+      return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
     }
 
     // --------------------------------------------------------------------
     // User Data Tree
     // --------------------------------------------------------------------
 
-    /**
-     * @description Top-level container for all user-specific data. This rule
-     *              prevents anyone from reading or writing the `/users/{userId}`
-     *              document itself, while allowing access to its subcollections.
-     * @path        /users/{userId}
-     * @allow       (N/A) Access is defined in nested subcollection rules.
-     * @deny        A user tries to write data directly to `/users/user123`.
-     * @principle   Structural integrity; ensures this path is only a container.
-     */
     match /users/{userId} {
       allow read, write: if false;
 
       /**
-       * @description Secures a user's own profile data. Only the owner can
-       *              read, create, update, or delete their profile.
+       * @description Secures user profiles. Admins can read any profile,
+       *              while users can only manage their own.
        * @path        /users/{userId}/userProfiles/{userProfileId}
-       * @allow       (create) An authenticated user (`uid: 'user123'`) creates their
-       *              own profile at `/users/user123/userProfiles/user123`.
-       * @deny        (get) A user (`uid: 'user456'`) tries to read another
-       *              user's profile at `/users/user123/userProfiles/user123`.
-       * @principle   Restricts access to a user's own data tree.
        */
       match /userProfiles/{userProfileId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) || isAdmin();
+        allow list: if isAdmin();
         allow create: if isOwner(userId) && request.resource.data.id == userProfileId;
-        allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+        allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
         allow delete: if isExistingOwner(userId);
       }
 
       /**
-       * @description Secures a user's time entries. Only the owner can manage
-       *              their time entries.
+       * @description Secures time entries. Admins can read all entries,
+       *              but users can only create/edit their own.
        * @path        /users/{userId}/timeEntries/{timeEntryId}
-       * @allow       (create) User 'user123' creates a time entry for themselves,
-       *              ensuring the document data contains `userProfileId: 'user123'`.
-       * @deny        (update) User 'user123' tries to change the `userProfileId` on
-       *              an existing time entry to reassign it.
-       * @principle   Enforces document ownership and immutable relational integrity.
        */
       match /timeEntries/{timeEntryId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
         allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
         allow delete: if isExistingOwner(userId);
       }
 
       /**
-       * @description Secures a user's generated reports. Only the owner can
-       *              manage their reports.
+       * @description Secures reports. Admins can read all reports,
+       *              but users can only manage their own.
        * @path        /users/{userId}/reports/{reportId}
-       * @allow       (list) User 'user123' lists all reports within their own
-       *              `/users/user123/reports` collection.
-       * @deny        (delete) User 'user456' tries to delete a report belonging
-       *              to 'user123'.
-       * @principle   Enforces document ownership and immutable relational integrity.
        */
       match /reports/{reportId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
         allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
         allow delete: if isExistingOwner(userId);
       }
 
       /**
-       * @description Secures a user's reminders. Only the owner can manage
-       *              their reminders.
+       * @description Secures reminders. Admins can read all reminders,
+       *              but users can only manage their own.
        * @path        /users/{userId}/reminders/{reminderId}
-       * @allow       (get) User 'user123' retrieves a specific reminder from
-       *              `/users/user123/reminders/reminder-abc`.
-       * @deny        (create) An unauthenticated user tries to create a reminder.
-       * @principle   Enforces document ownership and immutable relational integrity.
        */
       match /reminders/{reminderId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
         allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
         allow delete: if isExistingOwner(userId);
       }
       
       /**
-       * @description Secures the audit trail for workplace changes. Users can
-       *              only create new log entries for themselves. Entries are
-       *              immutable to ensure audit integrity.
+       * @description Secures workplace audit logs. Entries are immutable.
+       *              Admins can read all logs.
        * @path        /users/{userId}/workplaceUpdateLogs/{logId}
-       * @allow       (create) User 'user123' logs a change to their workplace.
-       * @deny        (update) A user tries to alter a past log entry.
-       * @deny        (delete) A user tries to delete a log entry.
-       * @principle   Immutable audit trail, user ownership.
        */
       match /workplaceUpdateLogs/{logId} {
-        allow get, list: if isOwner(userId);
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
         allow update, delete: if false; // Logs are immutable
       }
@@ -232,25 +150,15 @@ service cloud.firestore {
     // --------------------------------------------------------------------
 
     /**
-     * @description Secures team documents. Only members of a team can read it.
-     *              Creating a team requires the creator to be a member. Updating
-     *              and deleting is restricted to existing members.
+     * @description Secures team documents. Only admins can create, update, or delete teams.
+     *              Team members and admins can view team details.
      * @path        /teams/{teamId}
-     * @allow       (get) A user (`uid: 'user123'`) who is in the `memberIds`
-     *              array of `/teams/team-abc` reads the document.
-     * @deny        (update) A team member tries to add or remove users from the
-     *              `memberIds` array. This is disallowed for security.
-     * @deny        (list) A user tries to list all documents in the `/teams` collection
-     *              without a query that proves they are a member.
-     * @principle   Shared access for closed collaborators, based on a denormalized
-     *              list of members. Queries must filter by `memberIds`.
      */
     match /teams/{teamId} {
-      allow get: if isTeamMember();
-      allow list: if isSignedIn();
-      allow create: if isCreatingAsTeamMember();
-      allow update: if isExistingTeamMember() && areTeamMembersImmutable();
-      allow delete: if isExistingTeamMember();
+      allow get: if isTeamMember() || isAdmin();
+      allow list: if isSignedIn(); // Client-side queries must enforce further filtering
+      allow create, update, delete: if isAdmin();
     }
   }
 }
+

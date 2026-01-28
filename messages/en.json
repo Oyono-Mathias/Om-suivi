@@ -29,6 +29,7 @@
     "reports": "Reports",
     "team": "Team",
     "settings": "Settings",
+    "administration": "Administration",
     "signOut": "Sign Out",
     "user": "User"
   },
@@ -191,15 +192,29 @@
     "noTeamTitle": "You are not yet on a team",
     "noTeamDescription": "Contact your administrator to be added to a team to see your colleagues' data."
   },
+  "AdminPage": {
+    "title": "Administration",
+    "description": "Manage application users and teams.",
+    "usersTitle": "User Management",
+    "usersDescription": "A list of all users registered in the system.",
+    "tableUser": "User",
+    "tableEmail": "Email",
+    "tableRole": "Role",
+    "tableSalary": "Base Salary",
+    "noUsers": "No users found in the system."
+  },
   "Shared": {
     "loading": "Loading...",
     "pleaseLogin": "Please log in to continue.",
     "loginButton": "Log In",
     "pleaseCompleteProfile": "Please complete your profile before viewing reports.",
-    "goToProfileButton": "Go to Profile"
+    "goToProfileButton": "Go to Profile",
+    "accessDenied": "Access Denied",
+    "accessDeniedDescription": "You do not have the required permissions to view this page."
   },
   "NotFound": {
     "title": "Page Not Found",
     "description": "The page you are looking for does not exist."
   }
 }
+

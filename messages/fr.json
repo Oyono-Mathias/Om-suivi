@@ -29,6 +29,7 @@
     "reports": "Rapports",
     "team": "Équipe",
     "settings": "Paramètres",
+    "administration": "Administration",
     "signOut": "Se déconnecter",
     "user": "Utilisateur"
   },
@@ -191,15 +192,29 @@
     "noTeamTitle": "Vous n'êtes pas encore dans une équipe",
     "noTeamDescription": "Contactez votre administrateur pour être ajouté à une équipe afin de voir les données de vos collègues."
   },
+  "AdminPage": {
+    "title": "Administration",
+    "description": "Gérez les utilisateurs et les équipes de l'application.",
+    "usersTitle": "Gestion des Utilisateurs",
+    "usersDescription": "Liste de tous les utilisateurs enregistrés dans le système.",
+    "tableUser": "Utilisateur",
+    "tableEmail": "Email",
+    "tableRole": "Rôle",
+    "tableSalary": "Salaire de Base",
+    "noUsers": "Aucun utilisateur trouvé dans le système."
+  },
   "Shared": {
     "loading": "Chargement...",
     "pleaseLogin": "Veuillez vous connecter pour continuer.",
     "loginButton": "Se connecter",
     "pleaseCompleteProfile": "Veuillez compléter votre profil avant de consulter les rapports.",
-    "goToProfileButton": "Aller au Profil"
+    "goToProfileButton": "Aller au Profil",
+    "accessDenied": "Accès Refusé",
+    "accessDeniedDescription": "Vous n'avez pas les autorisations requises pour afficher cette page."
   },
-   "NotFound": {
+  "NotFound": {
     "title": "Page non trouvée",
     "description": "La page que vous recherchez n'existe pas."
   }
 }
+

@@ -19,6 +19,14 @@
           "type": "string",
           "description": "The user's full name."
         },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the application.",
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
         "monthlyBaseSalary": {
           "type": "number",
           "description": "The user's monthly base salary used to calculate hourly rates."
@@ -40,7 +48,10 @@
               "description": "The time of day for the reminder (e.g., '17:00')."
             }
           },
-          "required": ["enabled", "time"]
+          "required": [
+            "enabled",
+            "time"
+          ]
         },
         "workplace": {
           "type": "object",
@@ -59,7 +70,14 @@
           }
         }
       },
-      "required": ["id", "email", "name", "monthlyBaseSalary", "currency", "reminders"]
+      "required": [
+        "id",
+        "email",
+        "name",
+        "monthlyBaseSalary",
+        "currency",
+        "reminders"
+      ]
     },
     "TimeEntry": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -228,22 +246,39 @@
           "type": "object",
           "description": "The workplace geofence before the change. Null if it's the first time being set.",
           "properties": {
-            "latitude": { "type": "number" },
-            "longitude": { "type": "number" },
-            "radius": { "type": "number" }
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            },
+            "radius": {
+              "type": "number"
+            }
           }
         },
         "newWorkplace": {
           "type": "object",
           "description": "The workplace geofence after the change.",
-           "properties": {
-            "latitude": { "type": "number" },
-            "longitude": { "type": "number" },
-            "radius": { "type": "number" }
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            },
+            "radius": {
+              "type": "number"
+            }
           }
         }
       },
-      "required": ["id", "userProfileId", "timestamp", "newWorkplace"]
+      "required": [
+        "id",
+        "userProfileId",
+        "timestamp",
+        "newWorkplace"
+      ]
     }
   },
   "auth": {

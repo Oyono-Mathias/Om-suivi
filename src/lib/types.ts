@@ -29,6 +29,7 @@ export interface Profile {
   id: string;
   email: string;
   name: string;
+  role?: 'admin' | 'user';
   monthlyBaseSalary: number;
   currency: string;
   reminders: {
@@ -54,3 +55,4 @@ export interface TeamMember {
   totalHours: number;
   overtimeHours: number;
 }
+

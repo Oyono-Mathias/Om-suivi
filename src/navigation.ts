@@ -21,6 +21,10 @@ export const pathnames = {
   '/team': {
     en: '/team',
     fr: '/equipe'
+  },
+  '/admin': {
+    en: '/admin',
+    fr: '/admin'
   }
 };
 

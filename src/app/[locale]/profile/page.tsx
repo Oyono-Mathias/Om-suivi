@@ -113,10 +113,11 @@ export default function ProfilePage() {
     if (!userProfileRef || !user) return;
     
     const updatedProfile = {
-      ...profile,
-      ...values,
+      ...profile, // existing data first
+      ...values, // new form data overwrites
       id: user.uid,
       email: user.email || '',
+      role: profile?.role || 'user', // Keep existing role, or default to 'user' for new profiles
     };
     
     setDocumentNonBlocking(userProfileRef, updatedProfile, { merge: true });
@@ -397,3 +398,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
