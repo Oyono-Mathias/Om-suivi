@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useContext, useEffect } from "react";
@@ -30,11 +31,6 @@ const profileSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   monthlyBaseSalary: z.coerce.number().min(1, { message: "Base salary must be positive." }),
   currency: z.string().min(1, { message: "Currency symbol is required."}),
-  overtimeRates: z.object({
-    weekday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
-    saturday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
-    sunday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
-  }),
   reminders: z.object({
     enabled: z.boolean(),
     time: z.string(),
@@ -98,10 +94,10 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>Monthly Base Salary</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g., 260000" {...field} />
+                        <Input type="number" placeholder="e.g., 72799" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Your hourly rate is automatically calculated (Salary / 173.33).
+                        Your hourly rate is automatically calculated (Salary / 173.33) and rounded.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -121,56 +117,6 @@ export default function ProfilePage() {
                   )}
                 />
               </div>
-            </CardContent>
-          </Card>
-
-           <Card>
-            <CardHeader>
-              <CardTitle>Overtime Rate Multipliers</CardTitle>
-              <CardDescription>
-                Set the multipliers for overtime pay based on the day.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6 sm:grid-cols-3">
-               <FormField
-                control={form.control}
-                name="overtimeRates.weekday"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Weekdays (e.g. 1.2)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 1.20" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="overtimeRates.saturday"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Saturdays (e.g. 1.5)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 1.5" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="overtimeRates.sunday"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sundays (e.g. 2.0)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 2.0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
 

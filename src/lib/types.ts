@@ -1,3 +1,4 @@
+
 export type Shift = {
   id: string;
   name: string;
@@ -14,17 +15,13 @@ export interface TimeEntry {
   overtimeDuration: number; // in minutes
   location?: string;
   shiftId: string;
+  isPublicHoliday?: boolean;
 }
 
 export interface Profile {
   name: string;
   monthlyBaseSalary: number;
   currency: string;
-  overtimeRates: {
-    weekday: number;
-    saturday: number;
-    sunday: number;
-  };
   reminders: {
     enabled: boolean;
     time: string; // e.g., "17:00"

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useContext } from "react";
@@ -39,6 +40,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -66,6 +69,7 @@ const ManualEntryDialog = ({
   const [endTime, setEndTime] = useState(format(new Date(), "HH:mm"));
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [shiftId, setShiftId] = useState<string | undefined>();
+  const [isPublicHoliday, setIsPublicHoliday] = useState(false);
 
   const handleSubmit = () => {
     if (!shiftId) {
@@ -82,7 +86,8 @@ const ManualEntryDialog = ({
         startTime: format(startDateTime, "HH:mm"),
         endTime: format(endDateTime, "HH:mm"),
         shiftId: shiftId,
-        location: 'Manual Entry'
+        location: 'Manual Entry',
+        isPublicHoliday
       });
       onOpenChange(false);
     } else {
@@ -94,7 +99,8 @@ const ManualEntryDialog = ({
                 startTime: format(startDateTime, "HH:mm"),
                 endTime: format(nextDayEnd, "HH:mm"),
                 shiftId: shiftId,
-                location: 'Manual Entry'
+                location: 'Manual Entry',
+                isPublicHoliday
             });
             onOpenChange(false);
         } else {
@@ -155,6 +161,14 @@ const ManualEntryDialog = ({
               onChange={(e) => setEndTime(e.target.value)}
             />
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isPublicHoliday"
+              checked={isPublicHoliday}
+              onCheckedChange={(checked) => setIsPublicHoliday(!!checked)}
+            />
+            <Label htmlFor="isPublicHoliday">This was a public holiday (Jour Férié)</Label>
+          </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -182,6 +196,7 @@ export default function TimeTrackingPage() {
 
   const [onMission, setOnMission] = useState(false);
   const [confirmStopOpen, setConfirmStopOpen] = useState(false);
+  const [isPublicHoliday, setIsPublicHoliday] = useState(false);
 
 
   useEffect(() => {
@@ -243,6 +258,7 @@ export default function TimeTrackingPage() {
         endTime: format(endTime, "HH:mm"),
         shiftId: selectedShiftId,
         location: onMission ? 'Mission' : (suggestedLocation || "N/A"),
+        isPublicHoliday,
       });
 
       const duration = differenceInMinutes(endTime, startTime);
@@ -251,6 +267,7 @@ export default function TimeTrackingPage() {
       setSuggestedLocation(null);
       setOnMission(false);
       setConfirmStopOpen(false);
+      setIsPublicHoliday(false);
       
       toast({
         title: "Timer Stopped",
@@ -344,7 +361,7 @@ export default function TimeTrackingPage() {
           <div className="text-6xl font-bold font-mono text-primary my-8">
             {formatTime(timer)}
           </div>
-           {!isRunning && (
+           {!isRunning ? (
             <div className="max-w-xs mx-auto mb-4">
                 <Select value={selectedShiftId} onValueChange={setSelectedShiftId} >
                     <SelectTrigger>
@@ -358,6 +375,11 @@ export default function TimeTrackingPage() {
                         ))}
                     </SelectContent>
                 </Select>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <Switch id="holiday-mode" checked={isPublicHoliday} onCheckedChange={setIsPublicHoliday} />
+              <Label htmlFor="holiday-mode">Public Holiday (Jour Férié)</Label>
             </div>
           )}
           <div className="flex justify-center gap-4">
@@ -410,7 +432,7 @@ export default function TimeTrackingPage() {
               {sortedTimeEntries.length > 0 ? (
                 sortedTimeEntries.slice(0, 5).map((entry: TimeEntry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>{format(parseISO(entry.date), "PPP")}</TableCell>
+                    <TableCell>{format(parseISO(entry.date), "PPP")}{entry.isPublicHoliday ? ' (Holiday)' : ''}</TableCell>
                     <TableCell>{shifts.find(s => s.id === entry.shiftId)?.name || 'N/A'}</TableCell>
                     <TableCell>{entry.startTime} - {entry.endTime}</TableCell>
                     <TableCell>{entry.duration} mins</TableCell>

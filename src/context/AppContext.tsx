@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useState, ReactNode } from "react";
@@ -16,13 +17,8 @@ interface AppContextType {
 
 const defaultProfile: Profile = {
   name: "Mathias Oyono",
-  monthlyBaseSalary: 260000,
+  monthlyBaseSalary: 72799,
   currency: "FCFA",
-  overtimeRates: {
-    weekday: 1.20,
-    saturday: 1.5,
-    sunday: 2.0,
-  },
   reminders: {
     enabled: false,
     time: "17:00",
