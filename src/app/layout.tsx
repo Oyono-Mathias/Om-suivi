@@ -1,8 +1,12 @@
 import { ReactNode } from 'react';
 import './globals.css';
-import { Inter } from 'next/font/google';
+import { Roboto } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const roboto = Roboto({ 
+  subsets: ['latin'],
+  variable: '--font-roboto',
+  weight: ['400', '500', '700']
+});
 
 export default function RootLayout({
   children,
@@ -12,7 +16,7 @@ export default function RootLayout({
   params: { locale: string };
 }) {
   return (
-    <html lang={locale} suppressHydrationWarning className={inter.variable}>
+    <html lang={locale} suppressHydrationWarning className={roboto.variable}>
       <head />
       <body className="font-body antialiased">
         {children}

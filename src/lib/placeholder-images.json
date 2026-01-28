@@ -3,26 +3,44 @@
     {
       "id": "mathias-oyono",
       "description": "Avatar for Mathias Oyono",
-      "imageUrl": "https://picsum.photos/seed/101/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3Njk2MzQxMjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     },
     {
       "id": "jean-dupont",
       "description": "Avatar for Jean Dupont",
-      "imageUrl": "https://picsum.photos/seed/102/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1623184663110-89ba5b565eb6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc2OTU5MjcxOHww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man smiling"
     },
     {
       "id": "marie-curie",
       "description": "Avatar for Marie Curie",
-      "imageUrl": "https://picsum.photos/seed/103/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1552590752-a3b19b152ac9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx3b21hbiUyMGdsYXNzZXN8ZW58MHx8fHwxNzY5NjE0OTE3fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "woman glasses"
     },
     {
       "id": "ahmed-khan",
       "description": "Avatar for Ahmed Khan",
-      "imageUrl": "https://picsum.photos/seed/104/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1525186402429-b4ff38bedec6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxwZXJzb24lMjBoYXBweXxlbnwwfHx8fDE3Njk2MjI1OTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person happy"
+    },
+    {
+      "id": "course-finance-101",
+      "description": "Image for Finance 101 course",
+      "imageUrl": "https://images.unsplash.com/photo-1744473755637-e09f0c2fab41?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZmluYW5jZSUyMGNoYXJ0fGVufDB8fHx8MTc2OTYzNTkzOHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "finance chart"
+    },
+    {
+      "id": "course-business-plan",
+      "description": "Image for Business Plan course",
+      "imageUrl": "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxidXNpbmVzcyUyMG1lZXRpbmd8ZW58MHx8fHwxNzY5NjI0MjY4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "business meeting"
+    },
+    {
+      "id": "course-digital-marketing",
+      "description": "Image for Digital Marketing course",
+      "imageUrl": "https://images.unsplash.com/photo-1761864293806-51e7500c08e6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MXwxfHNlYXJjaHwxfHxzb2NpYWwlMjBtZWRpYXxlbnwwfHx8fDE3Njk2MjE2Njl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "social media"
     }
   ]
 }

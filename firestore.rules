@@ -86,5 +86,13 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
+
+    // --------------------------------------------------------------------
+    // Ndara App Collections
+    // --------------------------------------------------------------------
+    match /courses/{courseId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
   }
 }

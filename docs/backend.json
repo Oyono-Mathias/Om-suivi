@@ -117,6 +117,59 @@
         "id",
         "name"
       ]
+    },
+    "Course": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Course",
+      "type": "object",
+      "description": "Represents an online course offered on the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID for the course"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the course"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the course"
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of the course"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the course"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency for the price (e.g., FCFA)"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL for the course cover image"
+        },
+        "imageHint": {
+          "type": "string",
+          "description": "Hint for AI image generation"
+        },
+        "duration": {
+          "type": "string",
+          "description": "Duration of the course"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "price",
+        "currency",
+        "imageUrl",
+        "duration"
+      ]
     }
   },
   "auth": {
@@ -174,6 +227,22 @@
             {
               "name": "teamId",
               "description": "The unique identifier for the team."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courses/{courseId}",
+        "definition": {
+          "entityName": "Course",
+          "schema": {
+            "$ref": "#/backend/entities/Course"
+          },
+          "description": "Stores all available courses for the Ndara platform.",
+          "params": [
+            {
+              "name": "courseId",
+              "description": "The unique identifier for the course."
             }
           ]
         }

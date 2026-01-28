@@ -236,5 +236,34 @@
   "NotFound": {
     "title": "Page Not Found",
     "description": "The page you are looking for does not exist."
+  },
+  "NdaraLanding": {
+    "navTitle": "Ndara",
+    "navCourses": "Courses",
+    "navLogin": "Log In",
+    "navRegister": "Sign Up",
+    "heroTitle": "Your Financial Future Starts Here.",
+    "heroSubtitle": "Practical training to master management, investment, and entrepreneurship in Africa.",
+    "heroCta": "Discover Courses",
+    "paymentsTitle": "Easy and secure payments with",
+    "featuresTitle": "Why choose Ndara?",
+    "feature1Title": "Adapted for Africa",
+    "feature1Desc": "Content and examples designed for the realities of the local market.",
+    "feature2Title": "Flexible Learning",
+    "feature2Desc": "Learn at your own pace, on mobile or desktop, even with a weak connection.",
+    "feature3Title": "Field Experts",
+    "feature3Desc": "Our trainers are experienced entrepreneurs and financial professionals.",
+    "popularCoursesTitle": "Our Popular Courses",
+    "faqTitle": "Frequently Asked Questions",
+    "faq1Title": "How can I pay?",
+    "faq1Answer": "You can pay securely via MTN Mobile Money and Orange Money. More options will be available soon.",
+    "faq2Title": "Will I get a certificate?",
+    "faq2Answer": "Yes, a certificate of completion is issued for each successfully completed course, which you can add to your LinkedIn profile.",
+    "faq3Title": "Is there lifetime access to the courses?",
+    "faq3Answer": "Yes, once you purchase a course, you have lifetime access, including all future content updates.",
+    "finalCtaTitle": "Ready to transform your future?",
+    "finalCtaDescription": "Join thousands of Africans taking control of their financial destiny.",
+    "finalCtaButton": "Sign Up Now",
+    "footerRights": "© 2024 Ndara Afrique. All rights reserved."
   }
 }

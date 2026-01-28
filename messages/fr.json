@@ -236,5 +236,34 @@
   "NotFound": {
     "title": "Page non trouvée",
     "description": "La page que vous recherchez n'existe pas."
+  },
+  "NdaraLanding": {
+    "navTitle": "Ndara",
+    "navCourses": "Formations",
+    "navLogin": "Connexion",
+    "navRegister": "S'inscrire",
+    "heroTitle": "Votre Avenir Financier Commence Ici.",
+    "heroSubtitle": "Des formations pratiques pour maîtriser la gestion, l'investissement et l'entrepreneuriat en Afrique.",
+    "heroCta": "Découvrir les formations",
+    "paymentsTitle": "Paiements faciles et sécurisés avec",
+    "featuresTitle": "Pourquoi choisir Ndara ?",
+    "feature1Title": "Adapté à l'Afrique",
+    "feature1Desc": "Contenu et exemples conçus pour les réalités du marché local.",
+    "feature2Title": "Apprentissage Flexible",
+    "feature2Desc": "Apprenez à votre rythme, sur mobile ou ordinateur, même avec une connexion faible.",
+    "feature3Title": "Experts du Terrain",
+    "feature3Desc": "Nos formateurs sont des entrepreneurs et financiers expérimentés.",
+    "popularCoursesTitle": "Nos Formations Populaires",
+    "faqTitle": "Questions Fréquentes",
+    "faq1Title": "Comment puis-je payer ?",
+    "faq1Answer": "Vous pouvez payer de manière sécurisée via MTN Mobile Money et Orange Money. D'autres options seront bientôt disponibles.",
+    "faq2Title": "Aurais-je un certificat ?",
+    "faq2Answer": "Oui, un certificat de complétion est délivré pour chaque formation terminée avec succès, que vous pouvez ajouter à votre profil LinkedIn.",
+    "faq3Title": "Les formations sont-elles accessibles à vie ?",
+    "faq3Answer": "Oui, une fois que vous achetez une formation, vous y avez accès à vie, y compris toutes les futures mises à jour du contenu.",
+    "finalCtaTitle": "Prêt à transformer votre avenir ?",
+    "finalCtaDescription": "Rejoignez des milliers d'Africains qui prennent en main leur destin financier.",
+    "finalCtaButton": "Je m'inscris maintenant",
+    "footerRights": "© 2024 Ndara Afrique. Tous droits réservés."
   }
 }

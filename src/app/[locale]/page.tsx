@@ -1,695 +1,394 @@
 
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
+import React from 'react';
+import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import type { Course } from '@/lib/types';
+import { Link } from '@/navigation';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
+  Menu,
+  BookOpen,
+  TrendingUp,
+  Users,
+  ShieldCheck,
+} from 'lucide-react';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Clock, MapPin, Plus, Loader2, Truck } from "lucide-react";
-import { useUser, useFirestore, useMemoFirebase, addDocumentNonBlocking, useDoc } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { format, parse, differenceInMinutes, addDays, isAfter, parseISO } from "date-fns";
-import { fr, enUS } from 'date-fns/locale';
-import type { TimeEntry, Shift, Profile } from "@/lib/types";
-import { shifts } from "@/lib/shifts";
-import { suggestWorkLocation } from "@/ai/flows/geolocation-assisted-time-entry";
-import { useToast } from "@/hooks/use-toast";
-import { useCollection } from "@/firebase";
-import { Link, useRouter } from "@/navigation";
-import { useTranslations, useLocale } from "next-intl";
-import { useShift } from "@/context/ShiftContext";
-import { getDistanceFromLatLonInKm, cn } from "@/lib/utils";
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
-const ManualEntryDialog = ({
-  open,
-  onOpenChange,
-  addTimeEntry,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  addTimeEntry: (entry: Omit<TimeEntry, 'id' | 'duration' | 'overtimeDuration'>) => void;
-}) => {
-  const t = useTranslations('ManualEntryDialog');
-  const [startTime, setStartTime] = useState(format(new Date(), "HH:mm"));
-  const [endTime, setEndTime] = useState(format(new Date(), "HH:mm"));
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [shiftId, setShiftId] = useState<string | undefined>();
-  const [isPublicHoliday, setIsPublicHoliday] = useState(false);
-  const { toast } = useToast();
+// --- Helper Components ---
 
-  const handleSubmit = () => {
-    if (!shiftId) {
-      toast({
-          variant: "destructive",
-          title: t('shiftRequiredAlert')
-      })
-      return;
-    }
+const MtnMoneyIcon = () => (
+  <svg
+    width="64"
+    height="64"
+    viewBox="0 0 64 64"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-8 w-auto"
+  >
+    <rect width="64" height="64" rx="12" fill="#FFCC00" />
+    <path
+      d="M21.933 43.119V20.88h-5.901L10 30.063v2.839l5.37-4.324h.183v14.541h6.38zM39.544 32.222l-6.248 10.897h-6.853l9.84-16.59L29.352 20.88h6.81l6.602 11.342zM42.23 35.793l.223-3.571-3.155-5.59L45.47 20.88h6.291L58 30.063v2.839l-5.327-4.324h-.183v14.541h-6.38v-7.307z"
+      fill="#004F9F"
+    />
+  </svg>
+);
 
-    const startDateTime = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-    const endDateTime = parse(`${date}T${endTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-    
-    if (isAfter(endDateTime, startDateTime)) {
-      addTimeEntry({
-        date: format(startDateTime, "yyyy-MM-dd"),
-        startTime: format(startDateTime, "HH:mm"),
-        endTime: format(endDateTime, "HH:mm"),
-        shiftId: shiftId,
-        location: 'Entrée Manuelle',
-        isPublicHoliday,
-        userProfileId: '' // Will be set in addTimeEntry
-      });
-      onOpenChange(false);
-    } else {
-        const nextDayEnd = addDays(endDateTime, 1);
-        if(isAfter(nextDayEnd, startDateTime)) {
-            addTimeEntry({
-                date: format(startDateTime, "yyyy-MM-dd"),
-                startTime: format(startDateTime, "HH:mm"),
-                endTime: format(nextDayEnd, "HH:mm"),
-                shiftId: shiftId,
-                location: 'Entrée Manuelle',
-                isPublicHoliday,
-                userProfileId: '' // Will be set in addTimeEntry
-            });
-            onOpenChange(false);
-        } else {
-            toast({
-                variant: "destructive",
-                title: t('endTimeErrorAlert')
-            })
-        }
-    }
-  };
+const OrangeMoneyIcon = () => (
+  <svg
+    width="64"
+    height="64"
+    viewBox="0 0 64 64"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-8 w-auto"
+  >
+    <rect width="64" height="64" rx="12" fill="black" />
+    <path
+      d="M32 16C23.163 16 16 23.163 16 32c0 8.836 7.163 16 16 16 8.836 0 16-7.164 16-16 0-8.837-7.164-16-16-16zm-.034 4.594c6.31 0 11.406 5.097 11.406 11.406 0 6.31-5.096 11.406-11.406 11.406-6.31 0-11.406-5.096-11.406-11.406 0-6.309 5.096-11.406 11.406-11.406z"
+      fill="#FF7900"
+    />
+  </svg>
+);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('title')}</DialogTitle>
-          <DialogDescription>
-            {t('description')}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-           <div className="grid grid-cols-1 items-center gap-4">
-            <Label htmlFor="shift">{t('shiftLabel')}</Label>
-            <Select value={shiftId} onValueChange={setShiftId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('shiftPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                {shifts.map((shift) => (
-                  <SelectItem key={shift.id} value={shift.id}>
-                    {shift.name} ({shift.startTime} - {shift.endTime})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+const CourseCardSkeleton = () => (
+  <div className="flex flex-col space-y-3">
+    <Skeleton className="h-[180px] w-full rounded-xl" />
+    <div className="space-y-2">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
+    </div>
+  </div>
+);
+
+const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <Link
+    href={href}
+    className="text-base font-medium text-gray-600 transition-colors hover:text-primary"
+  >
+    {children}
+  </Link>
+);
+
+// --- Page Sections ---
+
+const Header = ({ t }: { t: any }) => (
+  <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
+    <div className="container mx-auto flex h-20 items-center justify-between px-4">
+      <Link href="/" className="flex items-center gap-2">
+        <TrendingUp className="h-8 w-8 text-primary" />
+        <span className="text-2xl font-bold text-gray-900">
+          {t('navTitle')}
+        </span>
+      </Link>
+
+      {/* Desktop Nav */}
+      <nav className="hidden items-center gap-6 md:flex">
+        <NavLink href="#">{t('navCourses')}</NavLink>
+        <Button variant="ghost" asChild>
+          <Link href="/login">{t('navLogin')}</Link>
+        </Button>
+        <Button asChild>
+          <Link href="/login">{t('navRegister')}</Link>
+        </Button>
+      </nav>
+
+      {/* Mobile Nav */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="md:hidden">
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Ouvrir le menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-full max-w-xs bg-white">
+          <div className="flex h-full flex-col p-6">
+            <Link href="/" className="mb-8 flex items-center gap-2">
+              <TrendingUp className="h-7 w-7 text-primary" />
+              <span className="text-xl font-bold text-gray-900">
+                {t('navTitle')}
+              </span>
+            </Link>
+            <nav className="flex flex-col gap-6">
+              <NavLink href="#">{t('navCourses')}</NavLink>
+              <NavLink href="/login">{t('navLogin')}</NavLink>
+            </nav>
+            <Button className="mt-auto h-12 w-full text-base" asChild>
+              <Link href="/login">{t('navRegister')}</Link>
+            </Button>
           </div>
-          <div className="grid grid-cols-1 items-center gap-4">
-            <Label htmlFor="date">{t('dateLabel')}</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-2 items-center gap-4">
-            <Label htmlFor="startTime">{t('startTimeLabel')}</Label>
-            <Input
-              id="startTime"
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-2 items-center gap-4">
-            <Label htmlFor="endTime">{t('endTimeLabel')}</Label>
-            <Input
-              id="endTime"
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isPublicHoliday"
-              checked={isPublicHoliday}
-              onCheckedChange={(checked) => setIsPublicHoliday(!!checked)}
-            />
-            <Label htmlFor="isPublicHoliday">{t('isHolidayLabel')}</Label>
-          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  </header>
+);
+
+const HeroSection = ({ t }: { t: any }) => (
+  <section className="bg-white py-16 sm:py-24">
+    <div className="container mx-auto px-4 text-center">
+      <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+        {t('heroTitle')}
+      </h1>
+      <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
+        {t('heroSubtitle')}
+      </p>
+      <div className="mt-10">
+        <Button size="lg" className="h-14 w-full text-lg sm:w-auto">
+          {t('heroCta')}
+        </Button>
+      </div>
+    </div>
+  </section>
+);
+
+const PaymentsSection = ({ t }: { t: any }) => (
+  <section className="py-12">
+    <div className="container mx-auto px-4">
+      <div className="mx-auto max-w-4xl text-center">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+          {t('paymentsTitle')}
+        </h3>
+        <div className="mt-4 flex justify-center gap-8">
+          <MtnMoneyIcon />
+          <OrangeMoneyIcon />
         </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">{t('cancelButton')}</Button>
-          </DialogClose>
-          <Button onClick={handleSubmit}>{t('saveButton')}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
+  </section>
+);
+
+const FeaturesSection = ({ t }: { t: any }) => {
+  const features = [
+    {
+      icon: BookOpen,
+      title: t('feature1Title'),
+      description: t('feature1Desc'),
+    },
+    {
+      icon: ShieldCheck,
+      title: t('feature2Title'),
+      description: t('feature2Desc'),
+    },
+    {
+      icon: Users,
+      title: t('feature3Title'),
+      description: t('feature3Desc'),
+    },
+  ];
+  return (
+    <section className="bg-white py-16 sm:py-24">
+      <div className="container mx-auto px-4">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900">
+            {t('featuresTitle')}
+          </h2>
+        </div>
+        <div className="mt-12 grid gap-8 md:grid-cols-3">
+          {features.map((feature, index) => (
+            <div key={index} className="text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <feature.icon className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="mt-6 text-lg font-medium text-gray-900">
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-base text-gray-600">
+                {feature.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 };
 
-export default function TimeTrackingPage() {
-  const t = useTranslations('TimeTrackingPage');
-  const tShared = useTranslations('Shared');
-  const locale = useLocale();
-  const dateFnsLocale = locale === 'fr' ? fr : enUS;
-
-  const { user, isUserLoading } = useUser();
+const CoursesSection = ({ t }: { t: any }) => {
   const firestore = useFirestore();
-  const { setIsShiftActive } = useShift();
-
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
-  const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
-
-  const timeEntriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, 'users', user.uid, 'timeEntries');
-  }, [firestore, user]);
-
-  const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
-
-  const [timer, setTimer] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [isManualEntryOpen, setManualEntryOpen] = useState(false);
-  const [selectedShiftId, setSelectedShiftId] = useState<string | undefined>();
-
-  const { toast } = useToast();
-  const [isGeoLoading, setIsGeoLoading] = useState(false);
-  const [suggestedLocation, setSuggestedLocation] = useState<string | null>(null);
-  const [locationConfirmationOpen, setLocationConfirmationOpen] = useState(false);
-
-  const [onMission, setOnMission] = useState(false);
-  const [confirmStopOpen, setConfirmStopOpen] = useState(false);
-  const [isPublicHoliday, setIsPublicHoliday] = useState(false);
-  const [locationWatchId, setLocationWatchId] = useState<number | null>(null);
-  const [outsideZoneAlertOpen, setOutsideZoneAlertOpen] = useState(false);
-
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isRunning) {
-      interval = setInterval(() => {
-        setTimer((prevTimer) => prevTimer + 1);
-      }, 1000);
-    } else if (!isRunning && timer !== 0) {
-      if (interval) clearInterval(interval);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning, timer]);
-
-  useEffect(() => {
-    setIsShiftActive(isRunning);
-  }, [isRunning, setIsShiftActive]);
-
-  useEffect(() => {
-    if (isRunning && profile?.workplace && !onMission && !locationWatchId) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          if (!profile.workplace) return;
-          const { latitude, longitude } = position.coords;
-          const distanceInKm = getDistanceFromLatLonInKm(
-            latitude,
-            longitude,
-            profile.workplace.latitude,
-            profile.workplace.longitude
-          );
-          const distanceInMeters = distanceInKm * 1000;
-          if (distanceInMeters > profile.workplace.radius && !outsideZoneAlertOpen) {
-            Notification.requestPermission().then(permission => {
-              if (permission === 'granted') {
-                new Notification(t('geoFenceAlertTitle'), {
-                  body: t('geoFenceAlertDescription'),
-                });
-              }
-            });
-            setOutsideZoneAlertOpen(true);
-          }
-        },
-        (error) => {
-          console.error("Error watching position:", error);
-          toast({
-            variant: "destructive",
-            title: t('geoFailedTitle'),
-            description: "Location tracking for geofence failed.",
-          });
-        },
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
-      );
-      setLocationWatchId(watchId);
-    } else if ((!isRunning || onMission) && locationWatchId) {
-      navigator.geolocation.clearWatch(locationWatchId);
-      setLocationWatchId(null);
-    }
-
-    return () => {
-      if (locationWatchId) {
-        navigator.geolocation.clearWatch(locationWatchId);
-      }
-    };
-  }, [isRunning, profile, onMission, locationWatchId, outsideZoneAlertOpen, t, toast]);
-
-
-  const addTimeEntry = (newEntryData: Omit<TimeEntry, 'id' | 'duration' | 'overtimeDuration'>) => {
-    if (!user || !timeEntriesQuery) return;
-    
-    const startDateTime = parse(`${newEntryData.date}T${newEntryData.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-    let endDateTime = parse(`${newEntryData.date}T${newEntryData.endTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-    
-    if (isAfter(startDateTime, endDateTime)) {
-      endDateTime = addDays(endDateTime, 1);
-    }
-
-    const duration = differenceInMinutes(endDateTime, startDateTime);
-
-    const selectedShift = shifts.find(s => s.id === newEntryData.shiftId);
-    let overtimeDuration = 0;
-
-    if (selectedShift) {
-        let shiftEndDateTime = parse(`${newEntryData.date}T${selectedShift.endTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-
-        if (selectedShift.id === 'night') {
-            const shiftStartDateTime = parse(`${newEntryData.date}T${selectedShift.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
-            if(isAfter(shiftStartDateTime, shiftEndDateTime)){
-              shiftEndDateTime = addDays(shiftEndDateTime, 1);
-            }
-        }
-        
-        if (isAfter(endDateTime, shiftEndDateTime)) {
-            overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
-        }
-    }
-    
-    const newEntry: Omit<TimeEntry, 'id'> = {
-        ...newEntryData,
-        userProfileId: user.uid,
-        duration: duration > 0 ? duration : 0,
-        overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
-        endTime: format(endDateTime, "HH:mm"),
-        location: newEntryData.location === 'Entrée Manuelle' ? t('manualLocation') : newEntryData.location
-    }
-    
-    addDocumentNonBlocking(timeEntriesQuery, newEntry);
-  };
-
-  const formatTime = (totalSeconds: number) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(seconds).padStart(2, "0")}`;
-  };
-
-  const handleStart = (location?: string) => {
-    if (!selectedShiftId) {
-        toast({
-            variant: "destructive",
-            title: t('shiftNotSelectedTitle'),
-            description: t('shiftNotSelectedDescription'),
-        });
-        return;
-    }
-    setStartTime(new Date());
-    setIsRunning(true);
-    setTimer(0);
-    if(location) {
-      toast({
-        title: t('timerStartedTitle'),
-        description: t('timerStartedLocationDescription', {location}),
-      });
-    } else {
-      toast({
-        title: t('timerStartedTitle'),
-        description: t('timerStartedDescription'),
-      });
-    }
-  };
-
-  const executeStop = () => {
-    if (startTime && selectedShiftId) {
-      const endTime = new Date();
-      
-      addTimeEntry({
-        date: format(startTime, "yyyy-MM-dd"),
-        startTime: format(startTime, "HH:mm"),
-        endTime: format(endTime, "HH:mm"),
-        shiftId: selectedShiftId,
-        location: onMission ? 'Mission' : (suggestedLocation || t('noLocation')),
-        isPublicHoliday,
-        userProfileId: user?.uid || ''
-      });
-
-      const duration = differenceInMinutes(endTime, startTime);
-      setIsRunning(false);
-      setStartTime(null);
-      setSuggestedLocation(null);
-      setOnMission(false);
-      setConfirmStopOpen(false);
-      setOutsideZoneAlertOpen(false);
-      setIsPublicHoliday(false);
-      
-      toast({
-        title: t('timerStoppedTitle'),
-        description: t('timerStoppedDescription', {duration}),
-      });
-    }
-  };
-
-  const handleStop = () => {
-    if (onMission) {
-      executeStop();
-    } else {
-      setConfirmStopOpen(true);
-    }
-  };
-
-  const handleGeoClockIn = () => {
-     if (!selectedShiftId) {
-        toast({
-            variant: "destructive",
-            title: t('shiftNotSelectedTitle'),
-            description: t('shiftNotSelectedDescription'),
-        });
-        return;
-    }
-    setIsGeoLoading(true);
-    if (!navigator.geolocation) {
-      toast({
-        variant: "destructive",
-        title: t('geoNotSupportedTitle'),
-        description: t('geoNotSupportedDescription'),
-      });
-      setIsGeoLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const result = await suggestWorkLocation({ latitude, longitude });
-          setSuggestedLocation(result.suggestedLocation);
-          setLocationConfirmationOpen(true);
-        } catch (error) {
-          console.error("Error suggesting location:", error);
-          toast({
-            variant: "destructive",
-            title: t('geoSuggestErrorTitle'),
-            description: t('geoSuggestErrorDescription'),
-          });
-          handleStart();
-        } finally {
-          setIsGeoLoading(false);
-        }
-      },
-      () => {
-        toast({
-          variant: "destructive",
-          title: t('geoFailedTitle'),
-          description: t('geoFailedDescription'),
-        });
-        setIsGeoLoading(false);
-      }
-    );
-  };
-  
-  const handleConfirmLocation = (confirm: boolean) => {
-    setLocationConfirmationOpen(false);
-    if (confirm && suggestedLocation) {
-      handleStart(suggestedLocation);
-    } else {
-      setSuggestedLocation(null);
-      handleStart(); // Start without location
-    }
-  }
-
-  const handleStartMission = () => {
-    setOnMission(true);
-    setOutsideZoneAlertOpen(false);
-    toast({
-      title: t('statusUpdatedTitle'),
-      description: t('statusUpdatedDescription'),
-    });
-  };
-
-  if (isUserLoading || isLoadingEntries || isLoadingProfile) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-16 w-16 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">{tShared('pleaseLogin')}</p>
-        <Link href="/login">
-            <Button>{tShared('loginButton')}</Button>
-        </Link>
-      </div>
-    );
-  }
-  
-  const sortedTimeEntries = timeEntries ? [...timeEntries].sort(
-    (a, b) => new Date(`${b.date}T${b.startTime}`).getTime() - new Date(`${a.date}T${a.startTime}`).getTime()
-  ) : [];
+  const coursesQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'courses'), orderBy('title')) : null),
+    [firestore]
+  );
+  const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
 
   return (
-    <div className="space-y-8">
-      <Card className={cn(
-        "text-center shadow-lg transition-all",
-        isRunning && (onMission ? "bg-orange-500/10 border-orange-500" : "bg-green-500/10 border-green-500")
-      )}>
-        <CardHeader>
-          <CardTitle className="text-4xl font-headline">{t('title')}</CardTitle>
-          <CardDescription>
-            {isRunning
-              ? onMission
-                ? t('statusOnMission')
-                : t('statusInProgress')
-              : t('statusIdle')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center">
-            <div className={cn(
-                "text-6xl font-bold font-mono my-8 transition-colors",
-                isRunning ? "text-primary" : "text-muted-foreground",
-                onMission && "text-orange-500"
-            )}>
-                {formatTime(timer)}
-            </div>
-
-            {!isRunning ? (
-                <div className="w-full max-w-xs mx-auto mb-4">
-                    <Select value={selectedShiftId} onValueChange={setSelectedShiftId} >
-                        <SelectTrigger className="h-12">
-                            <SelectValue placeholder={t('selectShiftPlaceholder')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {shifts.map((shift: Shift) => (
-                                <SelectItem key={shift.id} value={shift.id}>
-                                    {shift.name} ({shift.startTime} - {shift.endTime})
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            ) : (
-                <div className="flex items-center justify-center space-x-2 mb-4">
-                <Switch id="holiday-mode" checked={isPublicHoliday} onCheckedChange={setIsPublicHoliday} />
-                <Label htmlFor="holiday-mode">{t('holidayMode')}</Label>
-                </div>
-            )}
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('recentEntriesTitle')}</CardTitle>
-          <CardDescription>{t('recentEntriesDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-end mb-4">
-             <Button variant="ghost" size="sm" onClick={() => setManualEntryOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> {t('manualEntryButton')}
-            </Button>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('tableDate')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('tableShift')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('tableHours')}</TableHead>
-                <TableHead>{t('tableDuration')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('tableLocation')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedTimeEntries.length > 0 ? (
-                sortedTimeEntries.slice(0, 5).map((entry: TimeEntry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>
-                      {format(parseISO(entry.date), "PPP", {locale: dateFnsLocale})}
-                      <div className="text-muted-foreground md:hidden">
-                        {shifts.find(s => s.id === entry.shiftId)?.name || ''}
-                      </div>
-                      {entry.isPublicHoliday && <div className="text-xs text-orange-500">{t('holidaySuffix')}</div>}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{shifts.find(s => s.id === entry.shiftId)?.name || t('noLocation')}</TableCell>
-                    <TableCell className="hidden md:table-cell">{entry.startTime} - {entry.endTime}</TableCell>
-                    <TableCell>
-                      {entry.duration} {t('minutes')}
-                      {entry.overtimeDuration > 0 && <div className="text-xs text-destructive">+{entry.overtimeDuration} {t('minutes')} {t('tableOvertime')}</div>}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{entry.location || t('noLocation')}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center">
-                    {t('noEntries')}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      
-      {/* Spacer for fixed action buttons on mobile */}
-      <div className="h-24 md:hidden" />
-
-      {/* Action Buttons - Sticky for Mobile */}
-      <div className="md:flex md:justify-center md:gap-4 fixed bottom-20 left-0 right-0 p-4 bg-background border-t md:static md:bg-transparent md:border-none md:p-0 z-30">
-          {!isRunning ? (
-              <div className="flex justify-center gap-4 w-full">
-                <Button size="lg" onClick={() => handleStart()} disabled={!selectedShiftId} className="h-14 flex-1">
-                  <Clock className="mr-2" /> {t('startButton')}
-                </Button>
-                <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading || !selectedShiftId} className="h-14 flex-1">
-                  {isGeoLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <MapPin className="mr-2" />
-                  )}
-                  {t('geoClockInButton')}
-                </Button>
-              </div>
-            ) : (
-              <Button size="lg" variant="destructive" onClick={handleStop} className="w-full h-14">
-                {t('stopButton')}
-              </Button>
-            )}
+    <section className="py-16 sm:py-24">
+      <div className="container mx-auto px-4">
+        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-center">
+          {t('popularCoursesTitle')}
+        </h2>
+        <div className="mt-12">
+          <Carousel
+            opts={{
+              align: 'start',
+              loop: true,
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4">
+              {isLoading &&
+                Array.from({ length: 3 }).map((_, index) => (
+                  <CarouselItem
+                    key={index}
+                    className="basis-full pl-4 md:basis-1/2 lg:basis-1/3"
+                  >
+                    <CourseCardSkeleton />
+                  </CarouselItem>
+                ))}
+              {!isLoading &&
+                courses?.map((course) => (
+                  <CarouselItem
+                    key={course.id}
+                    className="basis-full pl-4 md:basis-1/2 lg:basis-1/3"
+                  >
+                    <Card className="overflow-hidden transition-shadow hover:shadow-xl">
+                      <Image
+                        src={course.imageUrl}
+                        alt={course.title}
+                        width={600}
+                        height={400}
+                        className="h-48 w-full object-cover"
+                        data-ai-hint={course.imageHint}
+                      />
+                      <CardContent className="p-6">
+                        <p className="text-sm font-medium text-primary">
+                          {course.category}
+                        </p>
+                        <h3 className="mt-2 text-lg font-bold text-gray-900">
+                          {course.title}
+                        </h3>
+                        <p className="mt-2 h-20 text-sm text-gray-600">
+                          {course.description}
+                        </p>
+                        <div className="mt-4 flex items-center justify-between">
+                          <p className="text-lg font-bold text-gray-900">
+                            {course.price.toLocaleString('fr-FR')} {course.currency}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {course.duration}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CarouselItem>
+                ))}
+            </CarouselContent>
+            <CarouselPrevious className="ml-14 hidden sm:flex" />
+            <CarouselNext className="mr-14 hidden sm:flex" />
+          </Carousel>
+        </div>
       </div>
-      
-      <ManualEntryDialog open={isManualEntryOpen} onOpenChange={setManualEntryOpen} addTimeEntry={addTimeEntry} />
-      
-      <AlertDialog open={locationConfirmationOpen} onOpenChange={setLocationConfirmationOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('locationConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('locationConfirmDescriptionPart1')}
-              <strong className="text-foreground">{suggestedLocation}</strong>
-              {t('locationConfirmDescriptionPart2')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => handleConfirmLocation(false)}>{t('locationConfirmCancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleConfirmLocation(true)}>{t('locationConfirmAction')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+    </section>
+  );
+};
 
-      <Dialog open={confirmStopOpen} onOpenChange={setConfirmStopOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>{t('stopConfirmTitle')}</DialogTitle>
-                <DialogDescription>
-                    {t('stopConfirmDescription')}
-                </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:justify-center">
-                <Button variant="outline" onClick={() => { setOnMission(true); setConfirmStopOpen(false); toast({ title: t('statusUpdatedTitle'), description: t('statusUpdatedDescription')}) }}>
-                    <Truck className="mr-2" /> {t('onMissionButton')}
-                </Button>
-                <Button variant="destructive" onClick={executeStop}>{t('endShiftButton')}</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    
-      <AlertDialog open={outsideZoneAlertOpen} onOpenChange={setOutsideZoneAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('geoFenceAlertTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('geoFenceAlertDescription')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setOutsideZoneAlertOpen(false); executeStop(); }}>{t('endShiftButton')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleStartMission}>{t('startMissionButton')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+const FaqSection = ({ t }: { t: any }) => {
+    const faqs = [
+        {
+          id: 'faq1',
+          title: t('faq1Title'),
+          answer: t('faq1Answer'),
+        },
+        {
+          id: 'faq2',
+          title: t('faq2Title'),
+          answer: t('faq2Answer'),
+        },
+        {
+          id: 'faq3',
+          title: t('faq3Title'),
+          answer: t('faq3Answer'),
+        },
+      ];
+  return (
+    <section className="bg-white py-16 sm:py-24">
+      <div className="container mx-auto max-w-3xl px-4">
+        <h2 className="text-center text-3xl font-extrabold text-gray-900">
+          {t('faqTitle')}
+        </h2>
+        <Accordion type="single" collapsible className="mt-12 w-full">
+          {faqs.map(faq => (
+            <AccordionItem key={faq.id} value={faq.id}>
+              <AccordionTrigger className="text-left text-lg font-medium hover:no-underline">
+                {faq.title}
+              </AccordionTrigger>
+              <AccordionContent className="text-base text-gray-600">
+                {faq.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+    </section>
+  );
+};
 
+const FinalCtaSection = ({ t }: { t: any }) => (
+    <section className="py-16 sm:py-24">
+        <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl rounded-2xl bg-primary/10 p-8 text-center sm:p-12">
+                 <h2 className="text-3xl font-extrabold text-gray-900">
+                    {t('finalCtaTitle')}
+                </h2>
+                <p className="mx-auto mt-4 max-w-xl text-lg text-gray-600">
+                    {t('finalCtaDescription')}
+                </p>
+                <div className="mt-8">
+                     <Button size="lg" className="h-14 w-full text-lg sm:w-auto">
+                        {t('finalCtaButton')}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    </section>
+);
+
+const Footer = ({t}:{t:any}) => (
+    <footer className="border-t border-gray-200">
+        <div className="container mx-auto px-4 py-6 text-center text-sm text-gray-500">
+            <p>{t('footerRights')}</p>
+        </div>
+    </footer>
+);
+
+
+export default function NdaraLandingPage() {
+  const t = useTranslations('NdaraLanding');
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-body text-gray-800">
+      <Header t={t} />
+      <main>
+        <HeroSection t={t} />
+        <PaymentsSection t={t} />
+        <FeaturesSection t={t} />
+        <CoursesSection t={t} />
+        <FaqSection t={t} />
+        <FinalCtaSection t={t} />
+      </main>
+      <Footer t={t} />
     </div>
   );
 }
