@@ -136,6 +136,15 @@ export default function TimeTrackingPage() {
     };
   }, [activeTimer]);
   
+  // Request notification permission when shift starts if not already granted
+  useEffect(() => {
+    if (isShiftActive && profile?.workplace) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+  }, [isShiftActive, profile?.workplace]);
+
   useEffect(() => {
     // Geofencing check
     if (status === 'in_progress' && profile?.workplace && user) {
