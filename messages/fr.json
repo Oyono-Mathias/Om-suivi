@@ -126,6 +126,10 @@
     "enableRemindersLabel": "Activer les rappels",
     "enableRemindersDescription": "Recevez une notification pour enregistrer vos heures.",
     "reminderTimeLabel": "Heure du rappel",
+    "reminders": {
+      "notificationTitle": "Rappel de Pointage",
+      "notificationBody": "N'oubliez pas de pointer pour votre service !"
+    },
     "workplaceTitle": "Configuration du lieu de travail",
     "workplaceDescription": "Définissez votre lieu de travail principal pour les fonctionnalités basées sur la géolocalisation.",
     "workplaceSet": "Lieu de travail défini",

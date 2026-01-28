@@ -270,6 +270,13 @@ export default function TimeTrackingPage() {
           );
           const distanceInMeters = distanceInKm * 1000;
           if (distanceInMeters > profile.workplace.radius && !outsideZoneAlertOpen) {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                new Notification(t('geoFenceAlertTitle'), {
+                  body: t('geoFenceAlertDescription'),
+                });
+              }
+            });
             setOutsideZoneAlertOpen(true);
           }
         },

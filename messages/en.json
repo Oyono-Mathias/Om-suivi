@@ -126,6 +126,10 @@
     "enableRemindersLabel": "Enable reminders",
     "enableRemindersDescription": "Receive a notification to record your hours.",
     "reminderTimeLabel": "Reminder time",
+    "reminders": {
+      "notificationTitle": "Time Tracking Reminder",
+      "notificationBody": "Don't forget to clock in or out for your shift!"
+    },
     "workplaceTitle": "Workplace Setup",
     "workplaceDescription": "Define your primary workplace for geolocation-based features.",
     "workplaceSet": "Workplace defined",

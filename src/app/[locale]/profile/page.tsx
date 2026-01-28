@@ -43,6 +43,7 @@ import type { Profile } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
 import { useShift } from "@/context/ShiftContext";
+import { format } from "date-fns";
 
 export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
@@ -111,6 +112,37 @@ export default function ProfilePage() {
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (!profile?.reminders?.enabled || !profile.reminders.time) {
+      return;
+    }
+
+    let intervalId: NodeJS.Timeout;
+
+    const checkTimeAndNotify = () => {
+      const now = new Date();
+      const currentTime = format(now, 'HH:mm');
+
+      if (currentTime === profile.reminders.time && Notification.permission === 'granted') {
+        new Notification(t('reminders.notificationTitle'), {
+          body: t('reminders.notificationBody'),
+        });
+      }
+    };
+
+    Notification.requestPermission().then((permission) => {
+      if (permission === 'granted') {
+        intervalId = setInterval(checkTimeAndNotify, 60000); // Check every minute
+      }
+    });
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [profile?.reminders, t]);
 
   function onSubmit(values: z.infer<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
