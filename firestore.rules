@@ -36,12 +36,7 @@ service cloud.firestore {
     }
 
     function getUserRole(userId) {
-      // It's safer to check for document existence before accessing data
-      let userDoc = get(/databases/$(database)/documents/users/$(userId));
-      if (userDoc.data != null) {
-        return userDoc.data.get('role', 'user');
-      }
-      return 'user';
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
 
     function isAdmin() {
@@ -57,18 +52,18 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
-      allow delete: if false; // Profiles should not be deleted by users.
+      allow delete: if false;
 
-      /**
-       * @description Secures time entries. Admins can read all entries,
-       *              but users can only manage their own.
-       * @path        /users/{userId}/timeEntries/{timeEntryId}
-       */
       match /timeEntries/{timeEntryId} {
         allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
         allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
         allow delete: if isExistingOwner(userId);
+      }
+      
+      match /workplaceUpdateLogs/{logId} {
+        allow create: if isOwner(userId);
+        allow read, list, update, delete: if false;
       }
     }
 

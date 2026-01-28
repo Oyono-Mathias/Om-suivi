@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collectionGroup, query } from 'firebase/firestore';
+import { doc, collection, query } from 'firebase/firestore';
 import { Loader2, ShieldX, User, ShieldCheck } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
@@ -36,16 +36,14 @@ export default function AdminPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
+    return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
   const allProfilesQuery = useMemoFirebase(() => {
     if (!firestore || profile?.role !== 'admin') return null;
-    // collectionGroup query requires an index in Firestore.
-    // If you see a permission error or no data, check the Firestore console for an index creation link.
-    return query(collectionGroup(firestore, 'userProfiles'));
+    return collection(firestore, 'users');
   }, [firestore, profile?.role]);
 
   const { data: allProfiles, isLoading: isLoadingAllProfiles } = useCollection<Profile>(allProfilesQuery);
@@ -107,7 +105,6 @@ export default function AdminPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
-                            {/* You might want a user photoURL here if available */}
                             <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{p.name}</span>
@@ -140,4 +137,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
