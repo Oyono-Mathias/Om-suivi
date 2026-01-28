@@ -190,7 +190,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background via-slate-900 to-zinc-900 p-4 md:p-0">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background to-secondary p-4 md:p-0">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
         <Card className="w-full rounded-xl border-border/20 bg-card/60 shadow-2xl shadow-black/20 backdrop-blur-lg sm:w-full">
           <CardHeader className="text-center">
