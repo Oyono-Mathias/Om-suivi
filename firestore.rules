@@ -28,7 +28,8 @@ service cloud.firestore {
     }
     
     function isUserProfileIdImmutable() {
-      return request.resource.data.userProfileId == resource.data.userProfileId;
+      // The userProfileId field should not be included in an update request, making it immutable.
+      return !('userProfileId' in request.resource.data);
     }
     
     function isTeamMember() {
@@ -43,6 +44,14 @@ service cloud.firestore {
       return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
     }
 
+    function canUpdateOwnProfile() {
+      // A user can update their profile, but cannot change immutable or protected fields.
+      return !('id' in request.resource.data) &&
+             !('email' in request.resource.data) &&
+             !('role' in request.resource.data) &&
+             !('createdAt' in request.resource.data);
+    }
+
     // --------------------------------------------------------------------
     // User Data Tree
     // --------------------------------------------------------------------
@@ -51,7 +60,7 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
+      allow update: if (isOwner(userId) && canUpdateOwnProfile()) || isAdmin();
       allow delete: if false;
 
       match /timeEntries/{timeEntryId} {
