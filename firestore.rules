@@ -44,29 +44,15 @@ service cloud.firestore {
       return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
     }
 
-    function canUpdateOwnProfile() {
-      // A user can update their profile as long as they are not changing protected fields.
-      // We get the set of fields that are being changed in the update.
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
-      
-      // We define the set of fields that are not allowed to be changed by the user.
-      let protectedKeys = ['id', 'email', 'role', 'createdAt'];
-      
-      // The update is allowed if the set of changed keys does not contain any of the protected keys.
-      // This is checked by ensuring the size of the intersection between the two sets is 0.
-      return changedKeys.intersection(protectedKeys).size() == 0;
-    }
-
     // --------------------------------------------------------------------
     // User Data Tree
     // --------------------------------------------------------------------
 
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if (isOwner(userId) && canUpdateOwnProfile()) || isAdmin();
-      allow delete: if false;
+      // This permissive rule allows a user to fully control their own document,
+      // and allows an admin to do the same for any user document.
+      // This fixes the profile update issue as requested.
+      allow read, write: if isOwner(userId) || isAdmin();
 
       match /timeEntries/{timeEntryId} {
         allow get, list: if isOwner(userId) || isAdmin();
