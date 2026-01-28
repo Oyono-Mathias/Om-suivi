@@ -39,10 +39,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Clock, MapPin, Plus, Loader2 } from "lucide-react";
 import { AppContext } from "@/context/AppContext";
-import { format, differenceInMinutes } from "date-fns";
-import type { TimeEntry } from "@/lib/types";
+import { format, parse, differenceInMinutes, addDays, isAfter, parseISO } from "date-fns";
+import type { TimeEntry, Shift } from "@/lib/types";
+import { shifts } from "@/lib/shifts";
 import { suggestWorkLocation } from "@/ai/flows/geolocation-assisted-time-entry";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,24 +65,41 @@ const ManualEntryDialog = ({
   const [startTime, setStartTime] = useState(format(new Date(), "HH:mm"));
   const [endTime, setEndTime] = useState(format(new Date(), "HH:mm"));
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [shiftId, setShiftId] = useState<string | undefined>();
 
   const handleSubmit = () => {
-    const startDateTime = new Date(`${date}T${startTime}`);
-    const endDateTime = new Date(`${date}T${endTime}`);
-    const duration = differenceInMinutes(endDateTime, startDateTime);
+    if (!shiftId) {
+      alert("Please select a shift.");
+      return;
+    }
 
-    if (duration > 0) {
+    const startDateTime = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+    const endDateTime = parse(`${date}T${endTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+    
+    if (isAfter(endDateTime, startDateTime)) {
       addTimeEntry({
-        id: crypto.randomUUID(),
         date: format(startDateTime, "yyyy-MM-dd"),
         startTime: format(startDateTime, "HH:mm"),
         endTime: format(endDateTime, "HH:mm"),
-        duration,
+        shiftId: shiftId,
+        location: 'Manual Entry'
       });
       onOpenChange(false);
     } else {
-      // Basic validation feedback
-      alert("End time must be after start time.");
+        // Handle overnight case
+        const nextDayEnd = addDays(endDateTime, 1);
+        if(isAfter(nextDayEnd, startDateTime)) {
+            addTimeEntry({
+                date: format(startDateTime, "yyyy-MM-dd"),
+                startTime: format(startDateTime, "HH:mm"),
+                endTime: format(nextDayEnd, "HH:mm"),
+                shiftId: shiftId,
+                location: 'Manual Entry'
+            });
+            onOpenChange(false);
+        } else {
+            alert("End time must be after start time.");
+        }
     }
   };
 
@@ -88,6 +113,21 @@ const ManualEntryDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+           <div className="grid grid-cols-1 items-center gap-4">
+            <Label htmlFor="shift">Shift</Label>
+            <Select value={shiftId} onValueChange={setShiftId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a shift" />
+              </SelectTrigger>
+              <SelectContent>
+                {shifts.map((shift) => (
+                  <SelectItem key={shift.id} value={shift.id}>
+                    {shift.name} ({shift.startTime} - {shift.endTime})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-1 items-center gap-4">
             <Label htmlFor="date">Date</Label>
             <Input
@@ -133,6 +173,7 @@ export default function TimeTrackingPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [isManualEntryOpen, setManualEntryOpen] = useState(false);
+  const [selectedShiftId, setSelectedShiftId] = useState<string | undefined>();
 
   const { toast } = useToast();
   const [isGeoLoading, setIsGeoLoading] = useState(false);
@@ -164,6 +205,14 @@ export default function TimeTrackingPage() {
   };
 
   const handleStart = (location?: string) => {
+    if (!selectedShiftId) {
+        toast({
+            variant: "destructive",
+            title: "Shift not selected",
+            description: "Please select your shift before starting the timer.",
+        });
+        return;
+    }
     setStartTime(new Date());
     setIsRunning(true);
     setTimer(0);
@@ -181,20 +230,22 @@ export default function TimeTrackingPage() {
   };
 
   const handleStop = () => {
-    if (startTime) {
+    if (startTime && selectedShiftId) {
       const endTime = new Date();
-      const duration = differenceInMinutes(endTime, startTime);
+      
       addTimeEntry({
-        id: crypto.randomUUID(),
         date: format(startTime, "yyyy-MM-dd"),
         startTime: format(startTime, "HH:mm"),
         endTime: format(endTime, "HH:mm"),
-        duration,
+        shiftId: selectedShiftId,
         location: suggestedLocation || "N/A",
       });
+
+      const duration = differenceInMinutes(endTime, startTime);
       setIsRunning(false);
       setStartTime(null);
       setSuggestedLocation(null);
+      // We don't reset selectedShiftId, user might work same shift again.
       toast({
         title: "Timer Stopped",
         description: `Work session of ${duration} minutes logged.`,
@@ -203,6 +254,14 @@ export default function TimeTrackingPage() {
   };
 
   const handleGeoClockIn = () => {
+     if (!selectedShiftId) {
+        toast({
+            variant: "destructive",
+            title: "Shift not selected",
+            description: "Please select your shift before starting the timer.",
+        });
+        return;
+    }
     setIsGeoLoading(true);
     if (!navigator.geolocation) {
       toast({
@@ -264,20 +323,36 @@ export default function TimeTrackingPage() {
         <CardHeader>
           <CardTitle className="text-4xl font-headline">Time Tracker</CardTitle>
           <CardDescription>
-            {isRunning ? "Your work session is in progress." : "Start tracking your work hours."}
+            {isRunning ? "Your work session is in progress." : "Select your shift and start tracking."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-6xl font-bold font-mono text-primary my-8">
             {formatTime(timer)}
           </div>
+           {!isRunning && (
+            <div className="max-w-xs mx-auto mb-4">
+                <Select value={selectedShiftId} onValueChange={setSelectedShiftId} >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select your shift for the day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {shifts.map((shift: Shift) => (
+                            <SelectItem key={shift.id} value={shift.id}>
+                                {shift.name} ({shift.startTime} - {shift.endTime})
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+          )}
           <div className="flex justify-center gap-4">
             {!isRunning ? (
               <>
-                <Button size="lg" onClick={() => handleStart()}>
+                <Button size="lg" onClick={() => handleStart()} disabled={!selectedShiftId}>
                   <Clock className="mr-2" /> Start Timer
                 </Button>
-                <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading}>
+                <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading || !selectedShiftId}>
                   {isGeoLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -310,9 +385,10 @@ export default function TimeTrackingPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Start Time</TableHead>
-                <TableHead>End Time</TableHead>
+                <TableHead>Shift</TableHead>
+                <TableHead>Time</TableHead>
                 <TableHead>Duration</TableHead>
+                <TableHead>Overtime</TableHead>
                 <TableHead>Location</TableHead>
               </TableRow>
             </TableHeader>
@@ -320,16 +396,17 @@ export default function TimeTrackingPage() {
               {sortedTimeEntries.length > 0 ? (
                 sortedTimeEntries.slice(0, 5).map((entry: TimeEntry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>{format(new Date(entry.date), "PPP")}</TableCell>
-                    <TableCell>{entry.startTime}</TableCell>
-                    <TableCell>{entry.endTime}</TableCell>
+                    <TableCell>{format(parseISO(entry.date), "PPP")}</TableCell>
+                    <TableCell>{shifts.find(s => s.id === entry.shiftId)?.name || 'N/A'}</TableCell>
+                    <TableCell>{entry.startTime} - {entry.endTime}</TableCell>
                     <TableCell>{entry.duration} mins</TableCell>
+                    <TableCell>{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} mins` : '-'}</TableCell>
                     <TableCell>{entry.location || 'N/A'}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={6} className="text-center">
                     No time entries yet.
                   </TableCell>
                 </TableRow>

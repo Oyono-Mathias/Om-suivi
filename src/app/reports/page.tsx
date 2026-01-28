@@ -15,7 +15,7 @@ import {
   ChartTooltipContent,
   ChartConfig,
 } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
   isThisWeek,
   isThisMonth,
@@ -23,46 +23,25 @@ import {
   eachDayOfInterval,
   format,
   parseISO,
+  startOfWeek,
+  endOfWeek,
 } from "date-fns";
+import type { TimeEntry } from "@/lib/types";
 
 export default function ReportsPage() {
-  const { timeEntries, profile } = useContext(AppContext);
-
-  const processEntries = (
-    filterFn: (date: Date) => boolean,
-    groupBy: "day" | "week"
-  ) => {
-    const dailyHours: { [key: string]: number } = {};
-
-    timeEntries
-      .filter((entry) => filterFn(parseISO(entry.date)))
-      .forEach((entry) => {
-        const dateKey =
-          groupBy === "day"
-            ? format(parseISO(entry.date), "EEE")
-            : format(parseISO(entry.date), "MMM d");
-        dailyHours[dateKey] = (dailyHours[dateKey] || 0) + entry.duration / 60;
-      });
-
-    return Object.entries(dailyHours).map(([date, hours]) => ({
-      date,
-      hours: parseFloat(hours.toFixed(2)),
-    }));
-  };
+  const { timeEntries } = useContext(AppContext);
 
   const todayEntries = timeEntries.filter((entry) => isToday(parseISO(entry.date)));
   const weekEntries = timeEntries.filter((entry) => isThisWeek(parseISO(entry.date), { weekStartsOn: 1 }));
   const monthEntries = timeEntries.filter((entry) => isThisMonth(parseISO(entry.date)));
 
-  const calculateTotals = (entries: typeof timeEntries) => {
+  const calculateTotals = (entries: TimeEntry[]) => {
     const totalMinutes = entries.reduce((sum, entry) => sum + entry.duration, 0);
-    const totalHours = totalMinutes / 60;
-    const baseHoursPerDay = profile.baseHours / 5;
-    const overtimeHours = Math.max(0, totalHours - baseHoursPerDay * new Set(entries.map(e => e.date)).size);
+    const totalOvertimeMinutes = entries.reduce((sum, entry) => sum + entry.overtimeDuration, 0);
 
     return {
-      totalHours: totalHours.toFixed(2),
-      overtimeHours: overtimeHours.toFixed(2),
+      totalHours: (totalMinutes / 60).toFixed(2),
+      overtimeHours: (totalOvertimeMinutes / 60).toFixed(2),
     };
   };
 
@@ -71,31 +50,33 @@ export default function ReportsPage() {
   const monthTotals = calculateTotals(monthEntries);
 
   const weeklyChartData = useMemo(() => {
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
     
-    const weekDays = eachDayOfInterval({ start: startOfWeek, end: endOfWeek });
+    const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
     
-    const hoursByDay = weekEntries.reduce((acc, entry) => {
-      const day = format(parseISO(entry.date), 'yyyy-MM-dd');
-      acc[day] = (acc[day] || 0) + entry.duration / 60;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return weekDays.map(day => ({
-      date: format(day, 'EEE'),
-      hours: parseFloat((hoursByDay[format(day, 'yyyy-MM-dd')] || 0).toFixed(2)),
-    }));
+    return weekDays.map(day => {
+      const dayEntries = weekEntries.filter(e => format(parseISO(e.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'));
+      const totalDuration = dayEntries.reduce((sum, e) => sum + e.duration, 0);
+      const overtimeDuration = dayEntries.reduce((sum, e) => sum + e.overtimeDuration, 0);
+      
+      return {
+        date: format(day, 'EEE'),
+        regular: parseFloat(((totalDuration - overtimeDuration) / 60).toFixed(2)),
+        overtime: parseFloat((overtimeDuration / 60).toFixed(2)),
+      };
+    });
   }, [weekEntries]);
 
 
   const chartConfig = {
-    hours: {
-      label: "Hours",
+    regular: {
+      label: "Regular",
       color: "hsl(var(--chart-1))",
+    },
+    overtime: {
+      label: "Overtime",
+      color: "hsl(var(--chart-2))",
     },
   } satisfies ChartConfig;
 
@@ -140,7 +121,7 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle>Weekly Hours</CardTitle>
           <CardDescription>
-            Hours logged each day of the current week.
+            Regular vs. overtime hours logged each day of the current week.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -160,7 +141,9 @@ export default function ReportsPage() {
                 unit="h"
               />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
+              <Legend />
+              <Bar dataKey="regular" fill="var(--color-regular)" radius={4} stackId="a" />
+              <Bar dataKey="overtime" fill="var(--color-overtime)" radius={4} stackId="a" />
             </BarChart>
           </ChartContainer>
         </CardContent>

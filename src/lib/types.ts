@@ -1,16 +1,29 @@
+export type Shift = {
+  id: string;
+  name: string;
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
+};
+
 export interface TimeEntry {
   id: string;
   date: string;
   startTime: string;
   endTime: string;
   duration: number; // in minutes
+  overtimeDuration: number; // in minutes
   location?: string;
+  shiftId: string;
 }
 
 export interface Profile {
   name: string;
   baseHours: number; // weekly
-  overtimeRate: number; // multiplier
+  overtimeRates: {
+    weekday: number;
+    saturday: number;
+    sunday: number;
+  };
   reminders: {
     enabled: boolean;
     time: string; // e.g., "17:00"

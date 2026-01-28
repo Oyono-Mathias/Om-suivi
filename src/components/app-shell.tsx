@@ -18,7 +18,7 @@ import {
 import {
   BarChart3,
   Clock,
-  User,
+  Settings,
   Users,
   Briefcase,
 } from "lucide-react";
@@ -29,7 +29,7 @@ const navItems = [
   { href: "/", label: "Time Tracking", icon: Clock },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/team", label: "Team", icon: Users },
-  { href: "/profile", label: "Profile", icon: User },
+  { href: "/profile", label: "Settings", icon: Settings },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

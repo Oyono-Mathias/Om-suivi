@@ -29,7 +29,11 @@ import { useToast } from "@/hooks/use-toast";
 const profileSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   baseHours: z.coerce.number().min(1, { message: "Base hours must be positive." }),
-  overtimeRate: z.coerce.number().min(1, { message: "Overtime rate must be at least 1." }),
+  overtimeRates: z.object({
+    weekday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
+    saturday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
+    sunday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
+  }),
   reminders: z.object({
     enabled: z.boolean(),
     time: z.string(),
@@ -53,20 +57,20 @@ export default function ProfilePage() {
   function onSubmit(values: z.infer<typeof profileSchema>) {
     updateProfile(values);
     toast({
-      title: "Profile Updated",
+      title: "Settings Updated",
       description: "Your information has been saved successfully.",
     });
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-headline font-bold">Profile & Settings</h1>
+      <h1 className="text-3xl font-headline font-bold">Settings</h1>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle>Contractual Information</CardTitle>
+              <CardTitle>Personal Information</CardTitle>
               <CardDescription>
                 Manage your personal and contractual details.
               </CardDescription>
@@ -101,18 +105,52 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
-              <FormField
+            </CardContent>
+          </Card>
+
+           <Card>
+            <CardHeader>
+              <CardTitle>Overtime Rate Multipliers</CardTitle>
+              <CardDescription>
+                Set the multipliers for overtime pay based on the day.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6 sm:grid-cols-3">
+               <FormField
                 control={form.control}
-                name="overtimeRate"
+                name="overtimeRates.weekday"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Overtime Rate Multiplier</FormLabel>
+                    <FormLabel>Weekdays</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 1.25" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      The multiplier for your overtime pay (e.g., 1.25 for 25% extra).
-                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="overtimeRates.saturday"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Saturdays</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g., 1.5" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="overtimeRates.sunday"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sundays</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g., 2.0" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
