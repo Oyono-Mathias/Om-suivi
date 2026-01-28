@@ -223,16 +223,19 @@ service cloud.firestore {
      *              array of `/teams/team-abc` reads the document.
      * @deny        (update) A team member tries to add or remove users from the
      *              `memberIds` array. This is disallowed for security.
-     * @deny        (list) A user tries to list all documents in the `/teams` collection.
+     * @deny        (list) A user tries to list all documents in the `/teams` collection
+     *              without a query that proves they are a member.
      * @principle   Shared access for closed collaborators, based on a denormalized
-     *              list of members.
+     *              list of members. Queries must filter by `memberIds`.
      */
     match /teams/{teamId} {
       allow get: if isTeamMember();
-      allow list: if false;
+      allow list: if isSignedIn();
       allow create: if isCreatingAsTeamMember();
       allow update: if isExistingTeamMember() && areTeamMembersImmutable();
       allow delete: if isExistingTeamMember();
     }
   }
 }
+
+    
