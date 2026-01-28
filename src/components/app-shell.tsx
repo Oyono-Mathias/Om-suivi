@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -29,10 +30,10 @@ import { signOut } from "firebase/auth";
 import { Button } from "./ui/button";
 
 const navItems = [
-  { href: "/", label: "Time Tracking", icon: Clock },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/team", label: "Team", icon: Users },
-  { href: "/profile", label: "Settings", icon: Settings },
+  { href: "/", label: "Suivi du Temps", icon: Clock },
+  { href: "/reports", label: "Rapports", icon: BarChart3 },
+  { href: "/team", label: "Équipe", icon: Users },
+  { href: "/profile", label: "Paramètres", icon: Settings },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -41,8 +42,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   
   const handleSignOut = () => {
-    signOut(auth);
+    if (auth) {
+      signOut(auth);
+    }
   };
+  
+  // Do not render sidebar-dependent layout for the login page
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
 
   return (
     <SidebarProvider>
@@ -89,7 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             )}
              {user && (
                 <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleSignOut}>
-                    <LogOut className="mr-2" /> Sign Out
+                    <LogOut className="mr-2" /> Se déconnecter
                 </Button>
             )}
         </SidebarFooter>

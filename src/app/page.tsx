@@ -78,7 +78,7 @@ const ManualEntryDialog = ({
 
   const handleSubmit = () => {
     if (!shiftId) {
-      alert("Please select a shift.");
+      alert("Veuillez sélectionner un poste.");
       return;
     }
 
@@ -91,7 +91,7 @@ const ManualEntryDialog = ({
         startTime: format(startDateTime, "HH:mm"),
         endTime: format(endDateTime, "HH:mm"),
         shiftId: shiftId,
-        location: 'Manual Entry',
+        location: 'Entrée Manuelle',
         isPublicHoliday,
         userProfileId: '' // Will be set in addTimeEntry
       });
@@ -105,13 +105,13 @@ const ManualEntryDialog = ({
                 startTime: format(startDateTime, "HH:mm"),
                 endTime: format(nextDayEnd, "HH:mm"),
                 shiftId: shiftId,
-                location: 'Manual Entry',
+                location: 'Entrée Manuelle',
                 isPublicHoliday,
                 userProfileId: '' // Will be set in addTimeEntry
             });
             onOpenChange(false);
         } else {
-            alert("End time must be after start time.");
+            alert("L'heure de fin doit être après l'heure de début.");
         }
     }
   };
@@ -120,17 +120,17 @@ const ManualEntryDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Manual Time Entry</DialogTitle>
+          <DialogTitle>Ajouter une entrée manuelle</DialogTitle>
           <DialogDescription>
-            Enter your start and end times for a past work session.
+            Saisissez vos heures de début et de fin pour une session de travail passée.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
            <div className="grid grid-cols-1 items-center gap-4">
-            <Label htmlFor="shift">Shift</Label>
+            <Label htmlFor="shift">Poste</Label>
             <Select value={shiftId} onValueChange={setShiftId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a shift" />
+                <SelectValue placeholder="Sélectionnez un poste" />
               </SelectTrigger>
               <SelectContent>
                 {shifts.map((shift) => (
@@ -151,7 +151,7 @@ const ManualEntryDialog = ({
             />
           </div>
           <div className="grid grid-cols-2 items-center gap-4">
-            <Label htmlFor="startTime">Start Time</Label>
+            <Label htmlFor="startTime">Heure de début</Label>
             <Input
               id="startTime"
               type="time"
@@ -160,7 +160,7 @@ const ManualEntryDialog = ({
             />
           </div>
           <div className="grid grid-cols-2 items-center gap-4">
-            <Label htmlFor="endTime">End Time</Label>
+            <Label htmlFor="endTime">Heure de fin</Label>
             <Input
               id="endTime"
               type="time"
@@ -174,14 +174,14 @@ const ManualEntryDialog = ({
               checked={isPublicHoliday}
               onCheckedChange={(checked) => setIsPublicHoliday(!!checked)}
             />
-            <Label htmlFor="isPublicHoliday">This was a public holiday (Jour Férié)</Label>
+            <Label htmlFor="isPublicHoliday">C'était un jour férié</Label>
           </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline">Annuler</Button>
           </DialogClose>
-          <Button onClick={handleSubmit}>Save Entry</Button>
+          <Button onClick={handleSubmit}>Enregistrer</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -284,8 +284,8 @@ export default function TimeTrackingPage() {
     if (!selectedShiftId) {
         toast({
             variant: "destructive",
-            title: "Shift not selected",
-            description: "Please select your shift before starting the timer.",
+            title: "Poste non sélectionné",
+            description: "Veuillez sélectionner votre poste avant de démarrer le compteur.",
         });
         return;
     }
@@ -294,13 +294,13 @@ export default function TimeTrackingPage() {
     setTimer(0);
     if(location) {
       toast({
-        title: "Timer Started",
-        description: `Clocked in at ${location}.`,
+        title: "Compteur Démarré",
+        description: `Pointage effectué à ${location}.`,
       });
     } else {
       toast({
-        title: "Timer Started",
-        description: "Your work session has begun.",
+        title: "Compteur Démarré",
+        description: "Votre session de travail a commencé.",
       });
     }
   };
@@ -328,8 +328,8 @@ export default function TimeTrackingPage() {
       setIsPublicHoliday(false);
       
       toast({
-        title: "Timer Stopped",
-        description: `Work session of ${duration} minutes logged.`,
+        title: "Compteur Arrêté",
+        description: `Session de travail de ${duration} minutes enregistrée.`,
       });
     }
   };
@@ -342,8 +342,8 @@ export default function TimeTrackingPage() {
      if (!selectedShiftId) {
         toast({
             variant: "destructive",
-            title: "Shift not selected",
-            description: "Please select your shift before starting the timer.",
+            title: "Poste non sélectionné",
+            description: "Veuillez sélectionner votre poste avant de démarrer le compteur.",
         });
         return;
     }
@@ -351,8 +351,8 @@ export default function TimeTrackingPage() {
     if (!navigator.geolocation) {
       toast({
         variant: "destructive",
-        title: "Geolocation not supported",
-        description: "Your browser does not support geolocation.",
+        title: "Géolocalisation non supportée",
+        description: "Votre navigateur ne supporte pas la géolocalisation.",
       });
       setIsGeoLoading(false);
       return;
@@ -369,8 +369,8 @@ export default function TimeTrackingPage() {
           console.error("Error suggesting location:", error);
           toast({
             variant: "destructive",
-            title: "Could not suggest location",
-            description: "Falling back to manual start.",
+            title: "Impossible de suggérer un lieu",
+            description: "Retour au démarrage manuel.",
           });
           handleStart();
         } finally {
@@ -380,8 +380,8 @@ export default function TimeTrackingPage() {
       () => {
         toast({
           variant: "destructive",
-          title: "Geolocation failed",
-          description: "Could not get your location. Please check permissions.",
+          title: "Échec de la géolocalisation",
+          description: "Impossible d'obtenir votre position. Veuillez vérifier les autorisations.",
         });
         setIsGeoLoading(false);
       }
@@ -409,9 +409,9 @@ export default function TimeTrackingPage() {
   if (!user) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">Please sign in to continue.</p>
+        <p className="text-xl">Veuillez vous connecter pour continuer.</p>
         <Link href="/login">
-            <Button>Sign In</Button>
+            <Button>Se connecter</Button>
         </Link>
       </div>
     );
@@ -425,13 +425,13 @@ export default function TimeTrackingPage() {
     <div className="space-y-8">
       <Card className="text-center shadow-lg">
         <CardHeader>
-          <CardTitle className="text-4xl font-headline">Time Tracker</CardTitle>
+          <CardTitle className="text-4xl font-headline">Suivi du Temps</CardTitle>
           <CardDescription>
             {isRunning
               ? onMission
-                ? "You are currently on a mission."
-                : "Your work session is in progress."
-              : "Select your shift and start tracking."}
+                ? "Vous êtes actuellement en mission."
+                : "Votre session de travail est en cours."
+              : "Sélectionnez votre poste et commencez le suivi."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -442,7 +442,7 @@ export default function TimeTrackingPage() {
             <div className="max-w-xs mx-auto mb-4">
                 <Select value={selectedShiftId} onValueChange={setSelectedShiftId} >
                     <SelectTrigger>
-                        <SelectValue placeholder="Select your shift for the day" />
+                        <SelectValue placeholder="Sélectionnez votre poste du jour" />
                     </SelectTrigger>
                     <SelectContent>
                         {shifts.map((shift: Shift) => (
@@ -456,14 +456,14 @@ export default function TimeTrackingPage() {
           ) : (
             <div className="flex items-center justify-center space-x-2 mb-4">
               <Switch id="holiday-mode" checked={isPublicHoliday} onCheckedChange={setIsPublicHoliday} />
-              <Label htmlFor="holiday-mode">Public Holiday (Jour Férié)</Label>
+              <Label htmlFor="holiday-mode">Jour Férié</Label>
             </div>
           )}
           <div className="flex justify-center gap-4">
             {!isRunning ? (
               <>
                 <Button size="lg" onClick={() => handleStart()} disabled={!selectedShiftId}>
-                  <Clock className="mr-2" /> Start Timer
+                  <Clock className="mr-2" /> Démarrer
                 </Button>
                 <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading || !selectedShiftId}>
                   {isGeoLoading ? (
@@ -471,56 +471,56 @@ export default function TimeTrackingPage() {
                   ) : (
                     <MapPin className="mr-2" />
                   )}
-                  Clock-in with Geolocation
+                  Pointage avec Géolocalisation
                 </Button>
               </>
             ) : (
               <Button size="lg" variant="destructive" onClick={handleStop}>
-                Stop Timer
+                Arrêter
               </Button>
             )}
           </div>
         </CardContent>
         <CardFooter className="justify-center">
             <Button variant="ghost" onClick={() => setManualEntryOpen(true)}>
-              <Plus className="mr-2" /> Add Manual Entry
+              <Plus className="mr-2" /> Ajouter une entrée manuelle
             </Button>
         </CardFooter>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Entries</CardTitle>
-          <CardDescription>A log of your recent work sessions.</CardDescription>
+          <CardTitle>Entrées Récentes</CardTitle>
+          <CardDescription>Un journal de vos récentes sessions de travail.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Shift</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Overtime</TableHead>
-                <TableHead>Location</TableHead>
+                <TableHead>Poste</TableHead>
+                <TableHead>Heures</TableHead>
+                <TableHead>Durée</TableHead>
+                <TableHead>Heures Sup.</TableHead>
+                <TableHead>Lieu</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedTimeEntries.length > 0 ? (
                 sortedTimeEntries.slice(0, 5).map((entry: TimeEntry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>{format(parseISO(entry.date), "PPP")}{entry.isPublicHoliday ? ' (Holiday)' : ''}</TableCell>
+                    <TableCell>{format(parseISO(entry.date), "PPP")}{entry.isPublicHoliday ? ' (Férié)' : ''}</TableCell>
                     <TableCell>{shifts.find(s => s.id === entry.shiftId)?.name || 'N/A'}</TableCell>
                     <TableCell>{entry.startTime} - {entry.endTime}</TableCell>
-                    <TableCell>{entry.duration} mins</TableCell>
-                    <TableCell>{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} mins` : '-'}</TableCell>
+                    <TableCell>{entry.duration} min</TableCell>
+                    <TableCell>{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} min` : '-'}</TableCell>
                     <TableCell>{entry.location || 'N/A'}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
-                    No time entries yet.
+                    Aucune entrée de temps pour le moment.
                   </TableCell>
                 </TableRow>
               )}
@@ -534,14 +534,14 @@ export default function TimeTrackingPage() {
       <AlertDialog open={locationConfirmationOpen} onOpenChange={setLocationConfirmationOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Location</AlertDialogTitle>
+            <AlertDialogTitle>Confirmer l'emplacement</AlertDialogTitle>
             <AlertDialogDescription>
-              AI suggests your current location is <strong className="text-foreground">{suggestedLocation}</strong>. Do you want to associate this location with your time entry?
+              L'IA suggère que votre emplacement actuel est <strong className="text-foreground">{suggestedLocation}</strong>. Voulez-vous associer cet emplacement à votre entrée de temps ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => handleConfirmLocation(false)}>Use without location</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleConfirmLocation(true)}>Confirm and Start</AlertDialogAction>
+            <AlertDialogCancel onClick={() => handleConfirmLocation(false)}>Utiliser sans emplacement</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleConfirmLocation(true)}>Confirmer et Démarrer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -549,16 +549,16 @@ export default function TimeTrackingPage() {
       <Dialog open={confirmStopOpen} onOpenChange={setConfirmStopOpen}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>What is your status?</DialogTitle>
+                <DialogTitle>Quel est votre statut ?</DialogTitle>
                 <DialogDescription>
-                    You are stopping the timer. Are you ending your shift, or are you on a delivery mission?
+                    Vous arrêtez le compteur. Terminez-vous votre service ou êtes-vous en mission de livraison ?
                 </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 sm:justify-end">
-                <Button variant="outline" onClick={() => { setOnMission(true); setConfirmStopOpen(false); toast({ title: "Status Updated", description: "You are now on a mission. The timer continues."}) }}>
-                    <Truck className="mr-2" /> On Mission
+                <Button variant="outline" onClick={() => { setOnMission(true); setConfirmStopOpen(false); toast({ title: "Statut Mis à Jour", description: "Vous êtes maintenant en mission. Le compteur continue."}) }}>
+                    <Truck className="mr-2" /> En Mission
                 </Button>
-                <Button variant="destructive" onClick={executeStop}>End Shift</Button>
+                <Button variant="destructive" onClick={executeStop}>Fin de Service</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>

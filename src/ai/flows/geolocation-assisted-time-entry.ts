@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -30,12 +31,12 @@ const prompt = ai.definePrompt({
   name: 'geolocationAssistedTimeEntryPrompt',
   input: {schema: GeolocationAssistedTimeEntryInputSchema},
   output: {schema: GeolocationAssistedTimeEntryOutputSchema},
-  prompt: `You are an AI assistant for a driver. The main work location is a warehouse in "Douala, Yassa". If the provided latitude and longitude are near this area, suggest "Warehouse". For other locations, suggest the city or a prominent nearby area (e.g., "Edea", "Bonabéri"). Your goal is to provide a concise location name for a time entry log.
+  prompt: `Vous êtes un assistant IA pour un chauffeur. Le lieu de travail principal est un entrepôt à "Douala, Yassa". Si la latitude et la longitude fournies sont proches de cette zone, suggérez "Entrepôt". Pour les autres emplacements, suggérez la ville ou une zone de premier plan à proximité (par exemple, "Edea", "Bonabéri"). Votre objectif est de fournir un nom de lieu concis pour un journal de pointage.
 
 Latitude: {{{latitude}}}
 Longitude: {{{longitude}}}
 
-Suggest work location:`,
+Suggérer un lieu de travail :`,
 });
 
 const geolocationAssistedTimeEntryFlow = ai.defineFlow(

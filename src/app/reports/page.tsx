@@ -172,11 +172,11 @@ export default function ReportsPage() {
 
   const chartConfig = {
     regular: {
-      label: "Regular",
+      label: "Normales",
       color: "hsl(var(--chart-1))",
     },
     overtime: {
-      label: "Overtime",
+      label: "Heures Sup.",
       color: "hsl(var(--chart-2))",
     },
   } satisfies ChartConfig;
@@ -192,9 +192,9 @@ export default function ReportsPage() {
   if (!user) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">Please sign in to continue.</p>
+        <p className="text-xl">Veuillez vous connecter pour continuer.</p>
         <Link href="/login">
-            <Button>Sign In</Button>
+            <Button>Se connecter</Button>
         </Link>
       </div>
     );
@@ -203,9 +203,9 @@ export default function ReportsPage() {
   if (!profile) {
     return (
         <div className="flex flex-col justify-center items-center h-screen gap-4">
-            <p className="text-xl text-center">Please complete your profile before viewing reports.</p>
+            <p className="text-xl text-center">Veuillez compléter votre profil avant de consulter les rapports.</p>
             <Link href="/profile">
-                <Button>Go to Profile</Button>
+                <Button>Aller au Profil</Button>
             </Link>
         </div>
     )
@@ -215,34 +215,34 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-            <h1 className="text-3xl font-headline font-bold">Dashboard</h1>
+            <h1 className="text-3xl font-headline font-bold">Tableau de Bord</h1>
             <p className="text-muted-foreground">
-                A summary of your earnings and work hours.
+                Un résumé de vos gains et de vos heures de travail.
             </p>
         </div>
         <Link href="/reports/export">
-          <Button>Export Report</Button>
+          <Button>Exporter le Rapport</Button>
         </Link>
       </div>
       
       <Card>
         <CardHeader>
-          <CardTitle>This Month's Financial Summary</CardTitle>
+          <CardTitle>Résumé Financier de ce Mois</CardTitle>
           <CardDescription>
-            An overview of your regular hours, overtime, and estimated earnings for the current month.
+            Un aperçu de vos heures normales, de vos heures supplémentaires et de vos gains estimés pour le mois en cours.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-6 text-center md:grid-cols-3">
           <div className="flex flex-col gap-2 rounded-lg border p-4">
-            <p className="text-sm font-medium text-muted-foreground">Regular Hours</p>
-            <p className="text-3xl font-bold">{monthTotals.regularHours} hrs</p>
+            <p className="text-sm font-medium text-muted-foreground">Heures Normales</p>
+            <p className="text-3xl font-bold">{monthTotals.regularHours} h</p>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border p-4">
-            <p className="text-sm font-medium text-muted-foreground">Overtime Hours</p>
-            <p className="text-3xl font-bold text-destructive">{monthTotals.overtimeHours} hrs</p>
+            <p className="text-sm font-medium text-muted-foreground">Heures Supplémentaires</p>
+            <p className="text-3xl font-bold text-destructive">{monthTotals.overtimeHours} h</p>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border bg-primary/10 p-4">
-            <p className="text-sm font-medium text-muted-foreground">Estimated Overtime Payout</p>
+            <p className="text-sm font-medium text-muted-foreground">Paiement Estimé des Heures Sup.</p>
             <p className="text-3xl font-bold text-primary">{monthTotals.estimatedPayout} {profile.currency}</p>
           </div>
         </CardContent>
@@ -250,9 +250,9 @@ export default function ReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Hours Breakdown</CardTitle>
+          <CardTitle>Répartition Hebdomadaire des Heures</CardTitle>
           <CardDescription>
-            Regular vs. overtime hours logged each day of the current week.
+            Heures normales vs heures supplémentaires enregistrées chaque jour de la semaine en cours.
           </CardDescription>
         </CardHeader>
         <CardContent>

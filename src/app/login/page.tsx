@@ -123,7 +123,7 @@ export default function LoginPage() {
           description:
             error.code === 'auth/email-already-in-use'
               ? 'Cette adresse e-mail est déjà utilisée.'
-              : 'Une erreur s\'est produite.',
+              : "Une erreur s'est produite.",
         });
       }
     } finally {
@@ -136,7 +136,7 @@ export default function LoginPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-sm">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Welcome to OM Suivi</CardTitle>
+            <CardTitle className="text-2xl font-bold">Bienvenue sur OM Suivi</CardTitle>
             <CardDescription>
               Connectez-vous ou créez un compte pour suivre votre temps de travail.
             </CardDescription>

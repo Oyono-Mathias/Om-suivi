@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -21,10 +22,11 @@ import Image from "next/image";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import type { TeamMember, Profile, TimeEntry } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import Link from "next/link";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { getWeek, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { Button } from "@/components/ui/button";
 
 
 export default function TeamPage() {
@@ -83,33 +85,44 @@ export default function TeamPage() {
   if (!user) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">Please sign in to continue.</p>
+        <p className="text-xl">Veuillez vous connecter pour continuer.</p>
         <Link href="/login">
-          <Button>Sign In</Button>
+          <Button>Se connecter</Button>
         </Link>
       </div>
     );
   }
+  
+  if (!teams || teams.length === 0) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen gap-4 text-center">
+        <Users className="w-16 h-16 text-muted-foreground" />
+        <h2 className="text-2xl font-bold">Vous n'êtes pas encore dans une équipe</h2>
+        <p className="text-muted-foreground max-w-sm">Contactez votre administrateur pour être ajouté à une équipe afin de voir les données de vos collègues.</p>
+      </div>
+    )
+  }
+
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-headline font-bold">Team Overview</h1>
+      <h1 className="text-3xl font-headline font-bold">Aperçu de l'Équipe</h1>
       <p className="text-muted-foreground">
-        A summary of hours worked by your colleagues this week.
+        Un résumé des heures travaillées par vos collègues cette semaine.
       </p>
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Summary</CardTitle>
-          <CardDescription>Data sharing and summarization for colleagues.</CardDescription>
+          <CardTitle>Résumé Hebdomadaire</CardTitle>
+          <CardDescription>Partage et résumé des données pour les collègues.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Total Hours</TableHead>
-                <TableHead>Overtime Hours</TableHead>
+                <TableHead>Membre</TableHead>
+                <TableHead>Heures Totales</TableHead>
+                <TableHead>Heures Sup.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

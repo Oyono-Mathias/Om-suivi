@@ -153,9 +153,9 @@ export default function ExportReportPage() {
     if (!user) {
         return (
             <div className="flex flex-col justify-center items-center h-screen gap-4">
-            <p className="text-xl">Please sign in to continue.</p>
+            <p className="text-xl">Veuillez vous connecter pour continuer.</p>
             <Link href="/login">
-                <Button>Sign In</Button>
+                <Button>Se connecter</Button>
             </Link>
             </div>
         );
@@ -164,9 +164,9 @@ export default function ExportReportPage() {
     if (!profile) {
         return (
             <div className="flex flex-col justify-center items-center h-screen gap-4">
-                <p className="text-xl text-center">Please complete your profile before viewing reports.</p>
+                <p className="text-xl text-center">Veuillez compléter votre profil avant de consulter les rapports.</p>
                 <Link href="/profile">
-                    <Button>Go to Profile</Button>
+                    <Button>Aller au Profil</Button>
                 </Link>
             </div>
         )
@@ -194,22 +194,22 @@ export default function ExportReportPage() {
             <div className="max-w-4xl mx-auto print-container">
                 <header className="flex flex-wrap justify-between items-center gap-4 mb-8 no-print">
                     <div>
-                        <h1 className="text-3xl font-bold font-headline">Export Report</h1>
-                        <p className="text-muted-foreground">Proof of work for {reportMonth}.</p>
+                        <h1 className="text-3xl font-bold font-headline">Exporter le Rapport</h1>
+                        <p className="text-muted-foreground">Preuve de travail pour {reportMonth}.</p>
                     </div>
-                    <Button onClick={handlePrint}>Print to PDF</Button>
+                    <Button onClick={handlePrint}>Imprimer en PDF</Button>
                 </header>
 
                 <div className="border rounded-lg p-6 sm:p-8 print:border-none print:shadow-none print:rounded-none">
                     <div className="flex justify-between items-start mb-8">
                         <div>
                             <h2 className="text-2xl font-bold text-primary font-headline">OM Suivi</h2>
-                            <h3 className="text-lg font-semibold">Time Sheet Report</h3>
+                            <h3 className="text-lg font-semibold">Rapport de Feuille de Temps</h3>
                             <p className="text-muted-foreground">{profile.name}</p>
                         </div>
                         <div className="text-right">
                             <p className="font-semibold">{reportMonth}</p>
-                            <p className="text-sm text-muted-foreground">Hourly Rate: {Math.round(profile.monthlyBaseSalary / 173.33).toLocaleString('fr-FR')} {profile.currency}</p>
+                            <p className="text-sm text-muted-foreground">Taux Horaire: {Math.round(profile.monthlyBaseSalary / 173.33).toLocaleString('fr-FR')} {profile.currency}</p>
                         </div>
                     </div>
                     
@@ -217,18 +217,18 @@ export default function ExportReportPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Shift</TableHead>
-                                <TableHead>Time In</TableHead>
-                                <TableHead>Time Out</TableHead>
-                                <TableHead>Location</TableHead>
-                                <TableHead className="text-right">Overtime (mins)</TableHead>
+                                <TableHead>Poste</TableHead>
+                                <TableHead>Heure d'arrivée</TableHead>
+                                <TableHead>Heure de départ</TableHead>
+                                <TableHead>Lieu</TableHead>
+                                <TableHead className="text-right">Heures sup. (min)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {sortedEntries.length > 0 ? (
                                 sortedEntries.map(entry => (
                                     <TableRow key={entry.id}>
-                                        <TableCell>{format(parseISO(entry.date), 'EEE, MMM d')} {entry.isPublicHoliday ? '(Holiday)' : ''}</TableCell>
+                                        <TableCell>{format(parseISO(entry.date), 'EEE, d MMM')} {entry.isPublicHoliday ? '(Férié)' : ''}</TableCell>
                                         <TableCell>{shifts.find(s => s.id === entry.shiftId)?.name || 'N/A'}</TableCell>
                                         <TableCell>{entry.startTime}</TableCell>
                                         <TableCell>{entry.endTime}</TableCell>
@@ -238,41 +238,41 @@ export default function ExportReportPage() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">No entries for this month.</TableCell>
+                                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">Aucune entrée pour ce mois.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                         <TableFooter>
                             <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Overtime at {overtimeBreakdown.tier1.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier1.minutes)} hrs</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. à {overtimeBreakdown.tier1.rate * 100}%</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier1.minutes)} h</TableCell>
                             </TableRow>
                             <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Overtime at {overtimeBreakdown.tier2.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier2.minutes)} hrs</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. à {overtimeBreakdown.tier2.rate * 100}%</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier2.minutes)} h</TableCell>
                             </TableRow>
                             <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Overtime (Sunday) at {overtimeBreakdown.sunday.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.sunday.minutes)} hrs</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. (Dimanche) à {overtimeBreakdown.sunday.rate * 100}%</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.sunday.minutes)} h</TableCell>
                             </TableRow>
                              <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Overtime (Holiday) at {overtimeBreakdown.holiday.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.holiday.minutes)} hrs</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. (Férié) à {overtimeBreakdown.holiday.rate * 100}%</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.holiday.minutes)} h</TableCell>
                             </TableRow>
                             <TableRow className="bg-muted/50">
-                                <TableCell colSpan={5} className="text-right font-bold">Total Overtime</TableCell>
-                                <TableCell className="text-right font-bold">{formatMinutes(totalOvertime)} hrs</TableCell>
+                                <TableCell colSpan={5} className="text-right font-bold">Total Heures Sup.</TableCell>
+                                <TableCell className="text-right font-bold">{formatMinutes(totalOvertime)} h</TableCell>
                             </TableRow>
                             <TableRow className="bg-primary/10">
-                                <TableCell colSpan={5} className="text-right font-bold text-primary">Estimated Overtime Payout</TableCell>
+                                <TableCell colSpan={5} className="text-right font-bold text-primary">Paiement Estimé des Heures Sup.</TableCell>
                                 <TableCell className="text-right font-bold text-primary">{totalPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</TableCell>
                             </TableRow>
                         </TableFooter>
                     </Table>
 
                     <footer className="mt-12 text-center text-xs text-muted-foreground">
-                        <p>Generated on {format(new Date(), 'PPP p')}</p>
-                        <p>This document is an automatically generated proof of work for services rendered.</p>
+                        <p>Généré le {format(new Date(), 'PPP p')}</p>
+                        <p>Ce document est une preuve de travail générée automatiquement pour les services rendus.</p>
                     </footer>
                 </div>
             </div>
