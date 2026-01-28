@@ -52,13 +52,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
-const LOCAL_STORAGE_KEY = 'activeShiftState';
+const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
+const PAUSE_TOLERANCE_MINUTES = 40;
+
+interface ExitInfo {
+  timestampISO: string;
+}
 
 interface ActiveShiftState {
   activeTimeEntryId: string;
   startTimeISO: string;
   shiftId: string;
   lastSeenISO: string;
+  exitInfo: ExitInfo | null;
+  unpaidBreakMinutes: number;
 }
 
 export default function TimeTrackingPage() {
@@ -83,7 +90,11 @@ export default function TimeTrackingPage() {
   const [currentCoordinates, setCurrentCoordinates] = useState<{lat: number, lon: number} | null>(null);
   const [currentLocationAddress, setCurrentLocationAddress] = useState<string | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(true);
-  const [lastCheckedZoneStatus, setLastCheckedZoneStatus] = useState<boolean | null>(null);
+  
+  const [isInWorkZone, setIsInWorkZone] = useState<boolean | null>(null);
+  const [exitInfo, setExitInfo] = useState<ExitInfo | null>(null);
+  const [unpaidBreakMinutes, setUnpaidBreakMinutes] = useState(0);
+
   const [recoveryData, setRecoveryData] = useState<ActiveShiftState | null>(null);
   const [isExceptionalOvertime, setIsExceptionalOvertime] = useState(false);
 
@@ -111,7 +122,6 @@ export default function TimeTrackingPage() {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
   };
   
-  // Check for disconnected shift on mount
   useEffect(() => {
     const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedStateJSON) {
@@ -122,7 +132,8 @@ export default function TimeTrackingPage() {
 
   const handleRecoveryEndShift = () => {
     if (!recoveryData) return;
-    handleEndShift(new Date(recoveryData.lastSeenISO));
+    const effectiveEndTime = recoveryData.exitInfo ? new Date(recoveryData.exitInfo.timestampISO) : new Date(recoveryData.lastSeenISO);
+    handleEndShift(effectiveEndTime, false, recoveryData.unpaidBreakMinutes);
     setRecoveryData(null);
   };
 
@@ -134,6 +145,8 @@ export default function TimeTrackingPage() {
 
     setActiveTimeEntryId(recoveryData.activeTimeEntryId);
     setElapsedTime(elapsedSeconds);
+    setExitInfo(recoveryData.exitInfo);
+    setUnpaidBreakMinutes(recoveryData.unpaidBreakMinutes);
     setStatus('in_progress');
     setIsShiftActive(true);
     const timer = setInterval(() => {
@@ -142,7 +155,7 @@ export default function TimeTrackingPage() {
     setActiveTimer(timer);
 
     toast({ title: "Session restaurée", description: "Votre session de travail a été reprise." });
-    setRecoveryData(null); // Clear recovery data after handling
+    setRecoveryData(null);
   };
 
 
@@ -155,10 +168,12 @@ export default function TimeTrackingPage() {
     setElapsedTime(0);
     setActiveTimeEntryId(null);
     setIsExceptionalOvertime(false);
+    setExitInfo(null);
+    setUnpaidBreakMinutes(0);
     clearActiveShiftFromLocal();
   }, [activeTimer, setIsShiftActive]);
 
-  const startTimer = (entryId: string, startTime: Date) => {
+  const startTimer = (entryId: string, startTime: Date, shiftId: string) => {
       setActiveTimeEntryId(entryId);
       setStatus('in_progress');
       setIsShiftActive(true);
@@ -168,6 +183,14 @@ export default function TimeTrackingPage() {
         setElapsedTime(prev => prev + 1);
       }, 1000);
       setActiveTimer(timer);
+      saveActiveShiftToLocal({
+        activeTimeEntryId: entryId,
+        startTimeISO: startTime.toISOString(),
+        shiftId: shiftId,
+        lastSeenISO: new Date().toISOString(),
+        exitInfo: null,
+        unpaidBreakMinutes: 0,
+      });
   }
 
   useEffect(() => {
@@ -230,6 +253,7 @@ export default function TimeTrackingPage() {
         endTime: '',
         duration: 0,
         overtimeDuration: 0,
+        unpaidBreakDuration: 0,
         location: locationString,
         shiftId: shift.id,
         userProfileId: user.uid,
@@ -238,13 +262,7 @@ export default function TimeTrackingPage() {
 
     try {
         const docRef = await addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'timeEntries'), newEntry);
-        startTimer(docRef.id, now);
-        saveActiveShiftToLocal({
-            activeTimeEntryId: docRef.id,
-            startTimeISO: now.toISOString(),
-            shiftId: shift.id,
-            lastSeenISO: now.toISOString(),
-        });
+        startTimer(docRef.id, now, shift.id);
         toast({ title: t('timerStartedTitle'), description: locationString ? t('timerStartedLocationDescription', {location: locationString}) : t('timerStartedDescription') });
         return docRef.id;
     } catch (error) {
@@ -254,7 +272,7 @@ export default function TimeTrackingPage() {
   }, [user, firestore, profile, setIsShiftActive, t, toast]);
 
 
-  const handleEndShift = useCallback((manualEndTime?: Date, exceptionalOvertime: boolean = false) => {
+  const handleEndShift = useCallback((manualEndTime?: Date, exceptionalOvertime: boolean = false, initialUnpaidMinutes: number = 0) => {
     const entryId = activeTimeEntryId || recoveryData?.activeTimeEntryId;
     if (!entryId || !user || !profile) {
       stopTimer();
@@ -272,16 +290,19 @@ export default function TimeTrackingPage() {
   
     const shift = shifts.find(s => s.id === shiftId);
     if (!shift) return;
-  
-    const endDateTime = manualEndTime || new Date();
-    const endTimeStr = format(endDateTime, 'HH:mm');
-    const today = format(endDateTime, 'yyyy-MM-dd');
+
+    const finalUnpaidBreakMinutes = unpaidBreakMinutes + initialUnpaidMinutes;
+    const effectiveEndTime = manualEndTime || (exitInfo ? new Date(exitInfo.timestampISO) : new Date());
+
+    const endTimeStr = format(effectiveEndTime, 'HH:mm');
+    const today = format(effectiveEndTime, 'yyyy-MM-dd');
   
     const startTimeForCalc = entryToUpdate?.startTime || format(new Date(recoveryData!.startTimeISO), 'HH:mm');
     const startDateForCalc = entryToUpdate?.date || format(new Date(recoveryData!.startTimeISO), 'yyyy-MM-dd');
   
     const startDateTime = parseISO(`${startDateForCalc}T${startTimeForCalc}:00`);
-    const totalDuration = differenceInMinutes(endDateTime, startDateTime);
+    const totalDurationWithBreaks = differenceInMinutes(effectiveEndTime, startDateTime);
+    const totalDuration = totalDurationWithBreaks - finalUnpaidBreakMinutes;
   
     const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
     let overtimeDuration = 0;
@@ -289,15 +310,16 @@ export default function TimeTrackingPage() {
     const isEligibleForAutoOvertime = ['storekeeper', 'deliveryDriver', 'chauffeur'].includes(profile.profession);
     const shouldCalculateOvertime = isEligibleForAutoOvertime || (profile.profession === 'machinist' && exceptionalOvertime);
 
-    if (shouldCalculateOvertime && endDateTime > shiftEndDateTime) {
-      overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
+    if (shouldCalculateOvertime && effectiveEndTime > shiftEndDateTime) {
+      overtimeDuration = differenceInMinutes(effectiveEndTime, shiftEndDateTime);
     }
   
     const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
     updateDocumentNonBlocking(entryRef, {
       endTime: endTimeStr,
-      duration: totalDuration,
+      duration: totalDuration > 0 ? totalDuration : 0,
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+      unpaidBreakDuration: finalUnpaidBreakMinutes,
       ...(entryToUpdate?.location === 'Mission' && {location: 'Mission (Terminée)'})
     });
   
@@ -312,44 +334,60 @@ export default function TimeTrackingPage() {
     }
 
     stopTimer();
-  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData]);
+  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, exitInfo, unpaidBreakMinutes]);
+
 
   const handleGeofenceEnter = useCallback(async () => {
-    if (isShiftActive || !firestore || !user || !profile) return;
-
-    const now = new Date();
-    const currentHour = now.getHours();
-    const todayStr = format(now, 'yyyy-MM-dd');
-    let shiftToStart: Shift | undefined;
-
-    if (currentHour >= 5 && currentHour < 7) { 
-        shiftToStart = shifts.find(s => s.id === 'morningA');
-    } else if (currentHour >= 13 && currentHour < 15) {
-        shiftToStart = shifts.find(s => s.id === 'afternoon');
-    } else if (currentHour >= 21 && currentHour < 23) { 
-        shiftToStart = shifts.find(s => s.id === 'night');
+    // Smart Pause Logic: Re-entry
+    if (isShiftActive && exitInfo) {
+      const timeOutsideMinutes = differenceInMinutes(new Date(), new Date(exitInfo.timestampISO));
+      if (timeOutsideMinutes > PAUSE_TOLERANCE_MINUTES) {
+        const penaltyMinutes = timeOutsideMinutes - PAUSE_TOLERANCE_MINUTES;
+        const newTotalUnpaid = unpaidBreakMinutes + penaltyMinutes;
+        setUnpaidBreakMinutes(newTotalUnpaid);
+        
+        if (activeTimeEntryId) {
+          const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
+          updateDocumentNonBlocking(entryRef, { unpaidBreakDuration: newTotalUnpaid });
+        }
+      }
+      setExitInfo(null);
     }
+    
+    // Auto-Clock In Logic
+    if (!isShiftActive && firestore && user && profile) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const todayStr = format(now, 'yyyy-MM-dd');
+      let shiftToStart: Shift | undefined;
 
-    if (!shiftToStart) return;
+      if (currentHour >= 5 && currentHour < 7) { 
+          shiftToStart = shifts.find(s => s.id === 'morningA');
+      } else if (currentHour >= 13 && currentHour < 15) {
+          shiftToStart = shifts.find(s => s.id === 'afternoon');
+      } else if (currentHour >= 21 && currentHour < 23) { 
+          shiftToStart = shifts.find(s => s.id === 'night');
+      }
 
-    const q = query(
-        collection(firestore, 'users', user.uid, 'timeEntries'),
-        where('date', '==', todayStr),
-        where('shiftId', '==', shiftToStart.id)
-    );
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        return;
+      if (!shiftToStart) return;
+
+      const q = query(
+          collection(firestore, 'users', user.uid, 'timeEntries'),
+          where('date', '==', todayStr),
+          where('shiftId', '==', shiftToStart.id)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) return;
+
+      const newEntryId = await startShift(shiftToStart, profile?.workplace?.address || 'Workplace');
+      if (newEntryId && Notification.permission === 'granted') {
+          new Notification('OM Suivi: Pointage Automatique', {
+              body: `Votre service '${shiftToStart.name}' a démarré automatiquement à ${format(now, 'HH:mm')}.`,
+              icon: '/icons/icon-192x192.png',
+          });
+      }
     }
-
-    const newEntryId = await startShift(shiftToStart, profile?.workplace?.address || 'Workplace');
-    if (newEntryId && Notification.permission === 'granted') {
-        new Notification('OM Suivi: Pointage Automatique', {
-            body: `Votre service '${shiftToStart.name}' a démarré automatiquement à ${format(now, 'HH:mm')}.`,
-            icon: '/icons/icon-192x192.png',
-        });
-    }
-  }, [isShiftActive, firestore, user, profile, startShift]);
+  }, [isShiftActive, firestore, user, profile, startShift, exitInfo, activeTimeEntryId, unpaidBreakMinutes]);
 
 
   const handleGeofenceExit = useCallback(() => {
@@ -361,11 +399,10 @@ export default function TimeTrackingPage() {
     const shift = shifts.find(s => s.id === entry.shiftId);
     if (!shift) return;
 
+    // Exempt professions for Mission Mode
     if (['deliveryDriver', 'chauffeur'].includes(profile.profession)) {
-        // For drivers, always switch to Mission mode and never auto-stop on exit.
         const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
         updateDocumentNonBlocking(entryRef, { location: 'Mission' });
-        
         if (Notification.permission === 'granted') {
             new Notification(t('missionMode.title'), { body: t('missionMode.body') });
         }
@@ -373,32 +410,25 @@ export default function TimeTrackingPage() {
         return;
     }
 
-    const shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}:00`);
-    const now = new Date();
-
-    if (now < shiftEndDateTime) {
-      // For other professions, switch to mission mode if exiting before shift end.
-      const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
-      updateDocumentNonBlocking(entryRef, { location: 'Mission' });
-      
-      if (Notification.permission === 'granted') {
-          new Notification(t('missionMode.title'), { body: t('missionMode.body') });
-      }
-      toast({ title: t('missionMode.title'), description: t('missionMode.body') });
-    } else {
-      // Standard auto-stop if exiting after shift end.
-      handleEndShift();
+    // Smart Pause Logic for other professions (except night shift)
+    if (shift.id !== 'night') {
+      setExitInfo({ timestampISO: new Date().toISOString() });
+      return;
     }
+    
+    // Default Auto-Stop for other cases (like night shift exit)
+    handleEndShift();
+
   }, [isShiftActive, activeTimeEntryId, user, firestore, profile, timeEntries, t, toast, handleEndShift]);
 
 
   useEffect(() => {
-    if (!profile?.workplace) return;
+    if (!profile?.workplace || !isShiftActive) return;
 
     const monitorLocation = () => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (!profile.workplace) return;
+                if (!profile.workplace || !activeEntry) return;
                 const distance = getDistanceFromLatLonInKm(
                     position.coords.latitude,
                     position.coords.longitude,
@@ -407,28 +437,28 @@ export default function TimeTrackingPage() {
                 );
                 const currentlyInZone = distance * 1000 <= profile.workplace.radius;
 
-                // Update last seen in local storage if shift is active
-                if (isShiftActive) {
-                    const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-                    if (savedStateJSON) {
-                        const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
-                        savedState.lastSeenISO = new Date().toISOString();
-                        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
-                    }
+                // Update local storage state
+                const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (savedStateJSON) {
+                    const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
+                    savedState.lastSeenISO = new Date().toISOString();
+                    savedState.exitInfo = exitInfo;
+                    savedState.unpaidBreakMinutes = unpaidBreakMinutes;
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
                 }
                 
                 // Geofence transition logic
-                if (lastCheckedZoneStatus !== null && lastCheckedZoneStatus !== currentlyInZone) {
+                if (isInWorkZone !== null && isInWorkZone !== currentlyInZone) {
                     if (currentlyInZone) {
                         handleGeofenceEnter();
                     } else {
                         handleGeofenceExit();
                     }
                 }
-                setLastCheckedZoneStatus(currentlyInZone);
+                setIsInWorkZone(currentlyInZone);
                 
-                // Mission auto-stop logic
-                if (isShiftActive && !currentlyInZone && activeEntry?.location === 'Mission') {
+                // Auto-stop logic for users outside the zone after shift end
+                if (exitInfo) {
                     const shift = shifts.find(s => s.id === activeEntry.shiftId);
                     if (shift) {
                         const shiftEndDateTime = parseISO(`${activeEntry.date}T${shift.endTime}:00`);
@@ -446,7 +476,7 @@ export default function TimeTrackingPage() {
 
     const intervalId = setInterval(monitorLocation, 60000);
     return () => clearInterval(intervalId);
-  }, [profile, isShiftActive, lastCheckedZoneStatus, activeEntry, handleGeofenceEnter, handleGeofenceExit, handleEndShift]);
+  }, [profile, isShiftActive, isInWorkZone, activeEntry, exitInfo, unpaidBreakMinutes, handleGeofenceEnter, handleGeofenceExit, handleEndShift]);
   
   
   const handleManualStart = async () => {

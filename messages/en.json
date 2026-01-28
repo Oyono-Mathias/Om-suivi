@@ -143,7 +143,9 @@
     "reminderTimeLabel": "Reminder time",
     "reminders": {
       "notificationTitle": "Time Tracking Reminder",
-      "notificationBody": "Don't forget to clock in or out for your shift!"
+      "notificationBody": "Don't forget to clock in or out for your shift!",
+      "shiftStartDetected": "Shift start detected",
+      "shiftStartBody": "Click to confirm your presence."
     },
     "workplaceTitle": "Workplace Setup",
     "workplaceDescription": "Define your primary workplace for geolocation-based features.",

@@ -123,6 +123,7 @@ export default function ProfilePage() {
     }
   }, []);
 
+  // Effect for user-configurable reminders
   useEffect(() => {
     if (!profile?.reminders?.enabled || !profile.reminders.time) {
       return;
@@ -143,7 +144,7 @@ export default function ProfilePage() {
 
     Notification.requestPermission().then((permission) => {
       if (permission === 'granted') {
-        intervalId = setInterval(checkTimeAndNotify, 60000); // Check every minute
+        intervalId = setInterval(checkTimeAndNotify, 60000);
       }
     });
 
@@ -153,6 +154,32 @@ export default function ProfilePage() {
       }
     };
   }, [profile?.reminders, t]);
+
+  // Effect for fixed shift-start reminders
+  useEffect(() => {
+    const checkFixedTimeAndNotify = () => {
+      const now = new Date();
+      const currentTime = format(now, 'HH:mm');
+      const reminderTimes = ['06:00', '14:00', '22:00'];
+
+      if (reminderTimes.includes(currentTime) && Notification.permission === 'granted') {
+        new Notification(t('reminders.shiftStartDetected'), {
+          body: t('reminders.shiftStartBody'),
+          icon: '/icons/icon-192x192.png',
+        });
+      }
+    };
+    
+    // Request permission once when the component mounts
+    if (Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+    
+    const intervalId = setInterval(checkFixedTimeAndNotify, 60000); // Check every minute
+    
+    return () => clearInterval(intervalId);
+  }, [t]);
+
 
   function onSubmit(values: z.infer<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
@@ -208,7 +235,7 @@ export default function ProfilePage() {
     const newWorkplace = {
       latitude: location.latitude,
       longitude: location.longitude,
-      radius: 200, // 200m radius
+      radius: 50, // 50m radius
       address: location.address,
     };
     

@@ -15,6 +15,7 @@ export interface TimeEntry {
   endTime: string;
   duration: number; // in minutes
   overtimeDuration: number; // in minutes
+  unpaidBreakDuration?: number; // in minutes
   location?: string;
   shiftId: string;
   isPublicHoliday?: boolean;

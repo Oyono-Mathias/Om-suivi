@@ -143,7 +143,9 @@
     "reminderTimeLabel": "Heure du rappel",
     "reminders": {
       "notificationTitle": "Rappel de Pointage",
-      "notificationBody": "N'oubliez pas de pointer pour votre service !"
+      "notificationBody": "N'oubliez pas de pointer pour votre service !",
+      "shiftStartDetected": "Début de quart détecté",
+      "shiftStartBody": "Cliquez pour valider votre présence."
     },
     "workplaceTitle": "Configuration du lieu de travail",
     "workplaceDescription": "Définissez votre lieu de travail principal pour les fonctionnalités basées sur la géolocalisation.",
