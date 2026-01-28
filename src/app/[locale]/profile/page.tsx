@@ -60,17 +60,12 @@ export default function ProfilePage() {
   
   const profileSchema = z.object({
     name: z.string().min(2, { message: t('nameMinLengthError') }),
-    monthlyBaseSalary: z.coerce.number().min(1, { message: t('salaryMinError') }),
+    monthlyBaseSalary: z.coerce.number().min(0, { message: t('salaryMinError') }),
     currency: z.string().min(1, { message: t('currencyRequiredError')}),
     reminders: z.object({
       enabled: z.boolean(),
       time: z.string(),
     }),
-    workplace: z.object({
-      latitude: z.number(),
-      longitude: z.number(),
-      radius: z.number(),
-    }).optional(),
   });
 
   const userProfileRef = useMemoFirebase(() => {
@@ -83,17 +78,25 @@ export default function ProfilePage() {
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      name: '',
+      monthlyBaseSalary: 0,
+      currency: 'FCFA',
       reminders: { enabled: false, time: '17:00' }
     }
   });
   
   useEffect(() => {
     if (profile) {
-      form.reset(profile);
+      form.reset({
+        name: profile.name || user?.displayName || '',
+        monthlyBaseSalary: profile.monthlyBaseSalary || 0,
+        currency: profile.currency || 'FCFA',
+        reminders: profile.reminders || { enabled: false, time: '17:00' },
+      });
     } else if (user) {
       form.reset({
+        ...form.getValues(),
         name: user.displayName || '',
-        ...form.getValues()
       });
     }
   }, [profile, user, form]);
@@ -112,15 +115,14 @@ export default function ProfilePage() {
   function onSubmit(values: z.infer<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
     
-    const updatedProfile = {
-      ...profile, // existing data first
-      ...values, // new form data overwrites
+    const updatedProfileData = {
+      ...values,
       id: user.uid,
       email: user.email || '',
-      role: profile?.role || 'user', // Keep existing role, or default to 'user' for new profiles
+      role: profile?.role || 'user',
     };
     
-    setDocumentNonBlocking(userProfileRef, updatedProfile, { merge: true });
+    setDocumentNonBlocking(userProfileRef, updatedProfileData, { merge: true });
     
     toast({
       title: t('settingsUpdatedTitle'),
@@ -158,8 +160,7 @@ export default function ProfilePage() {
       longitude: location.longitude,
       radius: 200, // 200m radius
     };
-
-    // Log the change for audit purposes
+    
     const workplaceUpdateLogCollectionRef = collection(firestore, 'users', user.uid, 'workplaceUpdateLogs');
     addDocumentNonBlocking(workplaceUpdateLogCollectionRef, {
       userProfileId: user.uid,
@@ -168,7 +169,6 @@ export default function ProfilePage() {
       newWorkplace: newWorkplace,
     });
     
-    // Update the profile with the new workplace
     setDocumentNonBlocking(userProfileRef, { workplace: newWorkplace }, { merge: true });
     
     toast({
@@ -199,15 +199,14 @@ export default function ProfilePage() {
     );
   }
 
-  const updateButton = (
+  const workZoneButton = (
     <Button 
-        variant="outline" 
-        className="mt-4 w-full" 
+        className="w-full"
         onClick={handleSetWorkplace} 
         disabled={isShiftActive || isLocating || permissionState === 'denied'}
     >
         {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
-        {t('updateWorkZoneButton')}
+        {profile?.workplace ? t('updateWorkZoneButton') : t('setWorkZoneButton')}
     </Button>
   );
 
@@ -274,6 +273,55 @@ export default function ProfilePage() {
 
           <Card>
             <CardHeader>
+              <CardTitle>{t('workplaceTitle')}</CardTitle>
+              <CardDescription>
+                {t('workplaceDescription')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profile?.workplace && (
+                <div className="rounded-lg border bg-muted p-4 text-center">
+                    <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
+                    <p className="mt-2 text-sm font-semibold">{t('workplaceSet')}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {t('workplaceLat')}: {profile.workplace.latitude.toFixed(4)}, {t('workplaceLon')}: {profile.workplace.longitude.toFixed(4)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        {t('workplaceRadius')}: {profile.workplace.radius}m
+                    </p>
+                </div>
+              )}
+              
+              {isShiftActive ? (
+                  <TooltipProvider>
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <span tabIndex={0} className="inline-block w-full">{workZoneButton}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                              <p>{t('updateDisabledTooltip')}</p>
+                          </TooltipContent>
+                      </Tooltip>
+                  </TooltipProvider>
+              ) : (
+                  workZoneButton
+              )}
+
+              {permissionState === 'denied' && (
+                  <p className="mt-2 text-center text-sm text-destructive">
+                      {t('locationDeniedError')}
+                  </p>
+              )}
+              {permissionState === 'prompt' && !profile?.workplace && (
+                  <p className="mt-2 text-center text-sm text-muted-foreground">
+                      {t('locationPrompt')}
+                  </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>{t('remindersTitle')}</CardTitle>
               <CardDescription>
                 {t('remindersDescription')}
@@ -315,67 +363,6 @@ export default function ProfilePage() {
               />
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('workplaceTitle')}</CardTitle>
-              <CardDescription>
-                {t('workplaceDescription')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {profile?.workplace ? (
-                <div>
-                  <div className="rounded-lg border bg-muted p-4 text-center">
-                      <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-                      <p className="mt-2 text-sm font-semibold">{t('workplaceSet')}</p>
-                      <p className="text-xs text-muted-foreground">
-                          {t('workplaceLat')}: {profile.workplace.latitude.toFixed(4)}, {t('workplaceLon')}: {profile.workplace.longitude.toFixed(4)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                          {t('workplaceRadius')}: {profile.workplace.radius}m
-                      </p>
-                      <div className="mt-2 h-32 w-full rounded bg-background flex items-center justify-center text-muted-foreground text-sm">
-                          {t('mapPlaceholder')}
-                      </div>
-                  </div>
-                  
-                  {isShiftActive ? (
-                      <TooltipProvider>
-                          <Tooltip>
-                              <TooltipTrigger asChild>
-                                  <span tabIndex={0} className="inline-block w-full">{updateButton}</span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                  <p>{t('updateDisabledTooltip')}</p>
-                              </TooltipContent>
-                          </Tooltip>
-                      </TooltipProvider>
-                  ) : (
-                      updateButton
-                  )}
-
-                </div>
-              ) : (
-                <div>
-                  <Button className="w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied' || isShiftActive}>
-                      {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
-                      {t('setWorkZoneButton')}
-                  </Button>
-                  {permissionState === 'denied' && (
-                      <p className="mt-2 text-center text-sm text-destructive">
-                          {t('locationDeniedError')}
-                      </p>
-                  )}
-                  {permissionState === 'prompt' && (
-                      <p className="mt-2 text-center text-sm text-muted-foreground">
-                          {t('locationPrompt')}
-                      </p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
           
           <Button type="submit">{t('saveButton')}</Button>
         </form>
@@ -398,4 +385,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

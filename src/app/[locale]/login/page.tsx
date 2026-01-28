@@ -117,7 +117,7 @@ export default function AuthPage() {
         displayName: values.name,
       });
       
-      const userDocRef = doc(firestore, 'users', newUser.uid);
+      const userDocRef = doc(firestore, 'users', newUser.uid, 'userProfiles', newUser.uid);
       await setDoc(userDocRef, {
         id: newUser.uid,
         name: values.name,
