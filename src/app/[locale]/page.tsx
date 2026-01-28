@@ -1,394 +1,504 @@
 
 'use client';
 
-import React from 'react';
-import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import type { TimeEntry, Profile, Shift } from '@/lib/types';
+import { shifts } from '@/lib/shifts';
+import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { fr, enUS } from 'date-fns/locale';
+import { Loader2 } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
+import { useShift } from '@/context/ShiftContext';
+import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
+import ManualEntryDialog from '@/components/manual-entry-dialog';
+import { getDistanceFromLatLonInKm } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
-import type { Course } from '@/lib/types';
-import { Link } from '@/navigation';
-import {
-  Menu,
-  BookOpen,
-  TrendingUp,
-  Users,
-  ShieldCheck,
-} from 'lucide-react';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 
-// --- Helper Components ---
+export default function TimeTrackingPage() {
+  const t = useTranslations('TimeTrackingPage');
+  const tShared = useTranslations('Shared');
+  const locale = useLocale();
+  const dateFnsLocale = locale === 'fr' ? fr : enUS;
 
-const MtnMoneyIcon = () => (
-  <svg
-    width="64"
-    height="64"
-    viewBox="0 0 64 64"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-8 w-auto"
-  >
-    <rect width="64" height="64" rx="12" fill="#FFCC00" />
-    <path
-      d="M21.933 43.119V20.88h-5.901L10 30.063v2.839l5.37-4.324h.183v14.541h6.38zM39.544 32.222l-6.248 10.897h-6.853l9.84-16.59L29.352 20.88h6.81l6.602 11.342zM42.23 35.793l.223-3.571-3.155-5.59L45.47 20.88h6.291L58 30.063v2.839l-5.327-4.324h-.183v14.541h-6.38v-7.307z"
-      fill="#004F9F"
-    />
-  </svg>
-);
-
-const OrangeMoneyIcon = () => (
-  <svg
-    width="64"
-    height="64"
-    viewBox="0 0 64 64"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-8 w-auto"
-  >
-    <rect width="64" height="64" rx="12" fill="black" />
-    <path
-      d="M32 16C23.163 16 16 23.163 16 32c0 8.836 7.163 16 16 16 8.836 0 16-7.164 16-16 0-8.837-7.164-16-16-16zm-.034 4.594c6.31 0 11.406 5.097 11.406 11.406 0 6.31-5.096 11.406-11.406 11.406-6.31 0-11.406-5.096-11.406-11.406 0-6.309 5.096-11.406 11.406-11.406z"
-      fill="#FF7900"
-    />
-  </svg>
-);
-
-const CourseCardSkeleton = () => (
-  <div className="flex flex-col space-y-3">
-    <Skeleton className="h-[180px] w-full rounded-xl" />
-    <div className="space-y-2">
-      <Skeleton className="h-4 w-3/4" />
-      <Skeleton className="h-4 w-1/2" />
-    </div>
-  </div>
-);
-
-const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <Link
-    href={href}
-    className="text-base font-medium text-gray-600 transition-colors hover:text-primary"
-  >
-    {children}
-  </Link>
-);
-
-// --- Page Sections ---
-
-const Header = ({ t }: { t: any }) => (
-  <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
-    <div className="container mx-auto flex h-20 items-center justify-between px-4">
-      <Link href="/" className="flex items-center gap-2">
-        <TrendingUp className="h-8 w-8 text-primary" />
-        <span className="text-2xl font-bold text-gray-900">
-          {t('navTitle')}
-        </span>
-      </Link>
-
-      {/* Desktop Nav */}
-      <nav className="hidden items-center gap-6 md:flex">
-        <NavLink href="#">{t('navCourses')}</NavLink>
-        <Button variant="ghost" asChild>
-          <Link href="/login">{t('navLogin')}</Link>
-        </Button>
-        <Button asChild>
-          <Link href="/login">{t('navRegister')}</Link>
-        </Button>
-      </nav>
-
-      {/* Mobile Nav */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <Menu className="h-6 w-6" />
-            <span className="sr-only">Ouvrir le menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-full max-w-xs bg-white">
-          <div className="flex h-full flex-col p-6">
-            <Link href="/" className="mb-8 flex items-center gap-2">
-              <TrendingUp className="h-7 w-7 text-primary" />
-              <span className="text-xl font-bold text-gray-900">
-                {t('navTitle')}
-              </span>
-            </Link>
-            <nav className="flex flex-col gap-6">
-              <NavLink href="#">{t('navCourses')}</NavLink>
-              <NavLink href="/login">{t('navLogin')}</NavLink>
-            </nav>
-            <Button className="mt-auto h-12 w-full text-base" asChild>
-              <Link href="/login">{t('navRegister')}</Link>
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </div>
-  </header>
-);
-
-const HeroSection = ({ t }: { t: any }) => (
-  <section className="bg-white py-16 sm:py-24">
-    <div className="container mx-auto px-4 text-center">
-      <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
-        {t('heroTitle')}
-      </h1>
-      <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
-        {t('heroSubtitle')}
-      </p>
-      <div className="mt-10">
-        <Button size="lg" className="h-14 w-full text-lg sm:w-auto">
-          {t('heroCta')}
-        </Button>
-      </div>
-    </div>
-  </section>
-);
-
-const PaymentsSection = ({ t }: { t: any }) => (
-  <section className="py-12">
-    <div className="container mx-auto px-4">
-      <div className="mx-auto max-w-4xl text-center">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
-          {t('paymentsTitle')}
-        </h3>
-        <div className="mt-4 flex justify-center gap-8">
-          <MtnMoneyIcon />
-          <OrangeMoneyIcon />
-        </div>
-      </div>
-    </div>
-  </section>
-);
-
-const FeaturesSection = ({ t }: { t: any }) => {
-  const features = [
-    {
-      icon: BookOpen,
-      title: t('feature1Title'),
-      description: t('feature1Desc'),
-    },
-    {
-      icon: ShieldCheck,
-      title: t('feature2Title'),
-      description: t('feature2Desc'),
-    },
-    {
-      icon: Users,
-      title: t('feature3Title'),
-      description: t('feature3Desc'),
-    },
-  ];
-  return (
-    <section className="bg-white py-16 sm:py-24">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">
-            {t('featuresTitle')}
-          </h2>
-        </div>
-        <div className="mt-12 grid gap-8 md:grid-cols-3">
-          {features.map((feature, index) => (
-            <div key={index} className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <feature.icon className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-6 text-lg font-medium text-gray-900">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-base text-gray-600">
-                {feature.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const CoursesSection = ({ t }: { t: any }) => {
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const coursesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'courses'), orderBy('title')) : null),
-    [firestore]
+  const { toast } = useToast();
+  const { isShiftActive, setIsShiftActive } = useShift();
+
+  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  const [activeTimer, setActiveTimer] = useState<NodeJS.Timeout | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [activeTimeEntryId, setActiveTimeEntryId] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'in_progress' | 'on_mission'>('idle');
+  
+  const [isManualEntryOpen, setManualEntryOpen] = useState(false);
+  const [showLocationConfirm, setShowLocationConfirm] = useState(false);
+  const [suggestedLocation, setSuggestedLocation] = useState<string | null>(null);
+  const [currentCoordinates, setCurrentCoordinates] = useState<{lat: number, lon: number} | null>(null);
+  const [showGeofenceAlert, setShowGeofenceAlert] = useState(false);
+
+
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
+
+  const timeEntriesQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'users', user.uid, 'timeEntries'), orderBy('date', 'desc'), limit(5)) : null,
+    [firestore, user]
   );
-  const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
+  const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+
+  const stopTimer = useCallback(() => {
+    if (activeTimer) {
+      clearInterval(activeTimer);
+      setActiveTimer(null);
+    }
+    setIsShiftActive(false);
+    setStatus('idle');
+    setElapsedTime(0);
+    setActiveTimeEntryId(null);
+  }, [activeTimer, setIsShiftActive]);
+
+  useEffect(() => {
+    return () => {
+      if (activeTimer) clearInterval(activeTimer);
+    };
+  }, [activeTimer]);
+  
+  useEffect(() => {
+    // Geofencing check
+    if (status === 'in_progress' && profile?.workplace && user) {
+        const intervalId = setInterval(() => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const distance = getDistanceFromLatLonInKm(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        profile.workplace!.latitude,
+                        profile.workplace!.longitude
+                    );
+
+                    if (distance * 1000 > profile.workplace!.radius) {
+                        setShowGeofenceAlert(true);
+                    }
+                }
+            );
+        }, 30000); // Check every 30 seconds
+
+        return () => clearInterval(intervalId);
+    }
+  }, [status, profile, user]);
+
+  const handleStart = async (withGeo: boolean) => {
+    if (!selectedShiftId) {
+      toast({ variant: 'destructive', title: t('shiftNotSelectedTitle'), description: t('shiftNotSelectedDescription') });
+      return;
+    }
+    if (!user || !firestore) return;
+
+    const shift = shifts.find(s => s.id === selectedShiftId);
+    if (!shift) return;
+    
+    let locationString: string | undefined = undefined;
+
+    if (withGeo) {
+        try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                });
+            });
+            setCurrentCoordinates({ lat: position.coords.latitude, lon: position.coords.longitude });
+            
+            const { suggestedLocation: aiSuggestion } = await suggestWorkLocation({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+            });
+
+            setSuggestedLocation(aiSuggestion);
+            setShowLocationConfirm(true);
+            // The process will continue in handleLocationConfirm
+            return; 
+
+        } catch (error) {
+            console.error("Geolocation failed or was denied:", error);
+            toast({ variant: 'destructive', title: t('geoFailedTitle'), description: t('geoFailedDescription') });
+            // Fallback to manual start
+            await startShift(shift, undefined);
+        }
+    } else {
+        await startShift(shift, t('manualLocation'));
+    }
+  };
+
+  const startShift = async (shift: Shift, locationString?: string) => {
+    if (!user || !firestore) return;
+
+    const now = new Date();
+    const startTimeStr = format(now, 'HH:mm');
+
+    const newEntry: Omit<TimeEntry, 'id'> = {
+        date: format(now, 'yyyy-MM-dd'),
+        startTime: startTimeStr,
+        endTime: '',
+        duration: 0,
+        overtimeDuration: 0,
+        location: locationString,
+        shiftId: shift.id,
+        userProfileId: user.uid,
+    };
+
+    try {
+        const docRef = await addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'timeEntries'), newEntry);
+        setActiveTimeEntryId(docRef.id);
+        setStatus('in_progress');
+        setIsShiftActive(true);
+        const timer = setInterval(() => {
+          setElapsedTime(prev => prev + 1);
+        }, 1000);
+        setActiveTimer(timer);
+        toast({ title: t('timerStartedTitle'), description: locationString ? t('timerStartedLocationDescription', {location: locationString}) : t('timerStartedDescription') });
+    } catch (error) {
+        console.error("Failed to start shift:", error);
+    }
+  }
+
+  const handleLocationConfirm = async (useLocation: boolean) => {
+      setShowLocationConfirm(false);
+      const shift = shifts.find(s => s.id === selectedShiftId);
+      if (!shift) return;
+
+      const locationString = useLocation ? suggestedLocation ?? undefined : undefined;
+      await startShift(shift, locationString);
+      setSuggestedLocation(null);
+      setCurrentCoordinates(null);
+  };
+
+
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
+
+  const handleStopClick = () => {
+    if (status === 'on_mission') {
+      handleEndShift();
+    } else {
+      setShowStopConfirm(true);
+    }
+  };
+
+  const handleGoOnMission = () => {
+    if (!activeTimeEntryId || !user) return;
+    setStatus('on_mission');
+    setShowStopConfirm(false);
+    setShowGeofenceAlert(false);
+
+    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
+    updateDocumentNonBlocking(entryRef, { location: 'Mission' });
+
+    toast({ title: t('statusUpdatedTitle'), description: t('statusUpdatedDescription') });
+  };
+  
+  const handleEndShift = () => {
+    setShowStopConfirm(false);
+    setShowGeofenceAlert(false);
+    if (!activeTimeEntryId || !selectedShiftId || !user) {
+      stopTimer();
+      return;
+    }
+  
+    const shift = shifts.find(s => s.id === selectedShiftId);
+    if (!shift) return;
+  
+    const now = new Date();
+    const endTimeStr = format(now, 'HH:mm');
+    const today = format(now, 'yyyy-MM-dd');
+  
+    const entryToUpdate = timeEntries?.find(e => e.id === activeTimeEntryId) || {
+        date: today,
+        startTime: format(new Date(now.getTime() - elapsedTime * 1000), 'HH:mm'),
+    };
+  
+    const startDateTime = parseISO(`${entryToUpdate.date}T${entryToUpdate.startTime}:00`);
+    const endDateTime = now;
+    const totalDuration = differenceInMinutes(endDateTime, startDateTime);
+  
+    const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
+    let overtimeDuration = 0;
+    if (endDateTime > shiftEndDateTime) {
+      overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
+    }
+  
+    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
+    updateDocumentNonBlocking(entryRef, {
+      endTime: endTimeStr,
+      duration: totalDuration,
+      overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+    });
+  
+    toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
+    stopTimer();
+  };
+
+  const formatElapsedTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  };
+
+  const currentStatus = useMemo(() => {
+    switch(status) {
+      case 'in_progress': return t('statusInProgress');
+      case 'on_mission': return t('statusOnMission');
+      default: return t('statusIdle');
+    }
+  }, [status, t]);
+
+  const isLoading = isUserLoading || isLoadingProfile;
+  if (isLoading) {
+      return (
+          <div className="space-y-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className='w-full md:w-auto'>
+                      <Skeleton className="h-10 w-48 mb-2" />
+                      <Skeleton className="h-5 w-64" />
+                  </div>
+                  <div className="flex gap-2 w-full md:w-auto">
+                      <Skeleton className="h-12 flex-1" />
+                      <Skeleton className="h-12 flex-1" />
+                  </div>
+              </div>
+              <Skeleton className="h-40 w-full" />
+              <div className="mt-8 space-y-4">
+                  <Skeleton className="h-8 w-40 mb-4" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+              </div>
+          </div>
+      );
+  }
+
+  if (!user) {
+    return (
+        <div className="flex flex-col justify-center items-center h-screen gap-4">
+            <p className="text-xl">{tShared('pleaseLogin')}</p>
+            <a href="/login">
+                <Button>{tShared('loginButton')}</Button>
+            </a>
+        </div>
+    );
+  }
 
   return (
-    <section className="py-16 sm:py-24">
-      <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-center">
-          {t('popularCoursesTitle')}
-        </h2>
-        <div className="mt-12">
-          <Carousel
-            opts={{
-              align: 'start',
-              loop: true,
-            }}
-            className="w-full"
+    <div className="pb-24 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
+          <p className="text-muted-foreground">{currentStatus}</p>
+        </div>
+        <div className="flex gap-2 w-full md:w-auto">
+           <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => setManualEntryOpen(true)}
+            disabled={isShiftActive}
           >
-            <CarouselContent className="-ml-4">
-              {isLoading &&
-                Array.from({ length: 3 }).map((_, index) => (
-                  <CarouselItem
-                    key={index}
-                    className="basis-full pl-4 md:basis-1/2 lg:basis-1/3"
-                  >
-                    <CourseCardSkeleton />
-                  </CarouselItem>
-                ))}
-              {!isLoading &&
-                courses?.map((course) => (
-                  <CarouselItem
-                    key={course.id}
-                    className="basis-full pl-4 md:basis-1/2 lg:basis-1/3"
-                  >
-                    <Card className="overflow-hidden transition-shadow hover:shadow-xl">
-                      <Image
-                        src={course.imageUrl}
-                        alt={course.title}
-                        width={600}
-                        height={400}
-                        className="h-48 w-full object-cover"
-                        data-ai-hint={course.imageHint}
-                      />
-                      <CardContent className="p-6">
-                        <p className="text-sm font-medium text-primary">
-                          {course.category}
-                        </p>
-                        <h3 className="mt-2 text-lg font-bold text-gray-900">
-                          {course.title}
-                        </h3>
-                        <p className="mt-2 h-20 text-sm text-gray-600">
-                          {course.description}
-                        </p>
-                        <div className="mt-4 flex items-center justify-between">
-                          <p className="text-lg font-bold text-gray-900">
-                            {course.price.toLocaleString('fr-FR')} {course.currency}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {course.duration}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </CarouselItem>
-                ))}
-            </CarouselContent>
-            <CarouselPrevious className="ml-14 hidden sm:flex" />
-            <CarouselNext className="mr-14 hidden sm:flex" />
-          </Carousel>
+            {t('manualEntryButton')}
+          </Button>
         </div>
       </div>
-    </section>
-  );
-};
 
-const FaqSection = ({ t }: { t: any }) => {
-    const faqs = [
-        {
-          id: 'faq1',
-          title: t('faq1Title'),
-          answer: t('faq1Answer'),
-        },
-        {
-          id: 'faq2',
-          title: t('faq2Title'),
-          answer: t('faq2Answer'),
-        },
-        {
-          id: 'faq3',
-          title: t('faq3Title'),
-          answer: t('faq3Answer'),
-        },
-      ];
-  return (
-    <section className="bg-white py-16 sm:py-24">
-      <div className="container mx-auto max-w-3xl px-4">
-        <h2 className="text-center text-3xl font-extrabold text-gray-900">
-          {t('faqTitle')}
-        </h2>
-        <Accordion type="single" collapsible className="mt-12 w-full">
-          {faqs.map(faq => (
-            <AccordionItem key={faq.id} value={faq.id}>
-              <AccordionTrigger className="text-left text-lg font-medium hover:no-underline">
-                {faq.title}
-              </AccordionTrigger>
-              <AccordionContent className="text-base text-gray-600">
-                {faq.answer}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+      <Card className="text-center p-6">
+        <CardContent className="p-0">
+          <div className="text-6xl font-bold font-mono tracking-tighter mb-4">
+            {formatElapsedTime(elapsedTime)}
+          </div>
+          <div className="max-w-xs mx-auto">
+            <Select onValueChange={setSelectedShiftId} disabled={isShiftActive}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('selectShiftPlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {shifts.map(shift => (
+                  <SelectItem key={shift.id} value={shift.id}>
+                    {shift.name} ({shift.startTime} - {shift.endTime})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <div className="fixed bottom-20 md:bottom-4 left-4 right-4 z-10 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto grid grid-cols-2 gap-4">
+        <Button
+          className="h-16 text-xl"
+          onClick={() => handleStart(false)}
+          disabled={isShiftActive}
+        >
+          {t('startButton')}
+        </Button>
+        <Button
+          className="h-16 text-xl"
+          onClick={() => handleStart(true)}
+          disabled={isShiftActive}
+        >
+          {t('geoClockInButton')}
+        </Button>
       </div>
-    </section>
-  );
-};
 
-const FinalCtaSection = ({ t }: { t: any }) => (
-    <section className="py-16 sm:py-24">
-        <div className="container mx-auto px-4">
-            <div className="mx-auto max-w-3xl rounded-2xl bg-primary/10 p-8 text-center sm:p-12">
-                 <h2 className="text-3xl font-extrabold text-gray-900">
-                    {t('finalCtaTitle')}
-                </h2>
-                <p className="mx-auto mt-4 max-w-xl text-lg text-gray-600">
-                    {t('finalCtaDescription')}
-                </p>
-                <div className="mt-8">
-                     <Button size="lg" className="h-14 w-full text-lg sm:w-auto">
-                        {t('finalCtaButton')}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    </section>
-);
+       <div className="fixed bottom-20 md:bottom-4 left-4 right-4 z-10 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto">
+        <Button
+            className="w-full h-16 text-xl"
+            variant="destructive"
+            onClick={handleStopClick}
+            disabled={!isShiftActive}
+        >
+            {t('stopButton')}
+        </Button>
+      </div>
 
-const Footer = ({t}:{t:any}) => (
-    <footer className="border-t border-gray-200">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-gray-500">
-            <p>{t('footerRights')}</p>
-        </div>
-    </footer>
-);
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('recentEntriesTitle')}</CardTitle>
+          <CardDescription>{t('recentEntriesDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('tableDate')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('tableShift')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('tableHours')}</TableHead>
+                <TableHead>{t('tableDuration')}</TableHead>
+                <TableHead>{t('tableOvertime')}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t('tableLocation')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoadingEntries ? (
+                Array.from({length: 3}).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    </TableRow>
+                ))
+              ) : timeEntries && timeEntries.length > 0 ? (
+                timeEntries.map(entry => (
+                  <TableRow key={entry.id}>
+                    <TableCell>{format(parseISO(entry.date), 'PPP', { locale: dateFnsLocale })}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {shifts.find(s => s.id === entry.shiftId)?.name || entry.shiftId}
+                      {entry.isPublicHoliday ? <span className="text-xs text-primary">{t('holidaySuffix')}</span> : ''}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{entry.startTime} - {entry.endTime}</TableCell>
+                    <TableCell>{entry.duration > 0 ? `${entry.duration} ${t('minutes')}` : '-'}</TableCell>
+                    <TableCell className="text-destructive">{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} ${t('minutes')}` : '-'}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{entry.location || t('noLocation')}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    {t('noEntries')}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      
+      <ManualEntryDialog 
+        isOpen={isManualEntryOpen} 
+        onOpenChange={setManualEntryOpen} 
+      />
 
+       <AlertDialog open={showLocationConfirm} onOpenChange={setShowLocationConfirm}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>{t('locationConfirmTitle')}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      {t('locationConfirmDescriptionPart1')}
+                      <strong className="text-primary">{suggestedLocation}</strong>
+                      {t('locationConfirmDescriptionPart2')}
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => handleLocationConfirm(false)}>{t('locationConfirmCancel')}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleLocationConfirm(true)}>{t('locationConfirmAction')}</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
 
-export default function NdaraLandingPage() {
-  const t = useTranslations('NdaraLanding');
+      <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{t('stopConfirmTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>{t('stopConfirmDescription')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={handleGoOnMission} className="bg-blue-600 hover:bg-blue-700">{t('onMissionButton')}</AlertDialogAction>
+                <AlertDialogAction onClick={handleEndShift}>{t('endShiftButton')}</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-  return (
-    <div className="min-h-screen bg-gray-50 font-body text-gray-800">
-      <Header t={t} />
-      <main>
-        <HeroSection t={t} />
-        <PaymentsSection t={t} />
-        <FeaturesSection t={t} />
-        <CoursesSection t={t} />
-        <FaqSection t={t} />
-        <FinalCtaSection t={t} />
-      </main>
-      <Footer t={t} />
+      <AlertDialog open={showGeofenceAlert} onOpenChange={setShowGeofenceAlert}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{t('geoFenceAlertTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>{t('geoFenceAlertDescription')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={handleGoOnMission} className="bg-blue-600 hover:bg-blue-700">{t('startMissionButton')}</AlertDialogAction>
+                <AlertDialogAction onClick={handleEndShift}>{t('endShiftButton')}</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
+
+    

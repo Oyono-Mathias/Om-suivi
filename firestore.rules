@@ -47,10 +47,13 @@ service cloud.firestore {
     function canUpdateOwnProfile() {
       // The 'id', 'email', 'role', and 'createdAt' fields are immutable by the user.
       // On an update, the new document's values for these fields must match the existing ones.
-      return request.resource.data.id == resource.data.id
-          && request.resource.data.email == resource.data.email
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.createdAt == resource.data.createdAt;
+      let isImmutableId = request.resource.data.id == resource.data.id;
+      let isImmutableEmail = request.resource.data.email == resource.data.email;
+      let isImmutableRole = request.resource.data.role == resource.data.role;
+      let isImmutableCreationDate = request.resource.data.createdAt == resource.data.createdAt;
+
+      // Allow updates only if critical fields are NOT being changed
+      return isImmutableId && isImmutableEmail && isImmutableRole && isImmutableCreationDate;
     }
 
     // --------------------------------------------------------------------
@@ -86,13 +89,7 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
-
-    // --------------------------------------------------------------------
-    // Ndara App Collections
-    // --------------------------------------------------------------------
-    match /courses/{courseId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
   }
 }
+
+    
