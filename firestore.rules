@@ -57,7 +57,7 @@ service cloud.firestore {
       match /timeEntries/{timeEntryId} {
         allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
-        allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
+        allow update: if (isExistingOwner(userId) && isUserProfileIdImmutable()) || isAdmin();
         allow delete: if isExistingOwner(userId);
       }
       
@@ -78,3 +78,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

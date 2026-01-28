@@ -1,3 +1,4 @@
+
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
@@ -81,7 +82,17 @@
     "noLocation": "N/A",
     "manualLocation": "Entrée Manuelle",
     "currentLocationLabel": "Position actuelle",
-    "locationUnavailable": "Position non disponible"
+    "locationUnavailable": "Position non disponible",
+    "missionMode": {
+      "title": "Mode Mission Activé",
+      "body": "Vous avez quitté la zone de travail. Le pointage continue."
+    },
+    "disconnection": {
+      "title": "Récupération de session",
+      "description": "Votre appareil a été déconnecté. Avez-vous terminé votre service vers {time} ?",
+      "confirmButton": "Oui, terminer",
+      "cancelButton": "Non, je travaille encore"
+    }
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
@@ -228,3 +239,5 @@
     "description": "La page que vous recherchez n'existe pas."
   }
 }
+
+    

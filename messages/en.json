@@ -1,3 +1,4 @@
+
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
@@ -81,7 +82,17 @@
     "noLocation": "N/A",
     "manualLocation": "Manual Entry",
     "currentLocationLabel": "Current Location",
-    "locationUnavailable": "Location unavailable"
+    "locationUnavailable": "Location unavailable",
+    "missionMode": {
+      "title": "Mission Mode Activated",
+      "body": "You have left the work zone. Your time tracking continues."
+    },
+    "disconnection": {
+      "title": "Session Recovery",
+      "description": "Your device was disconnected. Did you finish your shift around {time}?",
+      "confirmButton": "Yes, End Shift",
+      "cancelButton": "No, I'm still working"
+    }
   },
   "ManualEntryDialog": {
     "title": "Add Manual Entry",
@@ -228,3 +239,5 @@
     "description": "The page you are looking for does not exist."
   }
 }
+
+    

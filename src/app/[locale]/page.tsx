@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -39,7 +40,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocum
 import { doc, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
 import type { TimeEntry, Profile, Shift } from '@/lib/types';
 import { shifts } from '@/lib/shifts';
-import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { format, parseISO, differenceInMinutes, addHours } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -48,6 +49,15 @@ import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry'
 import ManualEntryDialog from '@/components/manual-entry-dialog';
 import { getDistanceFromLatLonInKm } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const LOCAL_STORAGE_KEY = 'activeShiftState';
+
+interface ActiveShiftState {
+  activeTimeEntryId: string;
+  startTimeISO: string;
+  shiftId: string;
+  lastSeenISO: string;
+}
 
 export default function TimeTrackingPage() {
   const t = useTranslations('TimeTrackingPage');
@@ -64,7 +74,6 @@ export default function TimeTrackingPage() {
   const [activeTimer, setActiveTimer] = useState<NodeJS.Timeout | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [activeTimeEntryId, setActiveTimeEntryId] = useState<string | null>(null);
-  const [status, setStatus] = useState<'idle' | 'in_progress'>('idle');
   
   const [isManualEntryOpen, setManualEntryOpen] = useState(false);
   const [showLocationConfirm, setShowLocationConfirm] = useState(false);
@@ -73,7 +82,7 @@ export default function TimeTrackingPage() {
   const [currentLocationAddress, setCurrentLocationAddress] = useState<string | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(true);
   const [lastCheckedZoneStatus, setLastCheckedZoneStatus] = useState<boolean | null>(null);
-
+  const [recoveryData, setRecoveryData] = useState<ActiveShiftState | null>(null);
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
@@ -83,6 +92,56 @@ export default function TimeTrackingPage() {
     [firestore, user]
   );
   const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+  
+  const activeEntry = useMemo(() => {
+    if (!activeTimeEntryId || !timeEntries) return null;
+    return timeEntries.find(e => e.id === activeTimeEntryId) || null;
+  }, [activeTimeEntryId, timeEntries]);
+
+
+  // --- Local Storage and Recovery Logic ---
+  const saveActiveShiftToLocal = (data: ActiveShiftState) => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+  };
+
+  const clearActiveShiftFromLocal = () => {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+  };
+  
+  // Check for disconnected shift on mount
+  useEffect(() => {
+    const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedStateJSON) {
+      const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
+      setRecoveryData(savedState);
+    }
+  }, []);
+
+  const handleRecoveryEndShift = () => {
+    if (!recoveryData) return;
+    handleEndShift(new Date(recoveryData.lastSeenISO));
+    setRecoveryData(null);
+  };
+
+  const handleRecoveryContinue = () => {
+    if (!recoveryData) return;
+    const now = new Date();
+    const startTime = new Date(recoveryData.startTimeISO);
+    const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+
+    setActiveTimeEntryId(recoveryData.activeTimeEntryId);
+    setElapsedTime(elapsedSeconds);
+    setStatus('in_progress');
+    setIsShiftActive(true);
+    const timer = setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
+    setActiveTimer(timer);
+
+    toast({ title: "Session restaurée", description: "Votre session de travail a été reprise." });
+    setRecoveryData(null); // Clear recovery data after handling
+  };
+
 
   const stopTimer = useCallback(() => {
     if (activeTimer) {
@@ -90,10 +149,22 @@ export default function TimeTrackingPage() {
       setActiveTimer(null);
     }
     setIsShiftActive(false);
-    setStatus('idle');
     setElapsedTime(0);
     setActiveTimeEntryId(null);
+    clearActiveShiftFromLocal();
   }, [activeTimer, setIsShiftActive]);
+
+  const startTimer = (entryId: string, startTime: Date) => {
+      setActiveTimeEntryId(entryId);
+      setStatus('in_progress');
+      setIsShiftActive(true);
+      const elapsed = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
+      setElapsedTime(elapsed);
+      const timer = setInterval(() => {
+        setElapsedTime(prev => prev + 1);
+      }, 1000);
+      setActiveTimer(timer);
+  }
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -135,7 +206,6 @@ export default function TimeTrackingPage() {
     };
   }, [activeTimer]);
   
-  // Request notification permission when shift starts if not already granted
   useEffect(() => {
     if (isShiftActive && profile?.workplace) {
       if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -145,7 +215,7 @@ export default function TimeTrackingPage() {
   }, [isShiftActive, profile?.workplace]);
 
   const startShift = useCallback(async (shift: Shift, locationString?: string) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore) return null;
 
     const now = new Date();
     const startTimeStr = format(now, 'HH:mm');
@@ -163,13 +233,13 @@ export default function TimeTrackingPage() {
 
     try {
         const docRef = await addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'timeEntries'), newEntry);
-        setActiveTimeEntryId(docRef.id);
-        setStatus('in_progress');
-        setIsShiftActive(true);
-        const timer = setInterval(() => {
-          setElapsedTime(prev => prev + 1);
-        }, 1000);
-        setActiveTimer(timer);
+        startTimer(docRef.id, now);
+        saveActiveShiftToLocal({
+            activeTimeEntryId: docRef.id,
+            startTimeISO: now.toISOString(),
+            shiftId: shift.id,
+            lastSeenISO: now.toISOString(),
+        });
         toast({ title: t('timerStartedTitle'), description: locationString ? t('timerStartedLocationDescription', {location: locationString}) : t('timerStartedDescription') });
         return docRef.id;
     } catch (error) {
@@ -179,14 +249,17 @@ export default function TimeTrackingPage() {
   }, [user, firestore, setIsShiftActive, t, toast]);
 
 
-  const handleEndShift = useCallback(() => {
-    if (!activeTimeEntryId || !user) {
+  const handleEndShift = useCallback((manualEndTime?: Date) => {
+    const entryId = activeTimeEntryId || recoveryData?.activeTimeEntryId;
+    if (!entryId || !user) {
       stopTimer();
       return;
     }
 
-    const activeEntry = timeEntries?.find(e => e.id === activeTimeEntryId);
-    const shiftId = activeEntry?.shiftId || selectedShiftId;
+    const allEntries = timeEntries || [];
+    const entryToUpdate = allEntries.find(e => e.id === entryId);
+    
+    let shiftId = entryToUpdate?.shiftId || selectedShiftId || recoveryData?.shiftId;
     if (!shiftId) {
         stopTimer();
         return;
@@ -195,17 +268,14 @@ export default function TimeTrackingPage() {
     const shift = shifts.find(s => s.id === shiftId);
     if (!shift) return;
   
-    const now = new Date();
-    const endTimeStr = format(now, 'HH:mm');
-    const today = format(now, 'yyyy-MM-dd');
+    const endDateTime = manualEndTime || new Date();
+    const endTimeStr = format(endDateTime, 'HH:mm');
+    const today = format(endDateTime, 'yyyy-MM-dd');
   
-    const entryToUpdate = activeEntry || {
-        date: today,
-        startTime: format(new Date(now.getTime() - elapsedTime * 1000), 'HH:mm'),
-    };
+    const startTimeForCalc = entryToUpdate?.startTime || format(new Date(recoveryData!.startTimeISO), 'HH:mm');
+    const startDateForCalc = entryToUpdate?.date || format(new Date(recoveryData!.startTimeISO), 'yyyy-MM-dd');
   
-    const startDateTime = parseISO(`${entryToUpdate.date}T${entryToUpdate.startTime}:00`);
-    const endDateTime = now;
+    const startDateTime = parseISO(`${startDateForCalc}T${startTimeForCalc}:00`);
     const totalDuration = differenceInMinutes(endDateTime, startDateTime);
   
     const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
@@ -214,11 +284,12 @@ export default function TimeTrackingPage() {
       overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
     }
   
-    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
+    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
     updateDocumentNonBlocking(entryRef, {
       endTime: endTimeStr,
       duration: totalDuration,
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+      ...(entryToUpdate?.location === 'Mission' && {location: 'Mission (Terminée)'})
     });
   
     toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
@@ -232,29 +303,26 @@ export default function TimeTrackingPage() {
     }
 
     stopTimer();
-  }, [activeTimeEntryId, user, stopTimer, timeEntries, selectedShiftId, firestore, elapsedTime, t, toast]);
-
+  }, [activeTimeEntryId, user, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData]);
 
   const handleGeofenceEnter = useCallback(async () => {
-    if (isShiftActive || !firestore || !user) return; // Don't start if already active or services unavailable
+    if (isShiftActive || !firestore || !user) return;
 
     const now = new Date();
     const currentHour = now.getHours();
     const todayStr = format(now, 'yyyy-MM-dd');
     let shiftToStart: Shift | undefined;
 
-    // Time Matching
-    if (currentHour >= 5 && currentHour < 7) { // 05:00 - 06:59
+    if (currentHour >= 5 && currentHour < 7) { 
         shiftToStart = shifts.find(s => s.id === 'morningA');
-    } else if (currentHour >= 13 && currentHour < 15) { // 13:00 - 14:59
+    } else if (currentHour >= 13 && currentHour < 15) {
         shiftToStart = shifts.find(s => s.id === 'afternoon');
-    } else if (currentHour >= 21 && currentHour < 23) { // 21:00 - 22:59
+    } else if (currentHour >= 21 && currentHour < 23) { 
         shiftToStart = shifts.find(s => s.id === 'night');
     }
 
     if (!shiftToStart) return;
 
-    // Anti-Duplication Check
     const q = query(
         collection(firestore, 'users', user.uid, 'timeEntries'),
         where('date', '==', todayStr),
@@ -262,11 +330,9 @@ export default function TimeTrackingPage() {
     );
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-        console.log("Auto-start prevented: Shift already exists for today.");
         return;
     }
 
-    // All checks passed, auto-start shift
     const newEntryId = await startShift(shiftToStart, profile?.workplace?.address || 'Workplace');
     if (newEntryId && Notification.permission === 'granted') {
         new Notification('OM Suivi: Pointage Automatique', {
@@ -278,9 +344,31 @@ export default function TimeTrackingPage() {
 
 
   const handleGeofenceExit = useCallback(() => {
-    if (!isShiftActive) return;
-    handleEndShift();
-  }, [isShiftActive, handleEndShift]);
+    if (!isShiftActive || !activeTimeEntryId || !user || !firestore) return;
+    
+    const entry = timeEntries?.find(e => e.id === activeTimeEntryId);
+    if (!entry) return;
+
+    const shift = shifts.find(s => s.id === entry.shiftId);
+    if (!shift) return;
+
+    const shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}:00`);
+    const now = new Date();
+
+    if (now < shiftEndDateTime) {
+      // Switch to mission mode
+      const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
+      updateDocumentNonBlocking(entryRef, { location: 'Mission' });
+      
+      if (Notification.permission === 'granted') {
+          new Notification(t('missionMode.title'), { body: t('missionMode.body') });
+      }
+      toast({ title: t('missionMode.title'), description: t('missionMode.body') });
+    } else {
+      // Standard end of shift
+      handleEndShift();
+    }
+  }, [isShiftActive, activeTimeEntryId, user, firestore, timeEntries, t, toast, handleEndShift]);
 
 
   useEffect(() => {
@@ -298,6 +386,17 @@ export default function TimeTrackingPage() {
                 );
                 const currentlyInZone = distance * 1000 <= profile.workplace.radius;
 
+                // Update last seen in local storage if shift is active
+                if (isShiftActive) {
+                    const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+                    if (savedStateJSON) {
+                        const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
+                        savedState.lastSeenISO = new Date().toISOString();
+                        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
+                    }
+                }
+                
+                // Geofence transition logic
                 if (lastCheckedZoneStatus !== null && lastCheckedZoneStatus !== currentlyInZone) {
                     if (currentlyInZone) {
                         handleGeofenceEnter();
@@ -306,15 +405,27 @@ export default function TimeTrackingPage() {
                     }
                 }
                 setLastCheckedZoneStatus(currentlyInZone);
+                
+                // Mission auto-stop logic
+                if (isShiftActive && !currentlyInZone && activeEntry?.location === 'Mission') {
+                    const shift = shifts.find(s => s.id === activeEntry.shiftId);
+                    if (shift) {
+                        const shiftEndDateTime = parseISO(`${activeEntry.date}T${shift.endTime}:00`);
+                        const bufferEndDateTime = addHours(shiftEndDateTime, 1);
+                        if (new Date() > bufferEndDateTime) {
+                            handleEndShift();
+                        }
+                    }
+                }
             },
             (error) => { console.error("Periodic location check failed:", error); },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     };
 
-    const intervalId = setInterval(monitorLocation, 60000); // Check every minute
+    const intervalId = setInterval(monitorLocation, 60000);
     return () => clearInterval(intervalId);
-  }, [profile, lastCheckedZoneStatus, handleGeofenceEnter, handleGeofenceExit]);
+  }, [profile, isShiftActive, lastCheckedZoneStatus, activeEntry, handleGeofenceEnter, handleGeofenceExit, handleEndShift]);
   
   
   const handleManualStart = async () => {
@@ -364,6 +475,8 @@ export default function TimeTrackingPage() {
     const s = (seconds % 60).toString().padStart(2, '0');
     return `${h}:${m}:${s}`;
   };
+  
+  const [status, setStatus] = useState<'idle' | 'in_progress'>('idle');
 
   const currentStatus = useMemo(() => {
     switch(status) {
@@ -464,7 +577,7 @@ export default function TimeTrackingPage() {
             <Button
                 className="w-full h-16 text-xl"
                 variant="destructive"
-                onClick={handleEndShift}
+                onClick={() => handleEndShift()}
                 disabled={!isShiftActive}
             >
                 {t('endShiftButton')}
@@ -548,7 +661,23 @@ export default function TimeTrackingPage() {
               </AlertDialogFooter>
           </AlertDialogContent>
       </AlertDialog>
-
+      
+      <AlertDialog open={!!recoveryData} onOpenChange={(open) => !open && setRecoveryData(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('disconnection.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('disconnection.description', { time: recoveryData ? format(new Date(recoveryData.lastSeenISO), 'p') : '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleRecoveryContinue}>{t('disconnection.cancelButton')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRecoveryEndShift}>{t('disconnection.confirmButton')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+    
