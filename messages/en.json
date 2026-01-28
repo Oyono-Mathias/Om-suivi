@@ -145,7 +145,7 @@
     "workplaceSetTitle": "Workplace set!",
     "workplaceSetDescription": "Your work zone has been successfully saved.",
     "confirmWorkplaceTitle": "Are you currently at your workplace?",
-    "confirmWorkplaceDescription": "This location (Lat: {latitude}, Lon: {longitude}) will be used to track your shifts.",
+    "confirmWorkplaceDescription": "This location ({locationDetails}) will be used to track your shifts.",
     "cancelButton": "Cancel",
     "confirmButton": "Confirm Location",
     "updateDisabledTooltip": "You cannot change your work zone while working. Please end your shift first."

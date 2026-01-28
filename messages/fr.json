@@ -145,7 +145,7 @@
     "workplaceSetTitle": "Lieu de travail défini !",
     "workplaceSetDescription": "Votre zone de travail a été enregistrée avec succès.",
     "confirmWorkplaceTitle": "Êtes-vous actuellement sur votre lieu de travail ?",
-    "confirmWorkplaceDescription": "Cet emplacement (Lat: {latitude}, Lon: {longitude}) sera utilisé pour suivre vos quarts de travail.",
+    "confirmWorkplaceDescription": "Cet emplacement ({locationDetails}) sera utilisé pour suivre vos quarts de travail.",
     "cancelButton": "Annuler",
     "confirmButton": "Confirmer l'emplacement",
     "updateDisabledTooltip": "Vous ne pouvez pas changer votre zone de travail pendant que vous travaillez. Veuillez d'abord terminer votre service."

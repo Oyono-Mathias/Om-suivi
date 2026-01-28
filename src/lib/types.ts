@@ -23,6 +23,7 @@ export interface Workplace {
   latitude: number;
   longitude: number;
   radius: number;
+  address?: string;
 }
 
 export interface Profile {

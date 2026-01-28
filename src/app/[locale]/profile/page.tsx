@@ -53,7 +53,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const { isShiftActive } = useShift();
 
-  const [location, setLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [location, setLocation] = useState<{latitude: number, longitude: number, address?: string} | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [showLocationConfirm, setShowLocationConfirm] = useState(false);
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
@@ -115,14 +115,7 @@ export default function ProfilePage() {
   function onSubmit(values: z.infer<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
     
-    const updatedProfileData = {
-      ...values,
-      id: user.uid,
-      email: user.email || '',
-      role: profile?.role || 'user',
-    };
-    
-    setDocumentNonBlocking(userProfileRef, updatedProfileData, { merge: true });
+    setDocumentNonBlocking(userProfileRef, values, { merge: true });
     
     toast({
       title: t('settingsUpdatedTitle'),
@@ -133,13 +126,28 @@ export default function ProfilePage() {
   const handleSetWorkplace = () => {
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        setIsLocating(false);
-        setShowLocationConfirm(true);
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+          if (!response.ok) throw new Error('Failed to fetch address');
+          const data = await response.json();
+          
+          setLocation({
+            latitude: latitude,
+            longitude: longitude,
+            address: data.display_name
+          });
+        } catch (error) {
+            console.error("Reverse geocoding failed:", error);
+            setLocation({
+                latitude: latitude,
+                longitude: longitude,
+            });
+        } finally {
+            setIsLocating(false);
+            setShowLocationConfirm(true);
+        }
       },
       () => {
         toast({
@@ -159,6 +167,7 @@ export default function ProfilePage() {
       latitude: location.latitude,
       longitude: location.longitude,
       radius: 200, // 200m radius
+      address: location.address,
     };
     
     const workplaceUpdateLogCollectionRef = collection(firestore, 'users', user.uid, 'workplaceUpdateLogs');
@@ -198,6 +207,10 @@ export default function ProfilePage() {
       </div>
     );
   }
+  
+  const locationDetails = location?.address
+    ? location.address
+    : `Lat: ${location?.latitude.toFixed(4)}, Lon: ${location?.longitude.toFixed(4)}`;
 
   const workZoneButton = (
     <Button 
@@ -282,7 +295,7 @@ export default function ProfilePage() {
               {profile?.workplace && (
                 <div className="rounded-lg border bg-muted p-4 text-center">
                     <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-                    <p className="mt-2 text-sm font-semibold">{t('workplaceSet')}</p>
+                    <p className="mt-2 font-semibold">{profile.workplace.address || t('workplaceSet')}</p>
                     <p className="text-xs text-muted-foreground">
                         {t('workplaceLat')}: {profile.workplace.latitude.toFixed(4)}, {t('workplaceLon')}: {profile.workplace.longitude.toFixed(4)}
                     </p>
@@ -373,7 +386,7 @@ export default function ProfilePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('confirmWorkplaceTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('confirmWorkplaceDescription', {latitude: location?.latitude.toFixed(4), longitude: location?.longitude.toFixed(4)})}
+              {t('confirmWorkplaceDescription', {locationDetails})}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
