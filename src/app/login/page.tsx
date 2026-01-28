@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { initiateAnonymousSignIn, useAuth, useUser } from '@/firebase';
@@ -12,20 +12,17 @@ export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
-  if (isUserLoading) {
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [user, router]);
+
+  if (isUserLoading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin" />
-      </div>
-    );
-  }
-
-  if (user) {
-    router.replace('/');
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <Loader2 className="h-10 w-10 animate-spin" />
-            <p className="ml-2">Redirecting...</p>
+        {user && <p className="ml-2">Redirecting...</p>}
       </div>
     );
   }
