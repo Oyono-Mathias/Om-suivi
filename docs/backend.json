@@ -192,7 +192,6 @@
   },
   "auth": {
     "providers": [
-      "google",
       "email-password"
     ]
   },
