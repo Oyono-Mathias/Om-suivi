@@ -2,7 +2,7 @@
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
-    "description": "Connectez-vous ou créez un compte pour suivre votre temps de travail.",
+    "description": "Connectez-vous ou créez un compte pour commencer le suivi de votre temps.",
     "loginTab": "Se connecter",
     "registerTab": "S'inscrire",
     "emailLabel": "Email",
@@ -217,4 +217,3 @@
     "description": "La page que vous recherchez n'existe pas."
   }
 }
-

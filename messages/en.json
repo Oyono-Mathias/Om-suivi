@@ -2,7 +2,7 @@
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
-    "description": "Log in or create an account to track your work time.",
+    "description": "Log in or create an account to start tracking your work time.",
     "loginTab": "Log In",
     "registerTab": "Sign Up",
     "emailLabel": "Email",
@@ -217,4 +217,3 @@
     "description": "The page you are looking for does not exist."
   }
 }
-

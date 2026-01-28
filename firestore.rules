@@ -7,72 +7,43 @@ service cloud.firestore {
     // Helper Functions
     // --------------------------------------------------------------------
 
-    /**
-     * Checks if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the authenticated user's UID matches the given userId from the path.
-     * This is the primary function for enforcing user ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * Verifies that a document exists before an update or delete operation.
-     * This prevents operations on non-existent documents.
-     */
     function isExistingDoc() {
       return resource != null;
     }
 
-    /**
-     * A composite function that checks for both ownership and document existence.
-     * Used for all state-changing operations (update, delete) on owned documents.
-     */
     function isExistingOwner(userId) {
       return isOwner(userId) && isExistingDoc();
     }
     
-    /**
-     * On create, validates that the incoming document's userProfileId field
-     * matches the owner's userId from the path, creating a secure link.
-     */
     function hasValidUserProfileIdOnCreate(userId) {
       return request.resource.data.userProfileId == userId;
     }
     
-    /**
-     * On update, ensures the userProfileId field cannot be changed,
-     * preventing a document from being reassigned to another user.
-     */
     function isUserProfileIdImmutable() {
       return request.resource.data.userProfileId == resource.data.userProfileId;
     }
     
-    /**
-     * Checks if the authenticated user is a member of an existing team.
-     * Used for read, update, and delete operations.
-     */
     function isTeamMember() {
       return isSignedIn() && request.auth.uid in resource.data.memberIds;
     }
 
-    /**
-     * Retrieves the role of a given user from their profile.
-     * Defaults to 'user' if the role is not set.
-     */
     function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)/userProfiles/$(userId)).data.get('role', 'user');
+      // It's safer to check for document existence before accessing data
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      if (userDoc.data != null) {
+        return userDoc.data.get('role', 'user');
+      }
+      return 'user';
     }
 
-    /**
-     * Checks if the currently authenticated user has the 'admin' role.
-     */
     function isAdmin() {
       return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
     }
@@ -82,24 +53,15 @@ service cloud.firestore {
     // --------------------------------------------------------------------
 
     match /users/{userId} {
-      allow read, write: if false;
-
-      /**
-       * @description Secures user profiles. Admins can read any profile,
-       *              while users can only manage their own.
-       * @path        /users/{userId}/userProfiles/{userProfileId}
-       */
-      match /userProfiles/{userProfileId} {
-        allow get: if isOwner(userId) || isAdmin();
-        allow list: if isAdmin();
-        allow create: if isOwner(userId) && request.resource.data.id == userProfileId;
-        allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
-        allow delete: if isExistingOwner(userId);
-      }
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
+      allow delete: if false; // Profiles should not be deleted by users.
 
       /**
        * @description Secures time entries. Admins can read all entries,
-       *              but users can only create/edit their own.
+       *              but users can only manage their own.
        * @path        /users/{userId}/timeEntries/{timeEntryId}
        */
       match /timeEntries/{timeEntryId} {
@@ -108,57 +70,16 @@ service cloud.firestore {
         allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
         allow delete: if isExistingOwner(userId);
       }
-
-      /**
-       * @description Secures reports. Admins can read all reports,
-       *              but users can only manage their own.
-       * @path        /users/{userId}/reports/{reportId}
-       */
-      match /reports/{reportId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
-        allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
-        allow delete: if isExistingOwner(userId);
-      }
-
-      /**
-       * @description Secures reminders. Admins can read all reminders,
-       *              but users can only manage their own.
-       * @path        /users/{userId}/reminders/{reminderId}
-       */
-      match /reminders/{reminderId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
-        allow update: if isExistingOwner(userId) && isUserProfileIdImmutable();
-        allow delete: if isExistingOwner(userId);
-      }
-      
-      /**
-       * @description Secures workplace audit logs. Entries are immutable.
-       *              Admins can read all logs.
-       * @path        /users/{userId}/workplaceUpdateLogs/{logId}
-       */
-      match /workplaceUpdateLogs/{logId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
-        allow update, delete: if false; // Logs are immutable
-      }
     }
 
     // --------------------------------------------------------------------
     // Teams Collection
     // --------------------------------------------------------------------
 
-    /**
-     * @description Secures team documents. Only admins can create, update, or delete teams.
-     *              Team members and admins can view team details.
-     * @path        /teams/{teamId}
-     */
     match /teams/{teamId} {
       allow get: if isTeamMember() || isAdmin();
-      allow list: if isSignedIn(); // Client-side queries must enforce further filtering
+      allow list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
   }
 }
-

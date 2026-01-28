@@ -32,7 +32,8 @@ export interface Profile {
   role?: 'admin' | 'user';
   monthlyBaseSalary: number;
   currency: string;
-  reminders: {
+  createdAt: any; // serverTimestamp
+  reminders?: {
     enabled: boolean;
     time: string; // e.g., "17:00"
   };
@@ -55,4 +56,3 @@ export interface TeamMember {
   totalHours: number;
   overtimeHours: number;
 }
-
