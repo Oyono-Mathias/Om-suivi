@@ -1,10 +1,8 @@
-// Your web app's Firebase configuration
 export const firebaseConfig = {
-  apiKey: "AIzaSyBjPbfMinRAhf6yWUNVHNpxYq4rkSGCLz8",
-  authDomain: "formafrique-17f82.firebaseapp.com",
-  projectId: "formafrique-17f82",
-  storageBucket: "formafrique-17f82.firebasestorage.app",
-  messagingSenderId: "600847662781",
-  appId: "1:600847662781:web:46e7792684854a7a65c1d4",
-  measurementId: "G-5PR7SP2MD9"
+  "projectId": "studio-3929362902-1f7dc",
+  "appId": "1:777892671254:web:08d8a34851c7a749b3aa37",
+  "apiKey": "AIzaSyClosHZ730ak_5a0Y0nlV7aU9TXqWANoO0",
+  "authDomain": "studio-3929362902-1f7dc.firebaseapp.com",
+  "measurementId": "",
+  "messagingSenderId": "777892671254"
 };

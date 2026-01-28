@@ -1,26 +1,26 @@
 'use client';
 
-import { ReactNode, useMemo } from 'react';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import React, { useMemo, type ReactNode } from 'react';
+import { FirebaseProvider } from '@/firebase/provider';
+import { initializeFirebase } from '@/firebase';
 
-import { firebaseConfig } from './config';
-import { FirebaseProvider } from './provider';
+interface FirebaseClientProviderProps {
+  children: ReactNode;
+}
 
-export function FirebaseClientProvider({ children }: { children: ReactNode }) {
-  const firebase = useMemo(() => {
-    // A quick check to ensure the placeholder API key is replaced.
-    // This will prevent the app from crashing.
-    if (firebaseConfig.apiKey.includes('YOUR_KEY_IS_INCOMPLETE')) {
-      console.error('Firebase API key is incomplete. Please update src/firebase/config.ts');
-      return { app: null, auth: null, firestore: null };
-    }
-    const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const firestore = getFirestore(app);
-    return { app, auth, firestore };
-  }, []);
+export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  const firebaseServices = useMemo(() => {
+    // Initialize Firebase on the client side, once per component mount.
+    return initializeFirebase();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
-  return <FirebaseProvider value={firebase}>{children}</FirebaseProvider>;
+  return (
+    <FirebaseProvider
+      firebaseApp={firebaseServices.firebaseApp}
+      auth={firebaseServices.auth}
+      firestore={firebaseServices.firestore}
+    >
+      {children}
+    </FirebaseProvider>
+  );
 }
