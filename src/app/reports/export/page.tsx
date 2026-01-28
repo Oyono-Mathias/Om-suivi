@@ -29,6 +29,8 @@ export default function ExportReportPage() {
 
         let overtime = 0;
         let payout = 0;
+        
+        const hourlyRate = profile.monthlyBaseSalary > 0 ? profile.monthlyBaseSalary / 173.33 : 0;
 
         sorted.forEach(entry => {
             overtime += entry.overtimeDuration;
@@ -37,7 +39,7 @@ export default function ExportReportPage() {
                 let multiplier = profile.overtimeRates.weekday;
                 if (dayOfWeek === 0) multiplier = profile.overtimeRates.sunday;
                 if (dayOfWeek === 6) multiplier = profile.overtimeRates.saturday;
-                payout += (entry.overtimeDuration / 60) * profile.hourlyRate * multiplier;
+                payout += (entry.overtimeDuration / 60) * hourlyRate * multiplier;
             }
         });
 

@@ -18,8 +18,7 @@ export interface TimeEntry {
 
 export interface Profile {
   name: string;
-  baseHours: number; // weekly
-  hourlyRate: number;
+  monthlyBaseSalary: number;
   currency: string;
   overtimeRates: {
     weekday: number;

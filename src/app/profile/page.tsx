@@ -28,8 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const profileSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  baseHours: z.coerce.number().min(1, { message: "Base hours must be positive." }),
-  hourlyRate: z.coerce.number().min(1, { message: "Hourly rate must be positive." }),
+  monthlyBaseSalary: z.coerce.number().min(1, { message: "Base salary must be positive." }),
   currency: z.string().min(1, { message: "Currency symbol is required."}),
   overtimeRates: z.object({
     weekday: z.coerce.number().min(1, { message: "Rate must be at least 1." }),
@@ -94,44 +93,34 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="baseHours"
+                  name="monthlyBaseSalary"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Base Weekly Hours</FormLabel>
+                      <FormLabel>Monthly Base Salary</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g., 40" {...field} />
+                        <Input type="number" placeholder="e.g., 260000" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        Your hourly rate is automatically calculated (Salary / 173.33).
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="hourlyRate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Base Hourly Rate</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 1500" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-               <FormField
+                 <FormField
                   control={form.control}
                   name="currency"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Currency Symbol</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., FCFA" {...field} className="w-auto" />
+                        <Input placeholder="e.g., FCFA" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
             </CardContent>
           </Card>
 
@@ -148,9 +137,9 @@ export default function ProfilePage() {
                 name="overtimeRates.weekday"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Weekdays</FormLabel>
+                    <FormLabel>Weekdays (e.g. 1.2)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 1.25" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g., 1.20" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -161,7 +150,7 @@ export default function ProfilePage() {
                 name="overtimeRates.saturday"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Saturdays</FormLabel>
+                    <FormLabel>Saturdays (e.g. 1.5)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 1.5" {...field} />
                     </FormControl>
@@ -174,7 +163,7 @@ export default function ProfilePage() {
                 name="overtimeRates.sunday"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sundays</FormLabel>
+                    <FormLabel>Sundays (e.g. 2.0)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 2.0" {...field} />
                     </FormControl>

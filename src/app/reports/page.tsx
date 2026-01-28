@@ -41,6 +41,8 @@ export default function ReportsPage() {
     let totalOvertimeMinutes = 0;
     let estimatedPayout = 0;
 
+    const hourlyRate = profile.monthlyBaseSalary > 0 ? profile.monthlyBaseSalary / 173.33 : 0;
+
     entries.forEach(entry => {
         totalMinutes += entry.duration;
         totalOvertimeMinutes += entry.overtimeDuration;
@@ -53,7 +55,7 @@ export default function ReportsPage() {
             } else if (dayOfWeek === 6) { // Saturday
                 multiplier = profile.overtimeRates.saturday;
             }
-            estimatedPayout += (entry.overtimeDuration / 60) * profile.hourlyRate * multiplier;
+            estimatedPayout += (entry.overtimeDuration / 60) * hourlyRate * multiplier;
         }
     });
 
