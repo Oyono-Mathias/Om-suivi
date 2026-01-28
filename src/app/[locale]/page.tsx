@@ -151,6 +151,11 @@ export default function TimeTrackingPage() {
 
                     if (distance * 1000 > profile.workplace!.radius) {
                         setShowGeofenceAlert(true);
+                         if (Notification.permission === 'granted') {
+                            new Notification(t('geoFenceAlertTitle'), {
+                                body: t('geoFenceAlertDescription'),
+                            });
+                        }
                     }
                 }
             );
@@ -158,7 +163,7 @@ export default function TimeTrackingPage() {
 
         return () => clearInterval(intervalId);
     }
-  }, [status, profile, user]);
+  }, [status, profile, user, t]);
 
   const handleStart = async () => {
     if (!selectedShiftId) {
@@ -348,7 +353,7 @@ export default function TimeTrackingPage() {
   }
 
   return (
-    <div className="pb-48 md:pb-24 space-y-6">
+    <div className="space-y-6 pb-24 md:pb-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
@@ -388,7 +393,7 @@ export default function TimeTrackingPage() {
         </CardContent>
       </Card>
       
-      <div className="space-y-2 fixed bottom-20 md:bottom-4 left-4 right-4 z-10 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto bg-background/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none -mx-4 px-4 pt-4 md:p-0 md:m-0 rounded-t-lg">
+      <div className="space-y-2 md:relative md:left-auto md:right-auto md:bottom-auto md:z-auto bg-background/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none rounded-t-lg">
         <div className="text-center text-sm text-muted-foreground mb-2 px-4 md:px-0">
           <span className='font-medium'>{t('currentLocationLabel')}:</span> {isFetchingLocation ? tShared('loading') : (currentLocationAddress || t('locationUnavailable'))}
         </div>
@@ -497,7 +502,7 @@ export default function TimeTrackingPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogAction onClick={handleGoOnMission} className="bg-blue-600 hover:bg-blue-700">{t('onMissionButton')}</AlertDialogAction>
-                <AlertDialogAction onClick={handleEndShift}>{t('endShiftButton')}</AlertDialogAction>
+                <AlertDialogAction onClick={handleEndShift}>{t('endShiftButtonConfirm')}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
