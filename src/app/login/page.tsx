@@ -6,11 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { initiateGoogleSignIn, useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -28,7 +31,13 @@ export default function LoginPage() {
   }
   
   const handleGoogleSignIn = () => {
-    initiateGoogleSignIn(auth);
+    initiateGoogleSignIn(auth, (error: FirebaseError) => {
+        toast({
+            variant: "destructive",
+            title: "Erreur de connexion",
+            description: `Impossible de se connecter avec Google. (${error.code})`,
+        });
+    });
   };
 
   const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (

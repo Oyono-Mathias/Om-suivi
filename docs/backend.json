@@ -192,7 +192,8 @@
   },
   "auth": {
     "providers": [
-      "google"
+      "google",
+      "email-password"
     ]
   },
   "firestore": {
