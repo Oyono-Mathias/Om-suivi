@@ -6,6 +6,8 @@ export type Shift = {
   endTime: string; // "HH:mm"
 };
 
+export type Profession = 'machinist' | 'storekeeper' | 'deliveryDriver' | 'chauffeur' | 'securityAgent' | 'other';
+
 export interface TimeEntry {
   id: string;
   date: string;
@@ -17,6 +19,7 @@ export interface TimeEntry {
   shiftId: string;
   isPublicHoliday?: boolean;
   userProfileId: string;
+  profession?: Profession;
 }
 
 export interface Workplace {
@@ -26,14 +29,12 @@ export interface Workplace {
   address?: string;
 }
 
-export type Profession = 'storekeeper' | 'deliveryDriver' | 'machinist' | 'other';
-
 export interface Profile {
   id: string;
   email: string;
   name: string;
   role?: 'admin' | 'user';
-  profession?: Profession;
+  profession: Profession;
   monthlyBaseSalary: number;
   currency: string;
   createdAt: any; // serverTimestamp
@@ -62,7 +63,7 @@ export interface TeamMember {
 }
 
 export interface Course {
-  id: string;
+  id:string;
   title: string;
   category: string;
   description: string;

@@ -32,9 +32,11 @@
           "type": "string",
           "description": "The user's job title.",
           "enum": [
+            "machinist",
             "storekeeper",
             "deliveryDriver",
-            "machinist",
+            "chauffeur",
+            "securityAgent",
             "other"
           ]
         },
@@ -94,6 +96,18 @@
         "notes": {
           "type": "string",
           "description": "Optional notes associated with the time entry."
+        },
+        "profession": {
+          "type": "string",
+          "description": "The user's profession at the time of entry.",
+          "enum": [
+            "machinist",
+            "storekeeper",
+            "deliveryDriver",
+            "chauffeur",
+            "securityAgent",
+            "other"
+          ]
         }
       },
       "required": [
@@ -193,4 +207,3 @@
     ]
   }
 }
-    

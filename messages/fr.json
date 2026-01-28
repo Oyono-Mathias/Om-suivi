@@ -12,10 +12,13 @@
     "registerButton": "Créer un compte",
     "nameLabel": "Nom complet",
     "namePlaceholder": "Mathias Oyono",
+    "professionLabel": "Profession",
+    "professionPlaceholder": "Sélectionnez une profession",
     "nameMinLengthError": "Le nom doit contenir au moins 2 caractères.",
     "passwordMinLengthError": "Le mot de passe doit contenir au moins 6 caractères.",
     "emailInvalidError": "Adresse e-mail invalide.",
     "passwordRequiredError": "Le mot de passe est requis.",
+    "professionRequiredError": "La profession est requise.",
     "loginErrorTitle": "Erreur de connexion",
     "loginErrorInvalid": "Email ou mot de passe incorrect.",
     "loginErrorGeneric": "Une erreur s'est produite.",
@@ -93,7 +96,7 @@
       "confirmButton": "Oui, terminer",
       "cancelButton": "Non, je travaille encore"
     },
-    "exceptionalOvertimeLabel": "Heures Sup Exceptionnelles"
+    "exceptionalOvertimeLabel": "Autoriser Heures Supplémentaires"
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
@@ -126,9 +129,11 @@
     "professionLabel": "Profession",
     "professionPlaceholder": "Sélectionnez une profession",
     "professions": {
+      "machinist": "Machiniste",
       "storekeeper": "Magasinier",
       "deliveryDriver": "Livreur",
-      "machinist": "Machiniste",
+      "chauffeur": "Chauffeur",
+      "securityAgent": "Agent de Sécurité",
       "other": "Autre"
     },
     "remindersTitle": "Rappels",
@@ -250,4 +255,3 @@
     "description": "La page que vous recherchez n'existe pas."
   }
 }
-    

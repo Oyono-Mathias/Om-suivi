@@ -33,9 +33,16 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from '@/navigation';
-import { AtSign, Loader2, Lock, User as UserIcon } from 'lucide-react';
+import { AtSign, Briefcase, Loader2, Lock, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
 import {
@@ -46,9 +53,12 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useTranslations } from 'next-intl';
+import type { Profession } from '@/lib/types';
+
 
 export default function AuthPage() {
   const t = useTranslations('LoginPage');
+  const tProfile = useTranslations('ProfilePage');
   const auth = useAuth();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
@@ -61,6 +71,14 @@ export default function AuthPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
+  const professions: { value: Profession, label: string }[] = [
+    { value: 'machinist', label: tProfile('professions.machinist') },
+    { value: 'storekeeper', label: tProfile('professions.storekeeper') },
+    { value: 'deliveryDriver', label: tProfile('professions.deliveryDriver') },
+    { value: 'chauffeur', label: tProfile('professions.chauffeur') },
+    { value: 'securityAgent', label: tProfile('professions.securityAgent') },
+    { value: 'other', label: tProfile('professions.other') },
+  ];
 
   const loginSchema = z.object({
     email: z.string().email({ message: t('emailInvalidError') }),
@@ -71,6 +89,9 @@ export default function AuthPage() {
     name: z.string().min(2, { message: t('nameMinLengthError') }),
     email: z.string().email({ message: t('emailInvalidError') }),
     password: z.string().min(6, { message: t('passwordMinLengthError') }),
+    profession: z.enum(['machinist', 'storekeeper', 'deliveryDriver', 'chauffeur', 'securityAgent', 'other'], {
+      required_error: t('professionRequiredError'),
+    }),
   });
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
@@ -148,6 +169,7 @@ export default function AuthPage() {
         name: values.name,
         email: values.email,
         role: 'user',
+        profession: values.profession,
         monthlyBaseSalary: 0,
         currency: 'FCFA',
         createdAt: serverTimestamp(),
@@ -251,7 +273,7 @@ export default function AuthPage() {
             </TabsContent>
             <TabsContent value="register">
               <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-6">
+                <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
                   <FormField
                     control={registerForm.control}
                     name="name"
@@ -279,6 +301,31 @@ export default function AuthPage() {
                           <FormControl>
                             <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10 h-12 text-base" />
                           </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={registerForm.control}
+                    name="profession"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('professionLabel')}</FormLabel>
+                        <div className="relative">
+                           <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                           <FormControl>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger className="pl-10 h-12 text-base">
+                                        <SelectValue placeholder={t('professionPlaceholder')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {professions.map(p => (
+                                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormControl>
                         </div>
                         <FormMessage />
                       </FormItem>

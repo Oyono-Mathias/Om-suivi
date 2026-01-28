@@ -219,7 +219,7 @@ export default function TimeTrackingPage() {
   }, [isShiftActive, profile?.workplace]);
 
   const startShift = useCallback(async (shift: Shift, locationString?: string) => {
-    if (!user || !firestore) return null;
+    if (!user || !firestore || !profile) return null;
 
     const now = new Date();
     const startTimeStr = format(now, 'HH:mm');
@@ -233,6 +233,7 @@ export default function TimeTrackingPage() {
         location: locationString,
         shiftId: shift.id,
         userProfileId: user.uid,
+        profession: profile.profession,
     };
 
     try {
@@ -250,12 +251,12 @@ export default function TimeTrackingPage() {
         console.error("Failed to start shift:", error);
         return null;
     }
-  }, [user, firestore, setIsShiftActive, t, toast]);
+  }, [user, firestore, profile, setIsShiftActive, t, toast]);
 
 
   const handleEndShift = useCallback((manualEndTime?: Date, exceptionalOvertime: boolean = false) => {
     const entryId = activeTimeEntryId || recoveryData?.activeTimeEntryId;
-    if (!entryId || !user) {
+    if (!entryId || !user || !profile) {
       stopTimer();
       return;
     }
@@ -285,7 +286,8 @@ export default function TimeTrackingPage() {
     const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
     let overtimeDuration = 0;
     
-    const shouldCalculateOvertime = profile?.profession !== 'machinist' || (profile?.profession === 'machinist' && exceptionalOvertime);
+    const isEligibleForAutoOvertime = ['storekeeper', 'deliveryDriver', 'chauffeur'].includes(profile.profession);
+    const shouldCalculateOvertime = isEligibleForAutoOvertime || (profile.profession === 'machinist' && exceptionalOvertime);
 
     if (shouldCalculateOvertime && endDateTime > shiftEndDateTime) {
       overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
@@ -310,10 +312,10 @@ export default function TimeTrackingPage() {
     }
 
     stopTimer();
-  }, [activeTimeEntryId, user, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, profile]);
+  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData]);
 
   const handleGeofenceEnter = useCallback(async () => {
-    if (isShiftActive || !firestore || !user) return;
+    if (isShiftActive || !firestore || !user || !profile) return;
 
     const now = new Date();
     const currentHour = now.getHours();
@@ -347,11 +349,11 @@ export default function TimeTrackingPage() {
             icon: '/icons/icon-192x192.png',
         });
     }
-  }, [isShiftActive, firestore, user, profile?.workplace, startShift]);
+  }, [isShiftActive, firestore, user, profile, startShift]);
 
 
   const handleGeofenceExit = useCallback(() => {
-    if (!isShiftActive || !activeTimeEntryId || !user || !firestore) return;
+    if (!isShiftActive || !activeTimeEntryId || !user || !firestore || !profile) return;
     
     const entry = timeEntries?.find(e => e.id === activeTimeEntryId);
     if (!entry) return;
@@ -359,11 +361,23 @@ export default function TimeTrackingPage() {
     const shift = shifts.find(s => s.id === entry.shiftId);
     if (!shift) return;
 
+    if (['deliveryDriver', 'chauffeur'].includes(profile.profession)) {
+        // For drivers, always switch to Mission mode and never auto-stop on exit.
+        const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
+        updateDocumentNonBlocking(entryRef, { location: 'Mission' });
+        
+        if (Notification.permission === 'granted') {
+            new Notification(t('missionMode.title'), { body: t('missionMode.body') });
+        }
+        toast({ title: t('missionMode.title'), description: t('missionMode.body') });
+        return;
+    }
+
     const shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}:00`);
     const now = new Date();
 
     if (now < shiftEndDateTime) {
-      // Switch to mission mode
+      // For other professions, switch to mission mode if exiting before shift end.
       const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
       updateDocumentNonBlocking(entryRef, { location: 'Mission' });
       
@@ -372,10 +386,10 @@ export default function TimeTrackingPage() {
       }
       toast({ title: t('missionMode.title'), description: t('missionMode.body') });
     } else {
-      // Standard end of shift
+      // Standard auto-stop if exiting after shift end.
       handleEndShift();
     }
-  }, [isShiftActive, activeTimeEntryId, user, firestore, timeEntries, t, toast, handleEndShift]);
+  }, [isShiftActive, activeTimeEntryId, user, firestore, profile, timeEntries, t, toast, handleEndShift]);
 
 
   useEffect(() => {
@@ -664,7 +678,8 @@ export default function TimeTrackingPage() {
       
       <ManualEntryDialog 
         isOpen={isManualEntryOpen} 
-        onOpenChange={setManualEntryOpen} 
+        onOpenChange={setManualEntryOpen}
+        profile={profile}
       />
 
        <AlertDialog open={showLocationConfirm} onOpenChange={setShowLocationConfirm}>
@@ -701,4 +716,3 @@ export default function TimeTrackingPage() {
     </div>
   );
 }
-    

@@ -68,7 +68,7 @@ export default function ProfilePage() {
   
   const profileSchema = z.object({
     name: z.string().min(2, { message: t('nameMinLengthError') }),
-    profession: z.enum(['storekeeper', 'deliveryDriver', 'machinist', 'other']),
+    profession: z.enum(['machinist', 'storekeeper', 'deliveryDriver', 'chauffeur', 'securityAgent', 'other']),
     monthlyBaseSalary: z.coerce.number().min(0, { message: t('salaryMinError') }),
     currency: z.string().min(1, { message: t('currencyRequiredError')}),
     reminders: z.object({
@@ -266,9 +266,11 @@ export default function ProfilePage() {
   );
 
   const professions: { value: Profession, label: string }[] = [
+    { value: 'machinist', label: t('professions.machinist') },
     { value: 'storekeeper', label: t('professions.storekeeper') },
     { value: 'deliveryDriver', label: t('professions.deliveryDriver') },
-    { value: 'machinist', label: t('professions.machinist') },
+    { value: 'chauffeur', label: t('professions.chauffeur') },
+    { value: 'securityAgent', label: t('professions.securityAgent') },
     { value: 'other', label: t('professions.other') },
   ];
 
@@ -469,4 +471,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-    

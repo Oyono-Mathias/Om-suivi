@@ -38,7 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { shifts } from '@/lib/shifts';
-import type { TimeEntry } from '@/lib/types';
+import type { TimeEntry, Profile } from '@/lib/types';
 import { format, parse, differenceInMinutes, parseISO } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,9 +47,10 @@ import { useTranslations } from 'next-intl';
 interface ManualEntryDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  profile: Profile | null;
 }
 
-export default function ManualEntryDialog({ isOpen, onOpenChange }: ManualEntryDialogProps) {
+export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: ManualEntryDialogProps) {
   const t = useTranslations('ManualEntryDialog');
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -81,7 +82,7 @@ export default function ManualEntryDialog({ isOpen, onOpenChange }: ManualEntryD
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !profile) return;
 
     const shift = shifts.find(s => s.id === values.shiftId);
     if (!shift) return;
@@ -108,6 +109,7 @@ export default function ManualEntryDialog({ isOpen, onOpenChange }: ManualEntryD
         shiftId: values.shiftId,
         isPublicHoliday: values.isPublicHoliday,
         userProfileId: user.uid,
+        profession: profile.profession,
     };
     
     await addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'timeEntries'), newEntry);
@@ -242,5 +244,3 @@ export default function ManualEntryDialog({ isOpen, onOpenChange }: ManualEntryD
     </Dialog>
   );
 }
-
-    
