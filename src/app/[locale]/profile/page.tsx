@@ -39,24 +39,13 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking 
 import { doc } from "firebase/firestore";
 import { Loader2, MapPin } from "lucide-react";
 import type { Profile } from "@/lib/types";
-import Link from "next/link";
-
-const profileSchema = z.object({
-  name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }),
-  monthlyBaseSalary: z.coerce.number().min(1, { message: "Le salaire de base doit être positif." }),
-  currency: z.string().min(1, { message: "Le symbole de la devise est requis."}),
-  reminders: z.object({
-    enabled: z.boolean(),
-    time: z.string(),
-  }),
-  workplace: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-    radius: z.number(),
-  }).optional(),
-});
+import { Link } from "@/navigation";
+import { useTranslations } from "next-intl";
 
 export default function ProfilePage() {
+  const t = useTranslations('ProfilePage');
+  const tShared = useTranslations('Shared');
+  
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -65,7 +54,21 @@ export default function ProfilePage() {
   const [isLocating, setIsLocating] = useState(false);
   const [showLocationConfirm, setShowLocationConfirm] = useState(false);
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
-
+  
+  const profileSchema = z.object({
+    name: z.string().min(2, { message: t('nameMinLengthError') }),
+    monthlyBaseSalary: z.coerce.number().min(1, { message: t('salaryMinError') }),
+    currency: z.string().min(1, { message: t('currencyRequiredError')}),
+    reminders: z.object({
+      enabled: z.boolean(),
+      time: z.string(),
+    }),
+    workplace: z.object({
+      latitude: z.number(),
+      longitude: z.number(),
+      radius: z.number(),
+    }).optional(),
+  });
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -116,8 +119,8 @@ export default function ProfilePage() {
     setDocumentNonBlocking(userProfileRef, updatedProfile, { merge: true });
     
     toast({
-      title: "Paramètres mis à jour",
-      description: "Vos informations ont été enregistrées avec succès.",
+      title: t('settingsUpdatedTitle'),
+      description: t('settingsUpdatedDescription'),
     });
   }
 
@@ -135,8 +138,8 @@ export default function ProfilePage() {
       () => {
         toast({
           variant: 'destructive',
-          title: 'Erreur de localisation',
-          description: 'Impossible d\'obtenir votre position. Veuillez vérifier les autorisations du navigateur.',
+          title: t('locationErrorTitle'),
+          description: t('locationErrorDescription'),
         });
         setIsLocating(false);
       }
@@ -155,8 +158,8 @@ export default function ProfilePage() {
     setDocumentNonBlocking(userProfileRef, { workplace: newWorkplace }, { merge: true });
     
     toast({
-      title: "Lieu de travail défini !",
-      description: "Votre zone de travail a été enregistrée avec succès.",
+      title: t('workplaceSetTitle'),
+      description: t('workplaceSetDescription'),
     });
     
     setShowLocationConfirm(false);
@@ -174,9 +177,9 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">Veuillez vous connecter pour continuer.</p>
+        <p className="text-xl">{tShared('pleaseLogin')}</p>
         <Link href="/login">
-            <Button>Se connecter</Button>
+            <Button>{tShared('loginButton')}</Button>
         </Link>
       </div>
     );
@@ -185,15 +188,15 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-headline font-bold">Paramètres</h1>
+      <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle>Informations Personnelles et Financières</CardTitle>
+              <CardTitle>{t('personalInfoTitle')}</CardTitle>
               <CardDescription>
-                Gérez vos informations personnelles et contractuelles.
+                {t('personalInfoDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -202,9 +205,9 @@ export default function ProfilePage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nom complet</FormLabel>
+                    <FormLabel>{t('nameLabel')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="ex: Mathias Oyono" {...field} />
+                      <Input placeholder={t('namePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -216,12 +219,12 @@ export default function ProfilePage() {
                   name="monthlyBaseSalary"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Salaire de Base Mensuel</FormLabel>
+                      <FormLabel>{t('salaryLabel')}</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="ex: 72799" {...field} />
+                        <Input type="number" placeholder={t('salaryPlaceholder')} {...field} />
                       </FormControl>
                       <FormDescription>
-                        Votre taux horaire est calculé automatiquement (Salaire / 173.33) et arrondi.
+                        {t('salaryDescription')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -232,9 +235,9 @@ export default function ProfilePage() {
                   name="currency"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Symbole de la devise</FormLabel>
+                      <FormLabel>{t('currencyLabel')}</FormLabel>
                       <FormControl>
-                        <Input placeholder="ex: FCFA" {...field} />
+                        <Input placeholder={t('currencyPlaceholder')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -246,9 +249,9 @@ export default function ProfilePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Rappels</CardTitle>
+              <CardTitle>{t('remindersTitle')}</CardTitle>
               <CardDescription>
-                Configurez des alertes pour éviter d'oublier de pointer.
+                {t('remindersDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -258,9 +261,9 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">Activer les rappels</FormLabel>
+                      <FormLabel className="text-base">{t('enableRemindersLabel')}</FormLabel>
                       <FormDescription>
-                        Recevez une notification pour enregistrer vos heures.
+                        {t('enableRemindersDescription')}
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -277,7 +280,7 @@ export default function ProfilePage() {
                 name="reminders.time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Heure du rappel</FormLabel>
+                    <FormLabel>{t('reminderTimeLabel')}</FormLabel>
                     <FormControl>
                       <Input type="time" {...field} className="w-auto" />
                     </FormControl>
@@ -290,9 +293,9 @@ export default function ProfilePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Configuration du lieu de travail</CardTitle>
+              <CardTitle>{t('workplaceTitle')}</CardTitle>
               <CardDescription>
-                Définissez votre lieu de travail principal pour les fonctionnalités basées sur la géolocalisation.
+                {t('workplaceDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -300,36 +303,36 @@ export default function ProfilePage() {
                 <div>
                   <div className="rounded-lg border bg-muted p-4 text-center">
                       <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-                      <p className="mt-2 text-sm font-semibold">Lieu de travail défini</p>
+                      <p className="mt-2 text-sm font-semibold">{t('workplaceSet')}</p>
                       <p className="text-xs text-muted-foreground">
-                          Lat: {profile.workplace.latitude.toFixed(4)}, Lon: {profile.workplace.longitude.toFixed(4)}
+                          {t('workplaceLat')}: {profile.workplace.latitude.toFixed(4)}, {t('workplaceLon')}: {profile.workplace.longitude.toFixed(4)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                          Rayon: {profile.workplace.radius}m
+                          {t('workplaceRadius')}: {profile.workplace.radius}m
                       </p>
                       <div className="mt-2 h-32 w-full rounded bg-background flex items-center justify-center text-muted-foreground text-sm">
-                          [Espace réservé pour la carte visuelle]
+                          {t('mapPlaceholder')}
                       </div>
                   </div>
                   <Button variant="outline" className="mt-4 w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied'}>
                       {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
-                      Mettre à jour la zone de travail
+                      {t('updateWorkZoneButton')}
                   </Button>
                 </div>
               ) : (
                 <div>
                   <Button className="w-full" onClick={handleSetWorkplace} disabled={isLocating || permissionState === 'denied'}>
                       {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
-                      Définir l'emplacement actuel comme zone de travail
+                      {t('setWorkZoneButton')}
                   </Button>
                   {permissionState === 'denied' && (
                       <p className="mt-2 text-center text-sm text-destructive">
-                          Accès à la localisation refusé. Veuillez l'activer dans les paramètres de votre navigateur.
+                          {t('locationDeniedError')}
                       </p>
                   )}
                   {permissionState === 'prompt' && (
                       <p className="mt-2 text-center text-sm text-muted-foreground">
-                          L'autorisation de localisation vous sera demandée.
+                          {t('locationPrompt')}
                       </p>
                   )}
                 </div>
@@ -337,21 +340,21 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
           
-          <Button type="submit">Enregistrer les modifications</Button>
+          <Button type="submit">{t('saveButton')}</Button>
         </form>
       </Form>
 
       <AlertDialog open={showLocationConfirm} onOpenChange={setShowLocationConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Êtes-vous actuellement sur votre lieu de travail ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('confirmWorkplaceTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Cet emplacement (Lat: {location?.latitude.toFixed(4)}, Lon: {location?.longitude.toFixed(4)}) sera utilisé pour suivre vos quarts de travail.
+              {t('confirmWorkplaceDescription', {latitude: location?.latitude.toFixed(4), longitude: location?.longitude.toFixed(4)})}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmWorkplace}>Confirmer l'emplacement</AlertDialogAction>
+            <AlertDialogCancel>{t('cancelButton')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmWorkplace}>{t('confirmButton')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

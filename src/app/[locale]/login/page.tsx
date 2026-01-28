@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useAuth, useUser } from '@/firebase';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/navigation';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
@@ -33,21 +33,10 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-
-const loginSchema = z.object({
-  email: z.string().email({ message: 'Adresse e-mail invalide.' }),
-  password: z.string().min(1, { message: 'Le mot de passe est requis.' }),
-});
-
-const registerSchema = z.object({
-  name: z.string().min(2, { message: 'Le nom doit contenir au moins 2 caractères.' }),
-  email: z.string().email({ message: 'Adresse e-mail invalide.' }),
-  password: z
-    .string()
-    .min(6, { message: 'Le mot de passe doit contenir au moins 6 caractères.' }),
-});
+import { useTranslations } from 'next-intl';
 
 export default function LoginPage() {
+  const t = useTranslations('LoginPage');
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -55,14 +44,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
 
-  const loginForm = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+  const loginSchema = z.object({
+    email: z.string().email({ message: t('emailInvalidError') }),
+    password: z.string().min(1, { message: t('passwordRequiredError') }),
   });
 
-  const registerForm = useForm<z.infer<typeof registerSchema>>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', email: '', password: '' },
+  const registerSchema = z.object({
+    name: z.string().min(2, { message: t('nameMinLengthError') }),
+    email: z.string().email({ message: t('emailInvalidError') }),
+    password: z
+      .string()
+      .min(6, { message: t('passwordMinLengthError') }),
   });
 
   useEffect(() => {
@@ -89,11 +81,11 @@ export default function LoginPage() {
       if (error instanceof FirebaseError) {
         toast({
           variant: 'destructive',
-          title: 'Erreur de connexion',
+          title: t('loginErrorTitle'),
           description:
             error.code === 'auth/invalid-credential'
-              ? 'Email ou mot de passe incorrect.'
-              : "Une erreur s'est produite.",
+              ? t('loginErrorInvalid')
+              : t('loginErrorGeneric'),
         });
       }
     } finally {
@@ -119,11 +111,11 @@ export default function LoginPage() {
       if (error instanceof FirebaseError) {
         toast({
           variant: 'destructive',
-          title: "Erreur d'inscription",
+          title: t('registerErrorTitle'),
           description:
             error.code === 'auth/email-already-in-use'
-              ? 'Cette adresse e-mail est déjà utilisée.'
-              : "Une erreur s'est produite.",
+              ? t('registerErrorInUse')
+              : t('registerErrorGeneric'),
         });
       }
     } finally {
@@ -136,15 +128,15 @@ export default function LoginPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-sm">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Bienvenue sur OM Suivi</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t('title')}</CardTitle>
             <CardDescription>
-              Connectez-vous ou créez un compte pour suivre votre temps de travail.
+              {t('description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Se connecter</TabsTrigger>
-              <TabsTrigger value="register">S'inscrire</TabsTrigger>
+              <TabsTrigger value="login">{t('loginTab')}</TabsTrigger>
+              <TabsTrigger value="register">{t('registerTab')}</TabsTrigger>
             </TabsList>
             <TabsContent value="login" className="mt-4">
               <Form {...loginForm}>
@@ -154,9 +146,9 @@ export default function LoginPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>{t('emailLabel')}</FormLabel>
                         <FormControl>
-                          <Input placeholder="mathias@example.com" {...field} />
+                          <Input placeholder={t('emailPlaceholder')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -167,7 +159,7 @@ export default function LoginPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mot de passe</FormLabel>
+                        <FormLabel>{t('passwordLabel')}</FormLabel>
                         <FormControl>
                           <Input type="password" {...field} />
                         </FormControl>
@@ -177,7 +169,7 @@ export default function LoginPage() {
                   />
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Se connecter
+                    {t('loginButton')}
                   </Button>
                 </form>
               </Form>
@@ -193,9 +185,9 @@ export default function LoginPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nom complet</FormLabel>
+                        <FormLabel>{t('nameLabel')}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Mathias Oyono" {...field} />
+                          <Input placeholder={t('namePlaceholder')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -206,9 +198,9 @@ export default function LoginPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>{t('emailLabel')}</FormLabel>
                         <FormControl>
-                          <Input placeholder="mathias@example.com" {...field} />
+                          <Input placeholder={t('emailPlaceholder')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -219,7 +211,7 @@ export default function LoginPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mot de passe</FormLabel>
+                        <FormLabel>{t('passwordLabel')}</FormLabel>
                         <FormControl>
                           <Input type="password" {...field} />
                         </FormControl>
@@ -229,7 +221,7 @@ export default function LoginPage() {
                   />
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Créer un compte
+                    {t('registerButton')}
                   </Button>
                 </form>
               </Form>

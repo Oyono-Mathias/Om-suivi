@@ -23,13 +23,16 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebas
 import { collection, query, where } from "firebase/firestore";
 import type { TeamMember, Profile, TimeEntry } from "@/lib/types";
 import { Loader2, Users } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/navigation";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { getWeek, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 
 export default function TeamPage() {
+  const t = useTranslations('TeamPage');
+  const tShared = useTranslations('Shared');
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
@@ -85,9 +88,9 @@ export default function TeamPage() {
   if (!user) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">Veuillez vous connecter pour continuer.</p>
+        <p className="text-xl">{tShared('pleaseLogin')}</p>
         <Link href="/login">
-          <Button>Se connecter</Button>
+          <Button>{tShared('loginButton')}</Button>
         </Link>
       </div>
     );
@@ -97,8 +100,8 @@ export default function TeamPage() {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4 text-center">
         <Users className="w-16 h-16 text-muted-foreground" />
-        <h2 className="text-2xl font-bold">Vous n'êtes pas encore dans une équipe</h2>
-        <p className="text-muted-foreground max-w-sm">Contactez votre administrateur pour être ajouté à une équipe afin de voir les données de vos collègues.</p>
+        <h2 className="text-2xl font-bold">{t('noTeamTitle')}</h2>
+        <p className="text-muted-foreground max-w-sm">{t('noTeamDescription')}</p>
       </div>
     )
   }
@@ -106,23 +109,23 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-headline font-bold">Aperçu de l'Équipe</h1>
+      <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
       <p className="text-muted-foreground">
-        Un résumé des heures travaillées par vos collègues cette semaine.
+        {t('description')}
       </p>
 
       <Card>
         <CardHeader>
-          <CardTitle>Résumé Hebdomadaire</CardTitle>
-          <CardDescription>Partage et résumé des données pour les collègues.</CardDescription>
+          <CardTitle>{t('weeklySummaryTitle')}</CardTitle>
+          <CardDescription>{t('weeklySummaryDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Membre</TableHead>
-                <TableHead>Heures Totales</TableHead>
-                <TableHead>Heures Sup.</TableHead>
+                <TableHead>{t('tableMember')}</TableHead>
+                <TableHead>{t('tableTotalHours')}</TableHead>
+                <TableHead>{t('tableOvertimeHours')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

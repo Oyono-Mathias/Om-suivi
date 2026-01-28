@@ -1,35 +1,11 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import AppShell from '@/components/app-shell';
-import { Toaster } from '@/components/ui/toaster';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { ReactNode } from 'react';
 
-export const metadata: Metadata = {
-  title: 'OM Suivi',
-  description: 'Une application pour le suivi des heures supplémentaires.',
+type Props = {
+  children: ReactNode;
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="fr" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="font-body antialiased">
-        <FirebaseClientProvider>
-            <AppShell>{children}</AppShell>
-            <Toaster />
-        </FirebaseClientProvider>
-      </body>
-    </html>
-  );
+//Even though this component is just passing its children through,
+//the presence of this file is required for `next-intl` to work.
+export default function RootLayout({ children }: Props) {
+  return children;
 }

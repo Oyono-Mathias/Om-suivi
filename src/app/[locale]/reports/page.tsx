@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import Link from 'next/link';
+import { Link } from '@/navigation';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,6 +34,7 @@ import type { TimeEntry, Profile } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 
 const OVERTIME_RATES = {
@@ -44,6 +45,9 @@ const OVERTIME_RATES = {
 };
 
 export default function ReportsPage() {
+    const t = useTranslations('ReportsPage');
+    const tShared = useTranslations('Shared');
+    
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
@@ -172,11 +176,11 @@ export default function ReportsPage() {
 
   const chartConfig = {
     regular: {
-      label: "Normales",
+      label: t('chartRegular'),
       color: "hsl(var(--chart-1))",
     },
     overtime: {
-      label: "Heures Sup.",
+      label: t('chartOvertime'),
       color: "hsl(var(--chart-2))",
     },
   } satisfies ChartConfig;
@@ -192,9 +196,9 @@ export default function ReportsPage() {
   if (!user) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">Veuillez vous connecter pour continuer.</p>
+        <p className="text-xl">{tShared('pleaseLogin')}</p>
         <Link href="/login">
-            <Button>Se connecter</Button>
+            <Button>{tShared('loginButton')}</Button>
         </Link>
       </div>
     );
@@ -203,9 +207,9 @@ export default function ReportsPage() {
   if (!profile) {
     return (
         <div className="flex flex-col justify-center items-center h-screen gap-4">
-            <p className="text-xl text-center">Veuillez compléter votre profil avant de consulter les rapports.</p>
+            <p className="text-xl text-center">{tShared('pleaseCompleteProfile')}</p>
             <Link href="/profile">
-                <Button>Aller au Profil</Button>
+                <Button>{tShared('goToProfileButton')}</Button>
             </Link>
         </div>
     )
@@ -215,34 +219,34 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-            <h1 className="text-3xl font-headline font-bold">Tableau de Bord</h1>
+            <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
             <p className="text-muted-foreground">
-                Un résumé de vos gains et de vos heures de travail.
+                {t('description')}
             </p>
         </div>
         <Link href="/reports/export">
-          <Button>Exporter le Rapport</Button>
+          <Button>{t('exportButton')}</Button>
         </Link>
       </div>
       
       <Card>
         <CardHeader>
-          <CardTitle>Résumé Financier de ce Mois</CardTitle>
+          <CardTitle>{t('financialSummaryTitle')}</CardTitle>
           <CardDescription>
-            Un aperçu de vos heures normales, de vos heures supplémentaires et de vos gains estimés pour le mois en cours.
+            {t('financialSummaryDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-6 text-center md:grid-cols-3">
           <div className="flex flex-col gap-2 rounded-lg border p-4">
-            <p className="text-sm font-medium text-muted-foreground">Heures Normales</p>
-            <p className="text-3xl font-bold">{monthTotals.regularHours} h</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('regularHours')}</p>
+            <p className="text-3xl font-bold">{monthTotals.regularHours} {t('hourUnit')}</p>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border p-4">
-            <p className="text-sm font-medium text-muted-foreground">Heures Supplémentaires</p>
-            <p className="text-3xl font-bold text-destructive">{monthTotals.overtimeHours} h</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('overtimeHours')}</p>
+            <p className="text-3xl font-bold text-destructive">{monthTotals.overtimeHours} {t('hourUnit')}</p>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border bg-primary/10 p-4">
-            <p className="text-sm font-medium text-muted-foreground">Paiement Estimé des Heures Sup.</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('estimatedPayout')}</p>
             <p className="text-3xl font-bold text-primary">{monthTotals.estimatedPayout} {profile.currency}</p>
           </div>
         </CardContent>
@@ -250,9 +254,9 @@ export default function ReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Répartition Hebdomadaire des Heures</CardTitle>
+          <CardTitle>{t('weeklyBreakdownTitle')}</CardTitle>
           <CardDescription>
-            Heures normales vs heures supplémentaires enregistrées chaque jour de la semaine en cours.
+            {t('weeklyBreakdownDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -269,7 +273,7 @@ export default function ReportsPage() {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={10}
-                unit="h"
+                unit={t('hourUnit')}
               />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Legend />

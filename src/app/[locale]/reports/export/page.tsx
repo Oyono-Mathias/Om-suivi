@@ -5,13 +5,14 @@ import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { format, parseISO, getDay, startOfMonth, endOfMonth, getWeek } from "date-fns";
+import { fr, enUS } from "date-fns/locale";
 import { shifts } from '@/lib/shifts';
 import type { TimeEntry, Profile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
-import Link from 'next/link';
-
+import { Link } from '@/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 
 const OVERTIME_RATES = {
   tier1: 1.2,
@@ -21,6 +22,11 @@ const OVERTIME_RATES = {
 };
 
 export default function ExportReportPage() {
+    const t = useTranslations('ExportReportPage');
+    const tShared = useTranslations('Shared');
+    const locale = useLocale();
+    const dateFnsLocale = locale === 'fr' ? fr : enUS;
+
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
@@ -47,7 +53,7 @@ export default function ExportReportPage() {
                 sortedEntries: [],
                 totalOvertime: 0,
                 totalPayout: 0,
-                reportMonth: format(new Date(), 'MMMM yyyy'),
+                reportMonth: format(new Date(), 'MMMM yyyy', {locale: dateFnsLocale}),
                 overtimeBreakdown: { tier1: { minutes: 0 }, tier2: { minutes: 0 }, sunday: { minutes: 0 }, holiday: { minutes: 0 } },
             };
         }
@@ -128,7 +134,7 @@ export default function ExportReportPage() {
         payout += (breakdown.sunday.minutes / 60) * hourlyRate * breakdown.sunday.rate;
         payout += (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
 
-        const month = sorted.length > 0 ? format(parseISO(sorted[0].date), 'MMMM yyyy') : format(new Date(), 'MMMM yyyy');
+        const month = sorted.length > 0 ? format(parseISO(sorted[0].date), 'MMMM yyyy', {locale: dateFnsLocale}) : format(new Date(), 'MMMM yyyy', {locale: dateFnsLocale});
 
         return {
             sortedEntries: sorted,
@@ -138,7 +144,7 @@ export default function ExportReportPage() {
             overtimeBreakdown: breakdown,
         };
 
-    }, [timeEntries, profile]);
+    }, [timeEntries, profile, dateFnsLocale]);
 
     const formatMinutes = (minutes: number) => (minutes / 60).toFixed(2);
     
@@ -153,9 +159,9 @@ export default function ExportReportPage() {
     if (!user) {
         return (
             <div className="flex flex-col justify-center items-center h-screen gap-4">
-            <p className="text-xl">Veuillez vous connecter pour continuer.</p>
+            <p className="text-xl">{tShared('pleaseLogin')}</p>
             <Link href="/login">
-                <Button>Se connecter</Button>
+                <Button>{tShared('loginButton')}</Button>
             </Link>
             </div>
         );
@@ -164,9 +170,9 @@ export default function ExportReportPage() {
     if (!profile) {
         return (
             <div className="flex flex-col justify-center items-center h-screen gap-4">
-                <p className="text-xl text-center">Veuillez compléter votre profil avant de consulter les rapports.</p>
+                <p className="text-xl text-center">{tShared('pleaseCompleteProfile')}</p>
                 <Link href="/profile">
-                    <Button>Aller au Profil</Button>
+                    <Button>{tShared('goToProfileButton')}</Button>
                 </Link>
             </div>
         )
@@ -194,41 +200,41 @@ export default function ExportReportPage() {
             <div className="max-w-4xl mx-auto print-container">
                 <header className="flex flex-wrap justify-between items-center gap-4 mb-8 no-print">
                     <div>
-                        <h1 className="text-3xl font-bold font-headline">Exporter le Rapport</h1>
-                        <p className="text-muted-foreground">Preuve de travail pour {reportMonth}.</p>
+                        <h1 className="text-3xl font-bold font-headline">{t('title')}</h1>
+                        <p className="text-muted-foreground">{t('description', {reportMonth})}</p>
                     </div>
-                    <Button onClick={handlePrint}>Imprimer en PDF</Button>
+                    <Button onClick={handlePrint}>{t('printButton')}</Button>
                 </header>
 
                 <div className="border rounded-lg p-6 sm:p-8 print:border-none print:shadow-none print:rounded-none">
                     <div className="flex justify-between items-start mb-8">
                         <div>
-                            <h2 className="text-2xl font-bold text-primary font-headline">OM Suivi</h2>
-                            <h3 className="text-lg font-semibold">Rapport de Feuille de Temps</h3>
+                            <h2 className="text-2xl font-bold text-primary font-headline">{t('appName')}</h2>
+                            <h3 className="text-lg font-semibold">{t('reportTitle')}</h3>
                             <p className="text-muted-foreground">{profile.name}</p>
                         </div>
                         <div className="text-right">
                             <p className="font-semibold">{reportMonth}</p>
-                            <p className="text-sm text-muted-foreground">Taux Horaire: {Math.round(profile.monthlyBaseSalary / 173.33).toLocaleString('fr-FR')} {profile.currency}</p>
+                            <p className="text-sm text-muted-foreground">{t('hourlyRateLabel')}: {Math.round(profile.monthlyBaseSalary / 173.33).toLocaleString('fr-FR')} {profile.currency}</p>
                         </div>
                     </div>
                     
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Poste</TableHead>
-                                <TableHead>Heure d'arrivée</TableHead>
-                                <TableHead>Heure de départ</TableHead>
-                                <TableHead>Lieu</TableHead>
-                                <TableHead className="text-right">Heures sup. (min)</TableHead>
+                                <TableHead>{t('tableDate')}</TableHead>
+                                <TableHead>{t('tableShift')}</TableHead>
+                                <TableHead>{t('tableCheckIn')}</TableHead>
+                                <TableHead>{t('tableCheckOut')}</TableHead>
+                                <TableHead>{t('tableLocation')}</TableHead>
+                                <TableHead className="text-right">{t('tableOvertime')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {sortedEntries.length > 0 ? (
                                 sortedEntries.map(entry => (
                                     <TableRow key={entry.id}>
-                                        <TableCell>{format(parseISO(entry.date), 'EEE, d MMM')} {entry.isPublicHoliday ? '(Férié)' : ''}</TableCell>
+                                        <TableCell>{format(parseISO(entry.date), 'EEE, d MMM', {locale: dateFnsLocale})} {entry.isPublicHoliday ? '(Férié)' : ''}</TableCell>
                                         <TableCell>{shifts.find(s => s.id === entry.shiftId)?.name || 'N/A'}</TableCell>
                                         <TableCell>{entry.startTime}</TableCell>
                                         <TableCell>{entry.endTime}</TableCell>
@@ -238,41 +244,41 @@ export default function ExportReportPage() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">Aucune entrée pour ce mois.</TableCell>
+                                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">{t('noEntries')}</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                         <TableFooter>
                             <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. à {overtimeBreakdown.tier1.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier1.minutes)} h</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeTier1', {rate: overtimeBreakdown.tier1.rate * 100})}</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier1.minutes)} {t('hourUnit')}</TableCell>
                             </TableRow>
                             <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. à {overtimeBreakdown.tier2.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier2.minutes)} h</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeTier2', {rate: overtimeBreakdown.tier2.rate * 100})}</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.tier2.minutes)} {t('hourUnit')}</TableCell>
                             </TableRow>
                             <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. (Dimanche) à {overtimeBreakdown.sunday.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.sunday.minutes)} h</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeSunday', {rate: overtimeBreakdown.sunday.rate * 100})}</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.sunday.minutes)} {t('hourUnit')}</TableCell>
                             </TableRow>
                              <TableRow>
-                                <TableCell colSpan={5} className="text-right font-semibold">Heures sup. (Férié) à {overtimeBreakdown.holiday.rate * 100}%</TableCell>
-                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.holiday.minutes)} h</TableCell>
+                                <TableCell colSpan={5} className="text-right font-semibold">{t('overtimeHoliday', {rate: overtimeBreakdown.holiday.rate * 100})}</TableCell>
+                                <TableCell className="text-right font-medium">{formatMinutes(overtimeBreakdown.holiday.minutes)} {t('hourUnit')}</TableCell>
                             </TableRow>
                             <TableRow className="bg-muted/50">
-                                <TableCell colSpan={5} className="text-right font-bold">Total Heures Sup.</TableCell>
-                                <TableCell className="text-right font-bold">{formatMinutes(totalOvertime)} h</TableCell>
+                                <TableCell colSpan={5} className="text-right font-bold">{t('totalOvertime')}</TableCell>
+                                <TableCell className="text-right font-bold">{formatMinutes(totalOvertime)} {t('hourUnit')}</TableCell>
                             </TableRow>
                             <TableRow className="bg-primary/10">
-                                <TableCell colSpan={5} className="text-right font-bold text-primary">Paiement Estimé des Heures Sup.</TableCell>
+                                <TableCell colSpan={5} className="text-right font-bold text-primary">{t('estimatedPayout')}</TableCell>
                                 <TableCell className="text-right font-bold text-primary">{totalPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</TableCell>
                             </TableRow>
                         </TableFooter>
                     </Table>
 
                     <footer className="mt-12 text-center text-xs text-muted-foreground">
-                        <p>Généré le {format(new Date(), 'PPP p')}</p>
-                        <p>Ce document est une preuve de travail générée automatiquement pour les services rendus.</p>
+                        <p>{t('footerGenerated', {date: format(new Date(), 'PPP p', {locale: dateFnsLocale})})}</p>
+                        <p>{t('footerDisclaimer')}</p>
                     </footer>
                 </div>
             </div>
