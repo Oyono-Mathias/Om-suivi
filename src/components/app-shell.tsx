@@ -43,7 +43,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
+    return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
   const { data: profile } = useDoc<Profile>(userProfileRef);

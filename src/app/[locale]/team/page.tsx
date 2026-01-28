@@ -60,7 +60,6 @@ export default function TeamPage() {
     // This is not efficient for large teams. A better approach would be needed for production.
     // For this prototype, we'll fetch all time entries and filter client-side.
     // This assumes a flat `timeEntries` collection or requires multiple queries.
-    // Let's assume we can query a subcollection for each user in the team.
     // This part is complex and depends heavily on the final data structure.
     // For now, we will stick with the placeholder data.
     return null;
