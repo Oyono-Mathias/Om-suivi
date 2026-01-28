@@ -553,30 +553,6 @@ export default function TimeTrackingPage() {
         </CardContent>
       </Card>
       
-      {/* Action Buttons - Sticky for Mobile */}
-      <div className="md:flex md:justify-center md:gap-4 fixed bottom-20 left-0 right-0 p-4 bg-background/80 backdrop-blur-sm border-t md:static md:bg-transparent md:backdrop-blur-none md:border-none md:p-0">
-          {!isRunning ? (
-              <div className="flex justify-center gap-4 w-full">
-                <Button size="lg" onClick={() => handleStart()} disabled={!selectedShiftId} className="h-14 flex-1">
-                  <Clock className="mr-2" /> {t('startButton')}
-                </Button>
-                <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading || !selectedShiftId} className="h-14 flex-1">
-                  {isGeoLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <MapPin className="mr-2" />
-                  )}
-                  {t('geoClockInButton')}
-                </Button>
-              </div>
-            ) : (
-              <Button size="lg" variant="destructive" onClick={handleStop} className="w-full h-14">
-                {t('stopButton')}
-              </Button>
-            )}
-      </div>
-
-
       <Card>
         <CardHeader>
           <CardTitle>{t('recentEntriesTitle')}</CardTitle>
@@ -629,6 +605,32 @@ export default function TimeTrackingPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      {/* Spacer for fixed action buttons on mobile */}
+      <div className="h-24 md:hidden" />
+
+      {/* Action Buttons - Sticky for Mobile */}
+      <div className="md:flex md:justify-center md:gap-4 fixed bottom-20 left-0 right-0 p-4 bg-background border-t md:static md:bg-transparent md:border-none md:p-0 z-30">
+          {!isRunning ? (
+              <div className="flex justify-center gap-4 w-full">
+                <Button size="lg" onClick={() => handleStart()} disabled={!selectedShiftId} className="h-14 flex-1">
+                  <Clock className="mr-2" /> {t('startButton')}
+                </Button>
+                <Button size="lg" variant="outline" onClick={handleGeoClockIn} disabled={isGeoLoading || !selectedShiftId} className="h-14 flex-1">
+                  {isGeoLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <MapPin className="mr-2" />
+                  )}
+                  {t('geoClockInButton')}
+                </Button>
+              </div>
+            ) : (
+              <Button size="lg" variant="destructive" onClick={handleStop} className="w-full h-14">
+                {t('stopButton')}
+              </Button>
+            )}
+      </div>
       
       <ManualEntryDialog open={isManualEntryOpen} onOpenChange={setManualEntryOpen} addTimeEntry={addTimeEntry} />
       
