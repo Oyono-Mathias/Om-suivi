@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
+import { getRedirectResult } from 'firebase/auth';
 
 export default function LoginPage() {
   const auth = useAuth();
@@ -20,6 +21,18 @@ export default function LoginPage() {
       router.replace('/');
     }
   }, [user, router]);
+  
+  useEffect(() => {
+    if (auth) {
+      getRedirectResult(auth).catch((error: FirebaseError) => {
+        toast({
+            variant: "destructive",
+            title: "Erreur de connexion",
+            description: `Une erreur est survenue lors de la connexion avec Google. (${error.code})`,
+        });
+      });
+    }
+  }, [auth, toast]);
 
   if (isUserLoading || user) {
     return (
