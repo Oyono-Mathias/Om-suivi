@@ -32,6 +32,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from '@/navigation';
 import { AtSign, Loader2, Lock, User as UserIcon } from 'lucide-react';

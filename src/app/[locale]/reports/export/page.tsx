@@ -4,6 +4,7 @@
 import React, { useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO, getDay, startOfMonth, endOfMonth, getWeek } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile } from '@/lib/types';
@@ -268,10 +269,42 @@ export default function ExportReportPage() {
                         </div>
 
                         <div className="hidden md:block">
-                            {/* Table remains for desktop */}
-                            {/* ... same table as before ... */}
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>{t('tableDate')}</TableHead>
+                                <TableHead>{t('tableCheckIn')}</TableHead>
+                                <TableHead>{t('tableCheckOut')}</TableHead>
+                                <TableHead>{t('tableLocation')}</TableHead>
+                                <TableHead>{t('tableOvertime')}</TableHead>
+                                <TableHead>{t('tableType')}</TableHead>
+                                <TableHead className="text-right">{t('tableDuration')}</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sortedEntries.length > 0 ? (
+                                sortedEntries.map(entry => (
+                                  <TableRow key={entry.id}>
+                                    <TableCell>
+                                      {format(parseISO(entry.date), 'PPP', { locale: dateFnsLocale })}
+                                      {entry.isPublicHoliday ? ` (${t('overtimeHoliday').replace('{rate}', OVERTIME_RATES.holiday * 100 + '%')})` : ''}
+                                    </TableCell>
+                                    <TableCell>{entry.startTime}</TableCell>
+                                    <TableCell>{entry.endTime}</TableCell>
+                                    <TableCell>{entry.location || 'N/A'}</TableCell>
+                                    <TableCell>{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} min` : '-'}</TableCell>
+                                    <TableCell>{entry.location === 'Mission' ? t('typeMission') : t('typeNormal')}</TableCell>
+                                    <TableCell className="text-right">{entry.duration} min</TableCell>
+                                  </TableRow>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell colSpan={7} className="h-24 text-center">{t('noEntries')}</TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
                         </div>
-
                     </main>
 
                     <footer className="mt-12 pt-6 border-t text-center text-xs text-muted-foreground space-y-2 print-sticky-footer">

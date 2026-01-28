@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -17,10 +17,9 @@ import type { TeamMember, Profile, TimeEntry } from "@/lib/types";
 import { Loader2, Users } from "lucide-react";
 import { Link } from "@/navigation";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { getWeek, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
-
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TeamPage() {
   const t = useTranslations('TeamPage');
@@ -34,25 +33,21 @@ export default function TeamPage() {
   }, [firestore, user]);
 
   const { data: teams, isLoading: isLoadingTeams } = useCollection(teamsQuery);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
-  const teamId = teams?.[0]?.id;
-
-  const teamMembersQuery = useMemoFirebase(() => {
-    if (!teamId) return null;
-    return collection(firestore, 'users');
-  }, [firestore, teamId]);
-  
-  const { data: allUsers, isLoading: isLoadingMembers } = useCollection<Profile>(teamMembersQuery);
-
-  const teamMembers: TeamMember[] = PlaceHolderImages.map(p => ({
-      id: p.id,
-      name: p.description.replace('Avatar for ', ''),
-      avatarUrl: p.imageUrl,
-      avatarHint: p.imageHint,
-      totalHours: Math.random() * 40 + 5,
-      overtimeHours: Math.random() * 10
-  }));
-
+  useEffect(() => {
+    setIsClient(true);
+    const generatedMembers = PlaceHolderImages.map(p => ({
+        id: p.id,
+        name: p.description.replace('Avatar for ', ''),
+        avatarUrl: p.imageUrl,
+        avatarHint: p.imageHint,
+        totalHours: Math.random() * 40 + 5,
+        overtimeHours: Math.random() * 10
+    }));
+    setTeamMembers(generatedMembers);
+  }, []);
 
   if (isUserLoading || isLoadingTeams) {
     return (
@@ -98,27 +93,41 @@ export default function TeamPage() {
         </CardHeader>
         <CardContent>
            <div className="space-y-4">
-              {teamMembers.map((member) => (
-                <Card key={member.id} className="flex items-center p-4 gap-4">
-                   <Avatar className="h-12 w-12">
-                        <AvatarImage asChild src={member.avatarUrl}>
-                          <Image src={member.avatarUrl} alt={member.name} width={48} height={48} data-ai-hint={member.avatarHint} />
-                        </AvatarImage>
-                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                        <p className="font-medium">{member.name}</p>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                            <span>{t('tableTotalHours')}:</span>
-                            <span>{member.totalHours.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                            <span>{t('tableOvertimeHours')}:</span>
-                            <span className="font-medium text-destructive">{member.overtimeHours.toFixed(2)}</span>
-                        </div>
-                    </div>
-                </Card>
-              ))}
+              {isClient && teamMembers.length > 0 ? (
+                teamMembers.map((member) => (
+                  <Card key={member.id} className="flex items-center p-4 gap-4">
+                    <Avatar className="h-12 w-12">
+                          <AvatarImage asChild src={member.avatarUrl}>
+                            <Image src={member.avatarUrl} alt={member.name} width={48} height={48} data-ai-hint={member.avatarHint} />
+                          </AvatarImage>
+                          <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                          <p className="font-medium">{member.name}</p>
+                          <div className="flex justify-between text-sm text-muted-foreground">
+                              <span>{t('tableTotalHours')}:</span>
+                              <span>{member.totalHours.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-muted-foreground">
+                              <span>{t('tableOvertimeHours')}:</span>
+                              <span className="font-medium text-destructive">{member.overtimeHours.toFixed(2)}</span>
+                          </div>
+                      </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="space-y-4">
+                  {PlaceHolderImages.map((p) => (
+                      <Card key={p.id} className="flex items-center p-4 gap-4">
+                          <Skeleton className="h-12 w-12 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                              <Skeleton className="h-4 w-3/4" />
+                              <Skeleton className="h-4 w-1/2" />
+                          </div>
+                      </Card>
+                  ))}
+                </div>
+              )}
             </div>
         </CardContent>
       </Card>
