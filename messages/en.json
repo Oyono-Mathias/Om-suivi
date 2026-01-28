@@ -79,7 +79,10 @@
     "statusUpdatedDescription": "You are now on a mission. The timer continues.",
     "minutes": "min",
     "noLocation": "N/A",
-    "manualLocation": "Manual Entry"
+    "manualLocation": "Manual Entry",
+    "geoFenceAlertTitle": "You have left the work zone",
+    "geoFenceAlertDescription": "You seem to have left your work zone. What is your status?",
+    "startMissionButton": "Start Mission"
   },
   "ManualEntryDialog": {
     "title": "Add Manual Entry",

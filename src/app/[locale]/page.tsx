@@ -50,11 +50,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Clock, MapPin, Plus, Loader2, Truck } from "lucide-react";
-import { useFirebase, useUser, useFirestore, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { useUser, useFirestore, useMemoFirebase, addDocumentNonBlocking, useDoc } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
 import { format, parse, differenceInMinutes, addDays, isAfter, parseISO } from "date-fns";
 import { fr, enUS } from 'date-fns/locale';
-import type { TimeEntry, Shift } from "@/lib/types";
+import type { TimeEntry, Shift, Profile } from "@/lib/types";
 import { shifts } from "@/lib/shifts";
 import { suggestWorkLocation } from "@/ai/flows/geolocation-assisted-time-entry";
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +62,7 @@ import { useCollection } from "@/firebase";
 import { Link, useRouter } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useShift } from "@/context/ShiftContext";
+import { getDistanceFromLatLonInKm } from "@/lib/utils";
 
 const ManualEntryDialog = ({
   open,
@@ -207,6 +208,12 @@ export default function TimeTrackingPage() {
   const firestore = useFirestore();
   const { setIsShiftActive } = useShift();
 
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
+  }, [firestore, user]);
+  const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
+
   const timeEntriesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, 'users', user.uid, 'timeEntries');
@@ -228,6 +235,8 @@ export default function TimeTrackingPage() {
   const [onMission, setOnMission] = useState(false);
   const [confirmStopOpen, setConfirmStopOpen] = useState(false);
   const [isPublicHoliday, setIsPublicHoliday] = useState(false);
+  const [locationWatchId, setLocationWatchId] = useState<number | null>(null);
+  const [outsideZoneAlertOpen, setOutsideZoneAlertOpen] = useState(false);
 
 
   useEffect(() => {
@@ -247,6 +256,47 @@ export default function TimeTrackingPage() {
   useEffect(() => {
     setIsShiftActive(isRunning);
   }, [isRunning, setIsShiftActive]);
+
+  useEffect(() => {
+    if (isRunning && profile?.workplace && !onMission && !locationWatchId) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          if (!profile.workplace) return;
+          const { latitude, longitude } = position.coords;
+          const distanceInKm = getDistanceFromLatLonInKm(
+            latitude,
+            longitude,
+            profile.workplace.latitude,
+            profile.workplace.longitude
+          );
+          const distanceInMeters = distanceInKm * 1000;
+          if (distanceInMeters > profile.workplace.radius && !outsideZoneAlertOpen) {
+            setOutsideZoneAlertOpen(true);
+          }
+        },
+        (error) => {
+          console.error("Error watching position:", error);
+          toast({
+            variant: "destructive",
+            title: t('geoFailedTitle'),
+            description: "Location tracking for geofence failed.",
+          });
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
+      );
+      setLocationWatchId(watchId);
+    } else if ((!isRunning || onMission) && locationWatchId) {
+      navigator.geolocation.clearWatch(locationWatchId);
+      setLocationWatchId(null);
+    }
+
+    return () => {
+      if (locationWatchId) {
+        navigator.geolocation.clearWatch(locationWatchId);
+      }
+    };
+  }, [isRunning, profile, onMission, locationWatchId, outsideZoneAlertOpen, t, toast]);
+
 
   const addTimeEntry = (newEntryData: Omit<TimeEntry, 'id' | 'duration' | 'overtimeDuration'>) => {
     if (!user || !timeEntriesQuery) return;
@@ -345,6 +395,7 @@ export default function TimeTrackingPage() {
       setSuggestedLocation(null);
       setOnMission(false);
       setConfirmStopOpen(false);
+      setOutsideZoneAlertOpen(false);
       setIsPublicHoliday(false);
       
       toast({
@@ -355,7 +406,11 @@ export default function TimeTrackingPage() {
   };
 
   const handleStop = () => {
-    setConfirmStopOpen(true);
+    if (onMission) {
+      executeStop();
+    } else {
+      setConfirmStopOpen(true);
+    }
   };
 
   const handleGeoClockIn = () => {
@@ -418,7 +473,16 @@ export default function TimeTrackingPage() {
     }
   }
 
-  if (isUserLoading || isLoadingEntries) {
+  const handleStartMission = () => {
+    setOnMission(true);
+    setOutsideZoneAlertOpen(false);
+    toast({
+      title: t('statusUpdatedTitle'),
+      description: t('statusUpdatedDescription'),
+    });
+  };
+
+  if (isUserLoading || isLoadingEntries || isLoadingProfile) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin" />
@@ -557,7 +621,7 @@ export default function TimeTrackingPage() {
             <AlertDialogTitle>{t('locationConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('locationConfirmDescriptionPart1')}
-              <strong className="text-foreground">{suggestedLocation || ''}</strong>
+              <strong className="text-foreground">{suggestedLocation}</strong>
               {t('locationConfirmDescriptionPart2')}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -583,7 +647,22 @@ export default function TimeTrackingPage() {
                 <Button variant="destructive" onClick={executeStop}>{t('endShiftButton')}</Button>
             </DialogFooter>
         </DialogContent>
-    </Dialog>
+      </Dialog>
+    
+      <AlertDialog open={outsideZoneAlertOpen} onOpenChange={setOutsideZoneAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('geoFenceAlertTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('geoFenceAlertDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setOutsideZoneAlertOpen(false); executeStop(); }}>{t('endShiftButton')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleStartMission}>{t('startMissionButton')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

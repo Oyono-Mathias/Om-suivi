@@ -79,7 +79,10 @@
     "statusUpdatedDescription": "Vous êtes maintenant en mission. Le compteur continue.",
     "minutes": "min",
     "noLocation": "N/A",
-    "manualLocation": "Entrée Manuelle"
+    "manualLocation": "Entrée Manuelle",
+    "geoFenceAlertTitle": "Vous avez quitté la zone de travail",
+    "geoFenceAlertDescription": "Il semble que vous ayez quitté votre zone de travail. Quel est votre statut ?",
+    "startMissionButton": "Démarrer une Mission"
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
