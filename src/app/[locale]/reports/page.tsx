@@ -132,7 +132,7 @@ export default function ReportsPage() {
                 }
             } else {
                 breakdown.tier2.minutes += entry.overtimeDuration;
-                weeklyOvertimeMinutes += entry.overtimeDuration;
+                weeklyOvertimeMinutes += toTier2;
             }
         }
     }
@@ -204,7 +204,7 @@ export default function ReportsPage() {
     );
   }
 
-  if (!profile) {
+  if (!profile || profile.monthlyBaseSalary === 0) {
     return (
         <div className="flex flex-col justify-center items-center h-screen gap-4">
             <p className="text-xl text-center">{tShared('pleaseCompleteProfile')}</p>

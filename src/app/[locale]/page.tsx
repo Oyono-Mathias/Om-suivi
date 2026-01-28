@@ -210,7 +210,7 @@ export default function TimeTrackingPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'users', user.uid, 'userProfiles', user.uid);
   }, [firestore, user]);
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
