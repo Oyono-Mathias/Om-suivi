@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { usePathname, Link } from "@/navigation";
 import {
   SidebarProvider,
@@ -20,7 +21,6 @@ import {
   Clock,
   Settings,
   Users,
-  Briefcase,
   LogOut,
   Shield,
 } from "lucide-react";
@@ -81,7 +81,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
        <div className="flex flex-col min-h-screen bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <Briefcase className="w-6 h-6 text-primary" />
+            <Image src="https://placehold.co/24x24/1db954/FFFFFF?text=OM" alt="OM Suivi Logo" width={24} height={24} className="rounded-md" />
             <h1 className="text-lg font-semibold">{t('appName')}</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar className="no-print">
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-3">
-            <Briefcase className="w-8 h-8 text-sidebar-primary" />
+            <Image src="https://placehold.co/32x32/1db954/FFFFFF?text=OM" alt="OM Suivi Logo" width={32} height={32} className="rounded-md" />
             <div className="flex flex-col">
               <span className="text-lg font-headline font-semibold text-sidebar-foreground">
                 {t('appName')}
