@@ -341,7 +341,33 @@ export default function ProfilePage() {
                   <MapPin className="mr-2 h-4 w-4" />
                   {t('setWorkplaceButton')}
                 </Button>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <FormField
+                    control={form.control}
+                    name="workLatitude"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{t('latitudeLabel')}</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder={t('undefinedPlaceholder')} {...field} value={field.value ?? ''} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="workLongitude"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{t('longitudeLabel')}</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder={t('undefinedPlaceholder')} {...field} value={field.value ?? ''} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                     <FormField
                     control={form.control}
                     name="workRadius"

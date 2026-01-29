@@ -162,7 +162,10 @@
     "workplaceSetSuccess": "Workplace location updated.",
     "radiusLabel": "Clock-in Radius (meters)",
     "radiusDescription": "The distance around your workplace for automatic clock-in.",
-    "radiusMinError": "Radius must be at least 10 meters."
+    "radiusMinError": "Radius must be at least 10 meters.",
+    "latitudeLabel": "Latitude",
+    "longitudeLabel": "Longitude",
+    "undefinedPlaceholder": "Not set"
   },
   "ReportsPage": {
     "title": "Dashboard",

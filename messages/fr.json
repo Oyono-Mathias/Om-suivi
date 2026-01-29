@@ -162,7 +162,10 @@
     "workplaceSetSuccess": "Lieu de travail mis à jour.",
     "radiusLabel": "Rayon de pointage (mètres)",
     "radiusDescription": "La distance autour de votre lieu de travail pour le pointage automatique.",
-    "radiusMinError": "Le rayon doit être d'au moins 10 mètres."
+    "radiusMinError": "Le rayon doit être d'au moins 10 mètres.",
+    "latitudeLabel": "Latitude",
+    "longitudeLabel": "Longitude",
+    "undefinedPlaceholder": "Non défini"
   },
   "ReportsPage": {
     "title": "Tableau de Bord",
