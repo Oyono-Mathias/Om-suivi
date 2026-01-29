@@ -258,7 +258,7 @@ export default function TimeTrackingPage() {
         console.error("Failed to start shift:", error);
         return null;
     }
-  }, [user, firestore, profile, t, toast, tShared, tryShowAd]);
+  }, [user, firestore, profile, t, toast, tShared, tryShowAd, startTimer]);
 
 
   const handleEndShift = useCallback((manualEndTime?: Date) => {
@@ -407,20 +407,23 @@ export default function TimeTrackingPage() {
 
 
   useEffect(() => {
-    if (!globalSettings || !profile?.profession || profile.profession === 'other') return;
+    if (!profile || !profile.workLatitude || !profile.workLongitude || !profile.workRadius || profile.profession === 'other') {
+        setIsInWorkZone(null); // No workplace configured for user
+        return;
+    };
 
     const monitorLocation = () => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (!globalSettings) return;
+                if (!profile.workLatitude || !profile.workLongitude || !profile.workRadius) return;
 
                 const distance = getDistanceFromLatLonInKm(
                     position.coords.latitude,
                     position.coords.longitude,
-                    globalSettings.factoryLatitude,
-                    globalSettings.factoryLongitude,
+                    profile.workLatitude,
+                    profile.workLongitude
                 );
-                const currentlyInZone = distance * 1000 <= globalSettings.factoryRadius;
+                const currentlyInZone = distance * 1000 <= profile.workRadius;
 
                 // --- Geofence Transition Logic ---
                 if (isInWorkZone !== null && isInWorkZone !== currentlyInZone) {

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy, setDoc, deleteDoc } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, MapPin, Trash2 } from 'lucide-react';
+import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -325,9 +325,6 @@ function GlobalSettingsForm() {
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
     const settingsSchema = z.object({
-        factoryLatitude: z.coerce.number(),
-        factoryLongitude: z.coerce.number(),
-        factoryRadius: z.coerce.number().min(1, "Le rayon doit être d'au moins 1 mètre."),
         autoClockInEnabled: z.boolean(),
         breakDuration: z.coerce.number().min(0)
     });
@@ -335,9 +332,6 @@ function GlobalSettingsForm() {
     const form = useForm<z.infer<typeof settingsSchema>>({
         resolver: zodResolver(settingsSchema),
         defaultValues: {
-            factoryLatitude: 0,
-            factoryLongitude: 0,
-            factoryRadius: 50,
             autoClockInEnabled: true,
             breakDuration: 40,
         }
@@ -361,59 +355,6 @@ function GlobalSettingsForm() {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('geofenceTitle')}</CardTitle>
-                        <CardDescription>{t('geofenceDescription')}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="factoryRadius"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('radiusLabel')}</FormLabel>
-                                    <FormControl>
-                                        <Input type="number" {...field} />
-                                    </FormControl>
-                                    <FormDescription>{t('radiusDescription')}</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="factoryLatitude"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t('latitudeLabel')}</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" step="any" placeholder="e.g. 4.0483" {...field} />
-                                        </FormControl>
-                                        <FormDescription>{t('latitudeDescription')}</FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="factoryLongitude"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t('longitudeLabel')}</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" step="any" placeholder="e.g. 9.7043" {...field} />
-                                        </FormControl>
-                                        <FormDescription>{t('longitudeDescription')}</FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-
                 <Card>
                     <CardHeader>
                         <CardTitle>{t('rulesTitle')}</CardTitle>

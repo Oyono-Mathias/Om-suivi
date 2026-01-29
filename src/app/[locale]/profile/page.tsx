@@ -33,7 +33,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
@@ -43,6 +43,7 @@ import { useAd } from "@/context/AdContext";
 export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
   const tShared = useTranslations('Shared');
+  const tGeo = useTranslations('TimeTrackingPage');
   
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -60,6 +61,9 @@ export default function ProfilePage() {
       enabled: z.boolean(),
       time: z.string(),
     }),
+    workLatitude: z.number().optional(),
+    workLongitude: z.number().optional(),
+    workRadius: z.coerce.number().min(10, { message: t('radiusMinError')}),
   });
 
   const userProfileRef = useMemoFirebase(() => {
@@ -76,7 +80,8 @@ export default function ProfilePage() {
       profession: 'other',
       monthlyBaseSalary: 0,
       currency: 'FCFA',
-      reminders: { enabled: false, time: '17:00' }
+      reminders: { enabled: false, time: '17:00' },
+      workRadius: 50,
     }
   });
   
@@ -88,6 +93,9 @@ export default function ProfilePage() {
         monthlyBaseSalary: profile.monthlyBaseSalary || 0,
         currency: profile.currency || 'FCFA',
         reminders: profile.reminders || { enabled: false, time: '17:00' },
+        workLatitude: profile.workLatitude,
+        workLongitude: profile.workLongitude,
+        workRadius: profile.workRadius || 50,
       });
     } else if (user) {
       form.reset({
@@ -96,6 +104,36 @@ export default function ProfilePage() {
       });
     }
   }, [profile, user, form]);
+
+  const handleSetWorkplace = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          form.setValue('workLatitude', latitude);
+          form.setValue('workLongitude', longitude);
+          toast({
+            title: t('workplaceSetSuccess'),
+            description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`,
+          });
+        },
+        (error) => {
+          toast({
+            variant: 'destructive',
+            title: tGeo('geoFailedTitle'),
+            description: tGeo('geoFailedDescription'),
+          });
+        }
+      );
+    } else {
+      toast({
+        variant: 'destructive',
+        title: tGeo('geoNotSupportedTitle'),
+        description: tGeo('geoNotSupportedDescription'),
+      });
+    }
+  };
+
 
   // Effect for user-configurable reminders
   useEffect(() => {
@@ -290,6 +328,35 @@ export default function ProfilePage() {
                   )}
                 />
               </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('workplaceSettingsTitle')}</CardTitle>
+              <CardDescription>{t('workplaceSettingsDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+               <Button type="button" variant="outline" className="w-full" onClick={handleSetWorkplace}>
+                  <MapPin className="mr-2 h-4 w-4" />
+                  {t('setWorkplaceButton')}
+                </Button>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField
+                    control={form.control}
+                    name="workRadius"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{t('radiusLabel')}</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="50" {...field} />
+                        </FormControl>
+                        <FormDescription>{t('radiusDescription')}</FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
             </CardContent>
           </Card>
 

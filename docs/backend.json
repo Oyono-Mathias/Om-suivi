@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -52,6 +51,18 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the user profile was created."
+        },
+        "workLatitude": {
+          "type": "number",
+          "description": "The latitude of the user's primary work location."
+        },
+        "workLongitude": {
+          "type": "number",
+          "description": "The longitude of the user's primary work location."
+        },
+        "workRadius": {
+          "type": "number",
+          "description": "The radius in meters for the geofence around the user's work location."
         }
       },
       "required": [
@@ -151,18 +162,6 @@
       "type": "object",
       "description": "Stores global configuration settings for the application.",
       "properties": {
-        "factoryLatitude": {
-          "type": "number",
-          "description": "The latitude of the company's central location."
-        },
-        "factoryLongitude": {
-          "type": "number",
-          "description": "The longitude of the company's central location."
-        },
-        "factoryRadius": {
-          "type": "number",
-          "description": "The radius in meters for the geofence around the factory."
-        },
         "autoClockInEnabled": {
           "type": "boolean",
           "description": "A global switch to enable or disable automatic clock-in."
@@ -173,9 +172,6 @@
         }
       },
       "required": [
-        "factoryLatitude",
-        "factoryLongitude",
-        "factoryRadius",
         "autoClockInEnabled"
       ]
     }

@@ -37,6 +37,9 @@ export interface Profile {
     enabled: boolean;
     time: string; // e.g., "17:00"
   };
+  workLatitude?: number;
+  workLongitude?: number;
+  workRadius?: number;
 }
 
 export interface TeamMember {
@@ -50,9 +53,6 @@ export interface TeamMember {
 
 export interface GlobalSettings {
     id: string;
-    factoryLatitude: number;
-    factoryLongitude: number;
-    factoryRadius: number;
     autoClockInEnabled: boolean;
     breakDuration?: number;
 }
