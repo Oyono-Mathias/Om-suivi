@@ -21,6 +21,8 @@ export interface TimeEntry {
   isPublicHoliday?: boolean;
   userProfileId: string;
   profession?: Profession;
+  modified_manually?: boolean;
+  modification_reason?: 'pause_limit_exceeded';
 }
 
 export interface Workplace {

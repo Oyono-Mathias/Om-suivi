@@ -96,7 +96,13 @@
       "confirmButton": "Yes, End Shift",
       "cancelButton": "No, I'm still working"
     },
-    "exceptionalOvertimeLabel": "Authorize Overtime"
+    "exceptionalOvertimeLabel": "Authorize Overtime",
+    "resumeWorkButton": "Resume Work",
+    "manualResumeToast": "Shift resumed manually",
+    "pauseLimitExceededNotification": {
+      "title": "OM Suivi: Pause limit exceeded",
+      "body": "Please resume your shift manually in the app."
+    }
   },
   "ManualEntryDialog": {
     "title": "Add Manual Entry",
@@ -202,6 +208,7 @@
     "tableOvertime": "Overtime (min)",
     "tableType": "Type",
     "tableDuration": "Duration (min)",
+    "tableRemarks": "Remarks",
     "noEntries": "No entries for this month.",
     "overtimeTier1": "Overtime at {rate}%",
     "overtimeTier2": "Overtime at {rate}%",
@@ -219,7 +226,8 @@
     "typeMission": "Mission",
     "overtimeBreakdownTitle": "Overtime Breakdown",
     "financialSummaryTitle": "Financial Summary",
-    "totalLabel": "Total"
+    "totalLabel": "Total",
+    "remarkPauseLimit": "Manual Resume"
   },
   "TeamPage": {
     "title": "Team Overview",
@@ -241,7 +249,8 @@
     "tableEmail": "Email",
     "tableRole": "Role",
     "tableSalary": "Base Salary",
-    "noUsers": "No users found in the system."
+    "noUsers": "No users found in the system.",
+    "manualModificationLabel": "Modified"
   },
   "Shared": {
     "loading": "Loading...",

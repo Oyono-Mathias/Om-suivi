@@ -263,6 +263,7 @@ export default function ExportReportPage() {
                                 <p><strong>{t('tableLocation')}:</strong> {entry.location || 'N/A'}</p>
                                 <p><strong>{t('tableDuration')}:</strong> {entry.duration} min</p>
                                 <p><strong>{t('tableOvertime')}:</strong> {entry.overtimeDuration > 0 ? `${entry.overtimeDuration} min` : '-'}</p>
+                                {entry.modified_manually && <p><strong>{t('tableRemarks')}:</strong> <span className="text-destructive font-semibold">{t('remarkPauseLimit')}</span></p>}
                                 </CardContent>
                             </Card>
                             ))
@@ -281,6 +282,7 @@ export default function ExportReportPage() {
                                 <TableHead>{t('tableLocation')}</TableHead>
                                 <TableHead>{t('tableOvertime')}</TableHead>
                                 <TableHead>{t('tableType')}</TableHead>
+                                <TableHead>{t('tableRemarks')}</TableHead>
                                 <TableHead className="text-right">{t('tableDuration')}</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -297,12 +299,15 @@ export default function ExportReportPage() {
                                     <TableCell>{entry.location || 'N/A'}</TableCell>
                                     <TableCell>{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} min` : '-'}</TableCell>
                                     <TableCell>{entry.location === 'Mission' ? t('typeMission') : t('typeNormal')}</TableCell>
+                                    <TableCell>
+                                      {entry.modified_manually && <Badge variant="destructive">{t('remarkPauseLimit')}</Badge>}
+                                    </TableCell>
                                     <TableCell className="text-right">{entry.duration} min</TableCell>
                                   </TableRow>
                                 ))
                               ) : (
                                 <TableRow>
-                                  <TableCell colSpan={7} className="h-24 text-center">{t('noEntries')}</TableCell>
+                                  <TableCell colSpan={8} className="h-24 text-center">{t('noEntries')}</TableCell>
                                 </TableRow>
                               )}
                             </TableBody>
@@ -321,4 +326,3 @@ export default function ExportReportPage() {
         </div>
     );
 }
-    

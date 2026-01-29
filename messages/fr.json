@@ -96,7 +96,13 @@
       "confirmButton": "Oui, terminer",
       "cancelButton": "Non, je travaille encore"
     },
-    "exceptionalOvertimeLabel": "Autoriser Heures Supplémentaires"
+    "exceptionalOvertimeLabel": "Autoriser Heures Supplémentaires",
+    "resumeWorkButton": "Reprendre le Service",
+    "manualResumeToast": "Service repris manuellement",
+    "pauseLimitExceededNotification": {
+      "title": "OM Suivi: Limite de pause dépassée",
+      "body": "Veuillez reprendre le service manuellement sur l'application."
+    }
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
@@ -202,6 +208,7 @@
     "tableOvertime": "Heures sup. (min)",
     "tableType": "Type",
     "tableDuration": "Durée (min)",
+    "tableRemarks": "Remarques",
     "noEntries": "Aucune entrée pour ce mois.",
     "overtimeTier1": "Heures sup. à {rate}%",
     "overtimeTier2": "Heures sup. à {rate}%",
@@ -219,7 +226,8 @@
     "typeMission": "Mission",
     "overtimeBreakdownTitle": "Détail des Heures Supplémentaires",
     "financialSummaryTitle": "Résumé Financier",
-    "totalLabel": "Total"
+    "totalLabel": "Total",
+    "remarkPauseLimit": "Reprise Manuelle"
   },
   "TeamPage": {
     "title": "Aperçu de l'Équipe",
@@ -241,7 +249,8 @@
     "tableEmail": "Email",
     "tableRole": "Rôle",
     "tableSalary": "Salaire de Base",
-    "noUsers": "Aucun utilisateur trouvé dans le système."
+    "noUsers": "Aucun utilisateur trouvé dans le système.",
+    "manualModificationLabel": "Modifié"
   },
   "Shared": {
     "loading": "Chargement...",

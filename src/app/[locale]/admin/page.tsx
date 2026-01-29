@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, CalendarIcon, X } from 'lucide-react';
+import { Loader2, ShieldX, User, ShieldCheck, Search, CalendarIcon, X, AlertTriangle } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -136,7 +136,15 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
                                             <div className="font-medium">{format(parseISO(entry.date), 'PPP', { locale: dateFnsLocale })}</div>
                                             <div className="text-xs text-muted-foreground">{shifts.find(s => s.id === entry.shiftId)?.name}</div>
                                         </TableCell>
-                                        <TableCell>{entry.startTime} - {entry.endTime}</TableCell>
+                                        <TableCell>
+                                            {entry.startTime} - {entry.endTime}
+                                            {entry.modified_manually && (
+                                                <Badge variant="destructive" className="ml-2 gap-1">
+                                                  <AlertTriangle className="h-3 w-3" />
+                                                  {t('manualModificationLabel')}
+                                                </Badge>
+                                            )}
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="outline" size="sm" onClick={() => setEditingEntry(entry)}>Modifier</Button>
                                         </TableCell>
@@ -307,5 +315,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    

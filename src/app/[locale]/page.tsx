@@ -97,6 +97,8 @@ export default function TimeTrackingPage() {
 
   const [recoveryData, setRecoveryData] = useState<ActiveShiftState | null>(null);
   const [isExceptionalOvertime, setIsExceptionalOvertime] = useState(false);
+  const [isPauseLimitExceeded, setIsPauseLimitExceeded] = useState(false);
+
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
@@ -170,6 +172,7 @@ export default function TimeTrackingPage() {
     setIsExceptionalOvertime(false);
     setExitInfo(null);
     setUnpaidBreakMinutes(0);
+    setIsPauseLimitExceeded(false);
     clearActiveShiftFromLocal();
   }, [activeTimer, setIsShiftActive]);
 
@@ -183,6 +186,7 @@ export default function TimeTrackingPage() {
         setElapsedTime(prev => prev + 1);
       }, 1000);
       setActiveTimer(timer);
+      setIsPauseLimitExceeded(false);
       saveActiveShiftToLocal({
         activeTimeEntryId: entryId,
         startTimeISO: startTime.toISOString(),
@@ -269,7 +273,7 @@ export default function TimeTrackingPage() {
         console.error("Failed to start shift:", error);
         return null;
     }
-  }, [user, firestore, profile, setIsShiftActive, t, toast]);
+  }, [user, firestore, profile, t, toast]);
 
 
   const handleEndShift = useCallback((manualEndTime?: Date, exceptionalOvertime: boolean = false, initialUnpaidMinutes: number = 0) => {
@@ -338,19 +342,10 @@ export default function TimeTrackingPage() {
 
 
   const handleGeofenceEnter = useCallback(async () => {
+    if (isPauseLimitExceeded) return;
+
     // Smart Pause Logic: Re-entry
     if (isShiftActive && exitInfo) {
-      const timeOutsideMinutes = differenceInMinutes(new Date(), new Date(exitInfo.timestampISO));
-      if (timeOutsideMinutes > PAUSE_TOLERANCE_MINUTES) {
-        const penaltyMinutes = timeOutsideMinutes - PAUSE_TOLERANCE_MINUTES;
-        const newTotalUnpaid = unpaidBreakMinutes + penaltyMinutes;
-        setUnpaidBreakMinutes(newTotalUnpaid);
-        
-        if (activeTimeEntryId) {
-          const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
-          updateDocumentNonBlocking(entryRef, { unpaidBreakDuration: newTotalUnpaid });
-        }
-      }
       setExitInfo(null);
     }
     
@@ -387,7 +382,7 @@ export default function TimeTrackingPage() {
           });
       }
     }
-  }, [isShiftActive, firestore, user, profile, startShift, exitInfo, activeTimeEntryId, unpaidBreakMinutes]);
+  }, [isShiftActive, firestore, user, profile, startShift, exitInfo, isPauseLimitExceeded]);
 
 
   const handleGeofenceExit = useCallback(() => {
@@ -412,6 +407,7 @@ export default function TimeTrackingPage() {
 
     // Smart Pause Logic for other professions (except night shift)
     if (shift.id !== 'night') {
+      setIsPauseLimitExceeded(false); // Reset on new exit
       setExitInfo({ timestampISO: new Date().toISOString() });
       return;
     }
@@ -437,6 +433,20 @@ export default function TimeTrackingPage() {
                 );
                 const currentlyInZone = distance * 1000 <= profile.workplace.radius;
 
+                // Pause limit exceeded logic
+                if (exitInfo && !isPauseLimitExceeded) {
+                    const timeOutsideMinutes = differenceInMinutes(new Date(), new Date(exitInfo.timestampISO));
+                    if (timeOutsideMinutes > PAUSE_TOLERANCE_MINUTES) {
+                        setIsPauseLimitExceeded(true);
+                        if (Notification.permission === 'granted') {
+                            new Notification(t('pauseLimitExceededNotification.title'), {
+                                body: t('pauseLimitExceededNotification.body'),
+                                icon: '/icons/icon-192x192.png',
+                            });
+                        }
+                    }
+                }
+
                 // Update local storage state
                 const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
                 if (savedStateJSON) {
@@ -458,7 +468,7 @@ export default function TimeTrackingPage() {
                 setIsInWorkZone(currentlyInZone);
                 
                 // Auto-stop logic for users outside the zone after shift end
-                if (exitInfo) {
+                if (exitInfo && !isPauseLimitExceeded) {
                     const shift = shifts.find(s => s.id === activeEntry.shiftId);
                     if (shift) {
                         const shiftEndDateTime = parseISO(`${activeEntry.date}T${shift.endTime}:00`);
@@ -476,7 +486,7 @@ export default function TimeTrackingPage() {
 
     const intervalId = setInterval(monitorLocation, 60000);
     return () => clearInterval(intervalId);
-  }, [profile, isShiftActive, isInWorkZone, activeEntry, exitInfo, unpaidBreakMinutes, handleGeofenceEnter, handleGeofenceExit, handleEndShift]);
+  }, [profile, isShiftActive, isInWorkZone, activeEntry, exitInfo, unpaidBreakMinutes, isPauseLimitExceeded, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t]);
   
   
   const handleManualStart = async () => {
@@ -519,6 +529,33 @@ export default function TimeTrackingPage() {
       await startShift(shift, locationString);
       setSuggestedLocation(null);
   };
+
+  const handleManualResume = () => {
+    if (!activeTimeEntryId || !user || !firestore) return;
+    
+    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
+    
+    const updatePayload: Partial<TimeEntry> = {
+        modified_manually: true,
+        modification_reason: 'pause_limit_exceeded',
+    };
+
+    if (exitInfo) {
+        const timeOutsideMinutes = differenceInMinutes(new Date(), new Date(exitInfo.timestampISO));
+        if (timeOutsideMinutes > PAUSE_TOLERANCE_MINUTES) {
+            const penaltyMinutes = Math.floor(timeOutsideMinutes - PAUSE_TOLERANCE_MINUTES);
+            const newTotalUnpaid = unpaidBreakMinutes + penaltyMinutes;
+            setUnpaidBreakMinutes(newTotalUnpaid);
+            updatePayload.unpaidBreakDuration = newTotalUnpaid;
+        }
+        setExitInfo(null);
+    }
+    
+    updateDocumentNonBlocking(entryRef, updatePayload);
+    setIsPauseLimitExceeded(false);
+    toast({ title: t('manualResumeToast'), description: "Votre session de travail continue." });
+  };
+
 
   const formatElapsedTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
@@ -639,6 +676,15 @@ export default function TimeTrackingPage() {
             >
                 {t('startShiftButton')}
             </Button>
+        ) : isPauseLimitExceeded ? (
+            <div className="flex flex-col gap-2">
+                <Button className="w-full h-16 text-xl" variant="secondary" onClick={handleManualResume}>
+                    {t('resumeWorkButton')}
+                </Button>
+                <Button className="w-full h-14" variant="destructive" onClick={() => handleEndShift(undefined, isExceptionalOvertime)}>
+                    {t('endShiftButton')}
+                </Button>
+            </div>
         ) : (
             <Button
                 className="w-full h-16 text-xl"
@@ -732,7 +778,7 @@ export default function TimeTrackingPage() {
       <AlertDialog open={!!recoveryData} onOpenChange={(open) => !open && setRecoveryData(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('disconnection.title')}</AlertDialogTitle>
+            <DialogTitle>{t('disconnection.title')}</DialogTitle>
             <AlertDialogDescription>
               {t('disconnection.description', { time: recoveryData ? format(new Date(recoveryData.lastSeenISO), 'p') : '' })}
             </AlertDialogDescription>
