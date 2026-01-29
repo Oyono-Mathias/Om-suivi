@@ -39,7 +39,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocum
 import { doc, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
 import type { TimeEntry, Profile, Shift } from '@/lib/types';
 import { shifts } from '@/lib/shifts';
-import { format, parseISO, differenceInMinutes, addHours } from 'date-fns';
+import { format, parseISO, differenceInMinutes, addHours, differenceInHours } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { Loader2, Briefcase } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -247,6 +247,14 @@ export default function TimeTrackingPage() {
 
   const startShift = useCallback(async (shift: Shift, locationString?: string) => {
     if (!user || !firestore || !profile) return null;
+    if (!profile.profession || profile.profession === 'other') {
+        toast({
+          variant: 'destructive',
+          title: tShared('pleaseSetProfessionTitle'),
+          description: tShared('pleaseSetProfessionDescription'),
+        });
+        return null;
+    }
 
     const now = new Date();
     const startTimeStr = format(now, 'HH:mm');
@@ -273,7 +281,7 @@ export default function TimeTrackingPage() {
         console.error("Failed to start shift:", error);
         return null;
     }
-  }, [user, firestore, profile, t, toast]);
+  }, [user, firestore, profile, t, toast, tShared]);
 
 
   const handleEndShift = useCallback((manualEndTime?: Date, exceptionalOvertime: boolean = false, initialUnpaidMinutes: number = 0) => {
@@ -329,6 +337,10 @@ export default function TimeTrackingPage() {
   
     toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
 
+    if (shift.id === 'night') {
+        localStorage.setItem('nightShiftJustEnded', new Date().toISOString());
+    }
+
     if (Notification.permission === 'granted' && navigator.serviceWorker) {
         const overtimeHours = (overtimeDuration / 60).toFixed(2);
         navigator.serviceWorker.ready.then((registration) => {
@@ -353,6 +365,14 @@ export default function TimeTrackingPage() {
     
     // Auto-Clock In Logic
     if (!isShiftActive && firestore && user && profile && profile.profession && profile.profession !== 'other') {
+      const lastNightShiftEnd = localStorage.getItem('nightShiftJustEnded');
+      if (lastNightShiftEnd) {
+          const hoursSinceEnd = differenceInHours(new Date(), new Date(lastNightShiftEnd));
+          if (hoursSinceEnd < 3) {
+              return; 
+          }
+      }
+
       const now = new Date();
       const currentHour = now.getHours();
       const todayStr = format(now, 'yyyy-MM-dd');
@@ -380,13 +400,13 @@ export default function TimeTrackingPage() {
       if (newEntryId && Notification.permission === 'granted' && navigator.serviceWorker) {
           navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification('OM Suivi: Pointage Automatique', {
-                body: `Votre service '${shiftToStart.name}' a démarré automatiquement à ${format(now, 'HH:mm')}.`,
+                body: `Votre service '${shiftToStart!.name}' a démarré automatiquement à ${format(now, 'HH:mm')}.`,
                 icon: '/icons/icon-192x192.png',
             });
           });
       }
     }
-  }, [isShiftActive, firestore, user, profile, startShift, exitInfo, isPauseLimitExceeded]);
+  }, [isShiftActive, firestore, user, profile, startShift, exitInfo, isPauseLimitExceeded, tShared, toast]);
 
 
   const handleGeofenceExit = useCallback(() => {
@@ -502,8 +522,10 @@ export default function TimeTrackingPage() {
         );
     };
 
-    const intervalId = setInterval(monitorLocation, 60000);
-    return () => clearInterval(intervalId);
+    if (profile && profile.profession && profile.profession !== 'other') {
+      const intervalId = setInterval(monitorLocation, 60000);
+      return () => clearInterval(intervalId);
+    }
   }, [profile, isShiftActive, isInWorkZone, activeTimeEntryId, timeEntries, exitInfo, unpaidBreakMinutes, isPauseLimitExceeded, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t]);
   
   
