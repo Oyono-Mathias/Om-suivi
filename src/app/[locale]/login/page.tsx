@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -54,6 +53,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useTranslations } from 'next-intl';
 import type { Profession } from '@/lib/types';
+import Image from 'next/image';
 
 
 export default function AuthPage() {
@@ -213,151 +213,153 @@ export default function AuthPage() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background to-secondary p-4 md:p-0">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
-        <Card className="w-full rounded-xl border-border/20 bg-card/60 shadow-2xl shadow-black/20 backdrop-blur-lg sm:w-full">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold">{t('title')}</CardTitle>
-            <CardDescription>{t('description')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6 px-6 pb-6">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary/30">
-              <TabsTrigger value="login" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('loginTab')}</TabsTrigger>
-              <TabsTrigger value="register" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('registerTab')}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                  <FormField
-                    control={loginForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('emailLabel')}</FormLabel>
-                        <div className="relative">
-                          <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                          <FormControl>
-                            <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10 h-12 text-base" />
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('passwordLabel')}</FormLabel>
-                        <div className="relative">
-                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                          <FormControl>
-                            <Input type="password" {...field} className="pl-10 h-12 text-base" />
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <div className="text-right">
-                    <Button variant="link" type="button" onClick={() => setResetPasswordOpen(true)} className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-primary">
-                      {t('forgotPasswordLink')}
-                    </Button>
-                  </div>
-                  <Button type="submit" className="w-full text-lg h-14" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                    {t('loginButton')}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-            <TabsContent value="register">
-              <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
-                  <FormField
-                    control={registerForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('nameLabel')}</FormLabel>
-                         <div className="relative">
-                           <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                          <FormControl>
-                            <Input placeholder={t('namePlaceholder')} {...field} className="pl-10 h-12 text-base"/>
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('emailLabel')}</FormLabel>
-                        <div className="relative">
-                          <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                          <FormControl>
-                            <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10 h-12 text-base" />
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={registerForm.control}
-                    name="profession"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('professionLabel')}</FormLabel>
-                        <div className="relative">
-                           <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                           <FormControl>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <SelectTrigger className="pl-10 h-12 text-base">
-                                        <SelectValue placeholder={t('professionPlaceholder')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {professions.map(p => (
-                                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+      <div className="flex flex-col items-center gap-6">
+        <Image src="/logo-om.png" alt="OM Suivi Logo" width={80} height={80} />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
+          <Card className="w-full rounded-xl border-border/20 bg-card/60 shadow-2xl shadow-black/20 backdrop-blur-lg sm:w-full">
+            <CardHeader className="text-center">
+              <CardTitle className="text-3xl font-bold">{t('title')}</CardTitle>
+              <CardDescription>{t('description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 px-6 pb-6">
+              <TabsList className="grid w-full grid-cols-2 bg-secondary/30">
+                <TabsTrigger value="login" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('loginTab')}</TabsTrigger>
+                <TabsTrigger value="register" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('registerTab')}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="login">
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+                    <FormField
+                      control={loginForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('emailLabel')}</FormLabel>
+                          <div className="relative">
+                            <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <FormControl>
+                              <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10 h-12 text-base" />
                             </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('passwordLabel')}</FormLabel>
-                         <div className="relative">
-                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                          <FormControl>
-                            <Input type="password" {...field} className="pl-10 h-12 text-base"/>
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full text-lg h-14" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                    {t('registerButton')}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-          </CardContent>
-        </Card>
-      </Tabs>
-      
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('passwordLabel')}</FormLabel>
+                          <div className="relative">
+                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <FormControl>
+                              <Input type="password" {...field} className="pl-10 h-12 text-base" />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <div className="text-right">
+                      <Button variant="link" type="button" onClick={() => setResetPasswordOpen(true)} className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-primary">
+                        {t('forgotPasswordLink')}
+                      </Button>
+                    </div>
+                    <Button type="submit" className="w-full text-lg h-14" disabled={isLoading}>
+                      {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                      {t('loginButton')}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+              <TabsContent value="register">
+                <Form {...registerForm}>
+                  <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
+                    <FormField
+                      control={registerForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('nameLabel')}</FormLabel>
+                           <div className="relative">
+                             <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <FormControl>
+                              <Input placeholder={t('namePlaceholder')} {...field} className="pl-10 h-12 text-base"/>
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('emailLabel')}</FormLabel>
+                          <div className="relative">
+                            <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <FormControl>
+                              <Input placeholder={t('emailPlaceholder')} {...field} className="pl-10 h-12 text-base" />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={registerForm.control}
+                      name="profession"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('professionLabel')}</FormLabel>
+                          <div className="relative">
+                             <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                             <FormControl>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <SelectTrigger className="pl-10 h-12 text-base">
+                                          <SelectValue placeholder={t('professionPlaceholder')} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {professions.map(p => (
+                                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                  </Select>
+                              </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('passwordLabel')}</FormLabel>
+                           <div className="relative">
+                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <FormControl>
+                              <Input type="password" {...field} className="pl-10 h-12 text-base"/>
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full text-lg h-14" disabled={isLoading}>
+                      {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                      {t('registerButton')}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+            </CardContent>
+          </Card>
+        </Tabs>
+      </div>
       <Dialog open={isResetPasswordOpen} onOpenChange={setResetPasswordOpen}>
         <DialogContent>
           <DialogHeader>
