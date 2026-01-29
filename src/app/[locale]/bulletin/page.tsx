@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -124,8 +124,8 @@ export default function BulletinPage() {
                 
                 const shift = shifts.find(s => s.id === entry.shiftId);
                 if (shift) {
-                    const shiftStartDateTime = parseISO(`${entry.date}T${shift.startTime}:00`);
-                    let shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}:00`);
+                    const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    let shiftEndDateTime = parse(`${entry.date} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
                     if (shiftEndDateTime <= shiftStartDateTime) shiftEndDateTime = addDays(shiftEndDateTime, 1);
                     
                     const overtimeStartDateTime = shiftEndDateTime;
@@ -269,7 +269,7 @@ export default function BulletinPage() {
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-28">
              <style jsx global>{`
                 @media print {
                     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -291,8 +291,8 @@ export default function BulletinPage() {
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
 
-            <div className="p-4 sm:p-6 border rounded-lg bg-card text-card-foreground print-container">
-                <header className="flex justify-between items-start mb-6 border-b pb-4">
+            <div className="p-0 sm:p-6 sm:border sm:rounded-lg sm:bg-card sm:text-card-foreground print-container">
+                <header className="hidden sm:flex justify-between items-start mb-6 border-b pb-4">
                     <div>
                         <Image src="/logo-om.png" alt="Company Logo" width={48} height={48} className="mb-2" />
                         <h2 className="text-2xl font-bold text-primary font-headline">{t('title')}</h2>
@@ -304,7 +304,51 @@ export default function BulletinPage() {
                     </div>
                 </header>
 
-                <div className="overflow-x-auto print-table">
+                <div className="space-y-4 sm:hidden">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t('gainsSectionTitle')}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between"><span>{t('baseSalaryLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.baseSalary)}</span></div>
+                                {payrollData.seniorityBonus > 0 && <div className="flex justify-between"><span>{t('seniorityBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.seniorityBonus)}</span></div>}
+                                {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) =>
+                                    <div className="flex justify-between" key={`gain-${key}`}>
+                                        <span>{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})}</span>
+                                        <span className="font-mono">{formatCurrency(tier.payout)}</span>
+                                    </div>
+                                )}
+                                {payrollData.attendanceBonus > 0 && <div className="flex justify-between"><span>{t('attendanceBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.attendanceBonus)}</span></div>}
+                                {payrollData.performanceBonus > 0 && <div className="flex justify-between"><span>{t('performanceBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.performanceBonus)}</span></div>}
+                                <div className="flex justify-between"><span>{t('transportBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.transportBonus)}</span></div>
+                                <div className="flex justify-between"><span>{t('housingBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.housingBonus)}</span></div>
+                                {payrollData.absenceDeduction > 0 && <div className="flex justify-between text-destructive"><span>{t('absenceDeductionLabel')}</span> <span className="font-mono">- {formatCurrency(payrollData.absenceDeduction)}</span></div>}
+                                <div className="flex justify-between font-bold pt-2 border-t"><span>{t('grossSalaryLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span></div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>{t('deductionsSectionTitle')}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <div className="space-y-2 text-sm">
+                                <div className="flex justify-between"><span>{t('cnpsLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cnpsDeduction)}</span></div>
+                                <div className="flex justify-between"><span>{t('cacLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cacDeduction)}</span></div>
+                                <div className="flex justify-between"><span>{t('redevanceCRTVLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.redevanceCRTV)}</span></div>
+                                {payrollData.cotisationSyndicale > 0 && <div className="flex justify-between"><span>{t('cotisationSyndicaleLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cotisationSyndicale)}</span></div>}
+                                <div className="flex justify-between"><span>{t('irppLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.irppDeduction)}</span></div>
+                                <div className="flex justify-between"><span>{t('cacSurIRPPLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cacSurIRPP)}</span></div>
+                                <div className="flex justify-between"><span>{t('communalTaxLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.taxeCommunale)}</span></div>
+                                <div className="flex justify-between font-bold pt-2 border-t"><span>{t('totalDeductionsLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.totalDeductions)}</span></div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+
+                <div className="overflow-x-auto print-table hidden sm:block">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -319,14 +363,17 @@ export default function BulletinPage() {
                     <TableBody>
                         {renderRow(t('baseSalaryLabel'), "30,00", (payrollData.baseSalary / 30).toFixed(2), null, payrollData.baseSalary, null)}
                         {payrollData.seniorityBonus > 0 && renderRow(t('seniorityBonusLabel'), null, payrollData.baseSalary, '2.000', payrollData.seniorityBonus, null)}
-                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => 
-                            renderRow(t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)}), (tier.minutes/60).toFixed(2), payrollData.hourlyRate, tier.rate*100, tier.payout, null)
+                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) =>
+                           React.cloneElement(
+                                renderRow(t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)}), (tier.minutes/60).toFixed(2), payrollData.hourlyRate, tier.rate*100, tier.payout, null),
+                                { key: `overtime-${key}` }
+                            )
                         )}
                         {payrollData.attendanceBonus > 0 && renderRow(t('attendanceBonusLabel'), null, null, null, payrollData.attendanceBonus, null)}
                         {payrollData.performanceBonus > 0 && renderRow(t('performanceBonusLabel'), null, null, null, payrollData.performanceBonus, null)}
                         {renderRow(t('transportBonusLabel'), null, null, null, payrollData.transportBonus, null)}
                         {renderRow(t('housingBonusLabel'), payrollData.baseSalary, 0.1, 10, payrollData.housingBonus, null)}
-                        {payrollData.absenceDeduction > 0 && renderRow(t('absenceDeductionLabel'), null, null, null, null, payrollData.absenceDeduction)}
+                        {payrollData.absenceDeduction > 0 && renderRow(t('absenceDeductionLabel'), null, null, null, null, null, payrollData.absenceDeduction)}
 
                         {renderRow(t('grossMonthlySalaryLabel'), null, null, null, null, null, true)}
                         {renderRow('', null, null, null, payrollData.grossSalary, null, true)}
@@ -347,8 +394,8 @@ export default function BulletinPage() {
                 </Table>
                 </div>
                 
-                <div className="flex justify-end mt-8">
-                  <div className="border-2 border-primary rounded-lg p-4 w-full max-w-xs bg-primary/5">
+                <div className="flex justify-center sm:justify-end mt-8">
+                  <div className="border-2 border-primary rounded-2xl p-4 w-full max-w-sm bg-primary/5">
                       <div className="flex justify-between items-center font-bold text-lg">
                           <span className="text-primary">{t('netPayableLabel')}</span>
                           <span className="text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} FCFA</span>
@@ -363,3 +410,5 @@ export default function BulletinPage() {
         </div>
     );
 }
+
+    
