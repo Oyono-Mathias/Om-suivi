@@ -135,9 +135,12 @@ export default function ProfilePage() {
       const now = new Date();
       const currentTime = format(now, 'HH:mm');
 
-      if (currentTime === profile.reminders.time && Notification.permission === 'granted') {
-        new Notification(t('reminders.notificationTitle'), {
-          body: t('reminders.notificationBody'),
+      if (currentTime === profile.reminders.time && Notification.permission === 'granted' && navigator.serviceWorker) {
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(t('reminders.notificationTitle'), {
+                body: t('reminders.notificationBody'),
+                icon: '/icons/icon-192x192.png',
+            });
         });
       }
     };
@@ -162,10 +165,12 @@ export default function ProfilePage() {
       const currentTime = format(now, 'HH:mm');
       const reminderTimes = ['06:00', '14:00', '22:00'];
 
-      if (reminderTimes.includes(currentTime) && Notification.permission === 'granted') {
-        new Notification(t('reminders.shiftStartDetected'), {
-          body: t('reminders.shiftStartBody'),
-          icon: '/icons/icon-192x192.png',
+      if (reminderTimes.includes(currentTime) && Notification.permission === 'granted' && navigator.serviceWorker) {
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(t('reminders.shiftStartDetected'), {
+                body: t('reminders.shiftStartBody'),
+                icon: '/icons/icon-192x192.png',
+            });
         });
       }
     };
@@ -498,3 +503,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

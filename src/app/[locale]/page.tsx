@@ -330,11 +330,13 @@ export default function TimeTrackingPage() {
   
     toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
 
-    if (Notification.permission === 'granted') {
+    if (Notification.permission === 'granted' && navigator.serviceWorker) {
         const overtimeHours = (overtimeDuration / 60).toFixed(2);
-        new Notification('OM Suivi: Fin de Service', {
-            body: `Service terminé. ${overtimeHours} heures supplémentaires enregistrées.`,
-            icon: '/icons/icon-192x192.png',
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification('OM Suivi: Fin de Service', {
+                body: `Service terminé. ${overtimeHours} heures supplémentaires enregistrées.`,
+                icon: '/icons/icon-192x192.png',
+            });
         });
     }
 
@@ -376,10 +378,12 @@ export default function TimeTrackingPage() {
       if (!querySnapshot.empty) return;
 
       const newEntryId = await startShift(shiftToStart, profile?.workplace?.address || 'Workplace');
-      if (newEntryId && Notification.permission === 'granted') {
-          new Notification('OM Suivi: Pointage Automatique', {
-              body: `Votre service '${shiftToStart.name}' a démarré automatiquement à ${format(now, 'HH:mm')}.`,
-              icon: '/icons/icon-192x192.png',
+      if (newEntryId && Notification.permission === 'granted' && navigator.serviceWorker) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification('OM Suivi: Pointage Automatique', {
+                body: `Votre service '${shiftToStart.name}' a démarré automatiquement à ${format(now, 'HH:mm')}.`,
+                icon: '/icons/icon-192x192.png',
+            });
           });
       }
     }
@@ -399,8 +403,10 @@ export default function TimeTrackingPage() {
     if (['deliveryDriver', 'chauffeur'].includes(profile.profession)) {
         const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
         updateDocumentNonBlocking(entryRef, { location: 'Mission' });
-        if (Notification.permission === 'granted') {
-            new Notification(t('missionMode.title'), { body: t('missionMode.body') });
+        if (Notification.permission === 'granted' && navigator.serviceWorker) {
+            navigator.serviceWorker.ready.then((registration) => {
+                registration.showNotification(t('missionMode.title'), { body: t('missionMode.body'), icon: '/icons/icon-192x192.png' });
+            });
         }
         toast({ title: t('missionMode.title'), description: t('missionMode.body') });
         return;
@@ -439,10 +445,12 @@ export default function TimeTrackingPage() {
                     const timeOutsideMinutes = differenceInMinutes(new Date(), new Date(exitInfo.timestampISO));
                     if (timeOutsideMinutes > PAUSE_TOLERANCE_MINUTES) {
                         setIsPauseLimitExceeded(true);
-                        if (Notification.permission === 'granted') {
-                            new Notification(t('pauseLimitExceededNotification.title'), {
-                                body: t('pauseLimitExceededNotification.body'),
-                                icon: '/icons/icon-192x192.png',
+                        if (Notification.permission === 'granted' && navigator.serviceWorker) {
+                            navigator.serviceWorker.ready.then((registration) => {
+                                registration.showNotification(t('pauseLimitExceededNotification.title'), {
+                                    body: t('pauseLimitExceededNotification.body'),
+                                    icon: '/icons/icon-192x192.png',
+                                });
                             });
                         }
                     }
@@ -793,3 +801,5 @@ export default function TimeTrackingPage() {
     </div>
   );
 }
+
+    
