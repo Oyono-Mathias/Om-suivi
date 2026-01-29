@@ -51,6 +51,7 @@ import { getDistanceFromLatLonInKm } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Link } from '@/navigation';
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
 const PAUSE_TOLERANCE_MINUTES = 40;
@@ -601,9 +602,9 @@ export default function TimeTrackingPage() {
     return (
         <div className="flex flex-col justify-center items-center h-screen gap-4">
             <p className="text-xl">{tShared('pleaseLogin')}</p>
-            <a href="/login">
+            <Link href="/login">
                 <Button>{tShared('loginButton')}</Button>
-            </a>
+            </Link>
         </div>
     );
   }

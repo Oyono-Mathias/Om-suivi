@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Image from "next/image";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import type { TeamMember, Profile, TimeEntry } from "@/lib/types";
+import type { TeamMember } from "@/lib/types";
 import { Loader2, Users } from "lucide-react";
 import { Link } from "@/navigation";
 import { PlaceHolderImages } from "@/lib/placeholder-images";

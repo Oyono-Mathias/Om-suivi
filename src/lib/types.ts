@@ -64,15 +64,3 @@ export interface TeamMember {
   totalHours: number;
   overtimeHours: number;
 }
-
-export interface Course {
-  id:string;
-  title: string;
-  category: string;
-  description: string;
-  price: number;
-  currency: string;
-  imageUrl: string;
-  imageHint: string;
-  duration: string; // e.g., "4 semaines"
-}

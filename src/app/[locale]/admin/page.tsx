@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, CalendarIcon, X, AlertTriangle } from 'lucide-react';
+import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
