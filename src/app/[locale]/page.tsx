@@ -778,7 +778,7 @@ export default function TimeTrackingPage() {
       <AlertDialog open={!!recoveryData} onOpenChange={(open) => !open && setRecoveryData(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <DialogTitle>{t('disconnection.title')}</DialogTitle>
+            <AlertDialogTitle>{t('disconnection.title')}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('disconnection.description', { time: recoveryData ? format(new Date(recoveryData.lastSeenISO), 'p') : '' })}
             </AlertDialogDescription>
