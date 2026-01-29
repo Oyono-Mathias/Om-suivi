@@ -51,70 +51,98 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [firestore, user]);
 
   const { data: profile } = useDoc<Profile>(userProfileRef);
-
-  const navItems = [
-    { href: "/", label: t('timeTracking'), icon: Clock },
-    { href: "/reports", label: t('reports'), icon: BarChart3 },
-    { href: "/bulletin", label: t('bulletin'), icon: Newspaper },
-    { href: "/team", label: t('team'), icon: Users },
-    { href: "/profile", label: t('settings'), icon: Settings },
-  ];
   
-  const adminNavItems = [
-    { href: "/admin", label: t('administration'), icon: Shield },
-  ];
-
   const handleSignOut = () => {
     if (auth) {
       signOut(auth);
     }
   };
   
+  // Define all possible navigation items
+  const mainNavItems = [
+    { href: "/", label: t('timeTracking'), icon: Clock },
+    { href: "/reports", label: t('reports'), icon: BarChart3 },
+    { href: "/bulletin", label: t('bulletin'), icon: Newspaper },
+  ];
+  const secondaryNavItems = [
+    { href: "/team", label: t('team'), icon: Users },
+    { href: "/profile", label: t('settings'), icon: Settings },
+  ];
+  const adminNavItems = [{ href: "/admin", label: t('administration'), icon: Shield }];
+
+  // Pages without the main shell
   if (pathname.includes('/login') || pathname.includes('/reports/export')) {
-    if (isMobile) {
-      // For print-like views on mobile, we might want a simpler header
-      return (
+    return <>{children}</>;
+  }
+
+  // Loading skeleton
+  if (isMobile === undefined) {
+    return <Skeleton className="w-full h-screen" />;
+  }
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <SidebarProvider>
+        <Sidebar className="no-print">
+          {/* Mobile Drawer Content */}
+          <SidebarHeader className="p-4 border-b">
+            {user && (
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user.photoURL || "https://picsum.photos/seed/101/100/100"} data-ai-hint="person portrait" alt={user.displayName || t('user')} />
+                  <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="font-medium text-sidebar-foreground truncate">{user.displayName || user.email}</span>
+                  {profile?.role && <span className="text-xs text-muted-foreground capitalize">{profile.role}</span>}
+                </div>
+              </div>
+            )}
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarMenu>
+              {secondaryNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={pathname === item.href}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              {profile?.role === 'admin' && adminNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={pathname === item.href}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter className="p-4 flex flex-col gap-4 border-t">
+            <LanguageSwitcher />
+            {user && <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleSignOut}><LogOut className="mr-2" /> {t('signOut')}</Button>}
+          </SidebarFooter>
+        </Sidebar>
+
+        {/* Main Content Area for Mobile */}
         <div className="flex flex-col min-h-screen bg-background">
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm no-print">
             <div className="flex items-center gap-2">
-              <Image src="/logo-om.png" alt="OM Suivi Logo" width={24} height={24} className="rounded-md" />
-              <h1 className="text-lg font-semibold">{t('appName')}</h1>
+              <SidebarTrigger /> {/* Hamburger Menu to open the drawer */}
             </div>
-            <div className="flex items-center gap-2">
-              <LanguageSwitcher />
+             <div className="flex items-center gap-2">
+                <Link href="/profile">
+                    <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.photoURL || "https://picsum.photos/seed/101/100/100"} alt={user?.displayName || t('user')} />
+                    <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                </Link>
             </div>
           </header>
           <main className="flex-1 p-4 pb-32">{children}</main>
           {user && <MobileBottomNav />}
         </div>
-      )
-    }
-     return <>{children}</>;
+      </SidebarProvider>
+    );
   }
 
-
-  if (isMobile === undefined) {
-    return <Skeleton className="w-full h-screen" />;
-  }
-
-  if (isMobile) {
-    return (
-       <div className="flex flex-col min-h-screen bg-background">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <Image src="/logo-om.png" alt="OM Suivi Logo" width={24} height={24} className="rounded-md" />
-            <h1 className="text-lg font-semibold">{t('appName')}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-          </div>
-        </header>
-        <main className="flex-1 p-4 pb-32">{children}</main>
-        {user && <MobileBottomNav />}
-      </div>
-    )
-  }
-
+  // Desktop Layout
   return (
     <SidebarProvider>
       <Sidebar className="no-print">
@@ -122,26 +150,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <Image src="/logo-om.png" alt="OM Suivi Logo" width={32} height={32} className="rounded-md" />
             <div className="flex flex-col">
-              <span className="text-lg font-headline font-semibold text-sidebar-foreground">
-                {t('appName')}
-              </span>
+              <span className="text-lg font-headline font-semibold text-sidebar-foreground">{t('appName')}</span>
             </div>
           </div>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {user && navItems.map((item) => (
+            {[...mainNavItems, ...secondaryNavItems].map((item) => (
               <SidebarMenuItem key={item.href}>
-                 <SidebarMenuButton
-                  asChild
-                  isActive={pathname === item.href}
-                  tooltip={item.label}
-                >
-                  <Link href={item.href}>
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
+                 <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.label}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
               </SidebarMenuItem>
             ))}
             {profile?.role === 'admin' && (
@@ -149,16 +166,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <SidebarSeparator />
                 {adminNavItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname === item.href}
-                      tooltip={item.label}
-                    >
-                      <Link href={item.href}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
+                    <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.label}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
               </>
@@ -173,15 +181,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <AvatarImage src={user.photoURL || "https://picsum.photos/seed/101/100/100"} data-ai-hint="person portrait" alt={user.displayName || t('user')} />
                     <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
-                    <span className="font-medium text-sm text-sidebar-foreground truncate">
-                    {user.displayName || user.email}
-                    </span>
+                    <span className="font-medium text-sm text-sidebar-foreground truncate">{user.displayName || user.email}</span>
               </div>
             )}
              {user && (
-                <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleSignOut}>
-                    <LogOut className="mr-2" /> {t('signOut')}
-                </Button>
+                <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={handleSignOut}><LogOut className="mr-2" /> {t('signOut')}</Button>
             )}
         </SidebarFooter>
       </Sidebar>
