@@ -114,7 +114,8 @@
         "id",
         "userProfileId",
         "startTime",
-        "endTime"
+        "endTime",
+        "profession"
       ]
     },
     "Team": {

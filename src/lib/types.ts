@@ -20,7 +20,7 @@ export interface TimeEntry {
   shiftId: string;
   isPublicHoliday?: boolean;
   userProfileId: string;
-  profession?: Profession;
+  profession: Profession;
   modified_manually?: boolean;
   modification_reason?: 'pause_limit_exceeded';
 }
