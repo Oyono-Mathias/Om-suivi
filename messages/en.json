@@ -312,6 +312,11 @@
     "jobTitleLabel": "Job Title",
     "gainsSectionTitle": "Earnings",
     "baseSalaryLabel": "Base Salary",
+    "seniorityBonusLabel": "Seniority Bonus",
+    "attendanceBonusLabel": "Attendance Bonus",
+    "performanceBonusLabel": "Performance Bonus",
+    "transportBonusLabel": "Transport Allowance",
+    "housingBonusLabel": "Housing Allowance",
     "overtimeLabel": "Overtime",
     "nightBonusLabel": "Night Work Bonus",
     "grossSalaryLabel": "Gross Salary",
@@ -328,6 +333,12 @@
     "overtimeSunday": "Sunday OT at {rate}%",
     "overtimeHoliday": "Holiday OT at {rate}%",
     "noData": "No data for this period.",
-    "footerText": "This document is auto-generated and serves as a pay summary."
+    "footerText": "This document is auto-generated and serves as a pay summary.",
+    "tableDesignation": "Description",
+    "tableNumber": "Number",
+    "tableGain": "Gain",
+    "grossMonthlySalaryLabel": "Gross Monthly Salary"
   }
 }
+
+    

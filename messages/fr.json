@@ -312,6 +312,11 @@
     "jobTitleLabel": "Emploi",
     "gainsSectionTitle": "Gains",
     "baseSalaryLabel": "Salaire de Base",
+    "seniorityBonusLabel": "Prime d'Ancienneté",
+    "attendanceBonusLabel": "Prime d'Assiduité",
+    "performanceBonusLabel": "Prime de Rendement",
+    "transportBonusLabel": "Indemnité de Transport",
+    "housingBonusLabel": "Indemnité de Logement",
     "overtimeLabel": "Heures Supplémentaires",
     "nightBonusLabel": "Prime de Panier de Nuit",
     "grossSalaryLabel": "Salaire Brut",
@@ -328,6 +333,12 @@
     "overtimeSunday": "HS Dimanche à {rate}%",
     "overtimeHoliday": "HS Jour Férié à {rate}%",
     "noData": "Pas de données pour cette période.",
-    "footerText": "Ce document est généré automatiquement et constitue un résumé de la paie."
+    "footerText": "Ce document est généré automatiquement et constitue un résumé de la paie.",
+    "tableDesignation": "Désignation",
+    "tableNumber": "Nombre",
+    "tableGain": "Gain",
+    "grossMonthlySalaryLabel": "Salaire Brut Mensuel"
   }
 }
+
+    
