@@ -327,7 +327,7 @@ function GlobalSettingsForm() {
     const settingsSchema = z.object({
         factoryLatitude: z.number(),
         factoryLongitude: z.number(),
-        factoryRadius: z.coerce.number().min(10, "Le rayon doit être d'au moins 10 mètres."),
+        factoryRadius: z.coerce.number().min(1, "Le rayon doit être d'au moins 1 mètre."),
         autoClockInEnabled: z.boolean(),
         breakDuration: z.coerce.number().min(0)
     });
