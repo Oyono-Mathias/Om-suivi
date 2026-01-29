@@ -28,7 +28,6 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
   eachDayOfInterval,
   format,
-  parse,
   parseISO,
   startOfWeek,
   endOfWeek,
@@ -64,6 +63,8 @@ export default function ReportsPage() {
     const t = useTranslations('ReportsPage');
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');
+    const tBulletin = useTranslations('BulletinPage');
+    const tExport = useTranslations('ExportReportPage');
     const detailsRef = useRef<HTMLDivElement>(null);
     
     const { user, isUserLoading } = useUser();
@@ -161,8 +162,8 @@ export default function ReportsPage() {
                 // Night Overtime Calculation
                 const shift = shifts.find(s => s.id === entry.shiftId);
                 if (shift) {
-                    const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
-                    let shiftEndDateTime = parse(`${entry.date} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    const shiftStartDateTime = parseISO(`${entry.date}T${shift.startTime}:00`);
+                    let shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}:00`);
                     if (shiftEndDateTime <= shiftStartDateTime) shiftEndDateTime = addDays(shiftEndDateTime, 1);
                     
                     const overtimeStartDateTime = shiftEndDateTime;
@@ -314,7 +315,7 @@ export default function ReportsPage() {
                         <CardTitle>{t('financialSummaryTitle')}</CardTitle>
                         <CardDescription>{t('financialSummaryDescription')}</CardDescription>
                     </div>
-                    <TooltipProvider>
+                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button onClick={scrollToDetails} variant="ghost" size="icon" className="cursor-pointer" aria-label={t('seeCalculationDetailsTooltip')}>
@@ -328,58 +329,22 @@ export default function ReportsPage() {
                     </TooltipProvider>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                    <div className="text-muted-foreground">{t('regularHours')}</div>
-                    <div className="text-right font-medium">{reportSummary.regularHours} {t('hourUnit')}</div>
-                    <div className="text-muted-foreground">{t('totalOvertimeHours')}</div>
-                    <div className="text-right font-medium text-destructive">{reportSummary.totalOvertimeHours} {t('hourUnit')}</div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-3">
-                    <h4 className="font-medium">{t('overtimeBreakdownTitle')}</h4>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                         {Object.entries(reportSummary.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => {
-                            const tierKey = key as keyof typeof reportSummary.overtimeBreakdown;
-                            let label;
-                            switch(tierKey) {
-                                case 'tier1': label = t('overtimeTier1', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'tier2': label = t('overtimeTier2', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'night': label = t('overtimeNight', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'sunday': label = t('overtimeSunday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'holiday': label = t('overtimeHoliday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                default: label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) });
-                            }
-                             return (
-                                <div key={key} className="grid grid-cols-3 items-center gap-x-4">
-                                    <span>{label}</span>
-                                    <span className="text-center">{(tier.minutes / 60).toFixed(2)}{t('hourUnit')}</span>
-                                    <span className="text-right font-medium text-foreground">{tier.payout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</span>
-                                </div>
-                             )
-                         })}
-                    </div>
-                </div>
-
-                <Separator />
-                
-                <div className="flex justify-between items-center">
-                    <span className="font-medium">{t('totalEstimatedPayout')}</span>
-                    <span className="font-medium">{reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</span>
-                </div>
-                <Separator />
-                <h4 className="font-medium pt-4">{t('estimatedDeductionsTitle')}</h4>
-                <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">{t('cnpsDeductionLabel')}</span>
-                    <span className="font-medium text-destructive">- {reportSummary.cnpsDeduction.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center font-bold text-xl pt-2">
-                    <span>{t('estimatedNetPayout')}</span>
-                    <span className="text-primary">{reportSummary.netPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</span>
-                </div>
+            <CardContent className="space-y-4">
+                <Card className="p-4 text-center">
+                    <CardDescription>{t('regularHours')}</CardDescription>
+                    <CardTitle className="text-4xl">{reportSummary.regularHours}<span className="text-2xl font-medium"> {t('hourUnit')}</span></CardTitle>
+                </Card>
+                <Card className="p-4 text-center">
+                    <CardDescription>{tBulletin('overtimeLabel')}</CardDescription>
+                    <CardTitle className="text-4xl text-destructive">{reportSummary.totalOvertimeHours}<span className="text-2xl font-medium"> {t('hourUnit')}</span></CardTitle>
+                </Card>
+                <Card className="p-4 text-center bg-primary/5">
+                    <CardDescription className="text-primary">{tExport('estimatedPayout')}</CardDescription>
+                    <CardTitle className="text-4xl text-primary">
+                      {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+                      <span className="text-2xl font-medium"> {profile.currency}</span>
+                    </CardTitle>
+                </Card>
             </CardContent>
         </Card>
 
@@ -470,3 +435,4 @@ export default function ReportsPage() {
     
 
     
+
