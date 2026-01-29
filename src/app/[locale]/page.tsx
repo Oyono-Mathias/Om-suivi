@@ -602,7 +602,7 @@ export default function TimeTrackingPage() {
         <div className="flex gap-2 w-full md:w-auto">
            <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 h-14"
             onClick={() => setManualEntryOpen(true)}
             disabled={isShiftActive}
           >
@@ -699,7 +699,7 @@ export default function TimeTrackingPage() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{entry.startTime} - {entry.endTime}</TableCell>
                     <TableCell>{entry.duration > 0 ? `${entry.duration} ${t('minutes')}` : '-'}</TableCell>
-                    <TableCell className="text-destructive">{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} ${t('minutes')}` : '-'}</TableCell>
+                    <TableCell className="text-destructive font-mono tabular-nums">{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} ${t('minutes')}` : '-'}</TableCell>
                     <TableCell className="hidden sm:table-cell">{entry.location || t('noLocation')}</TableCell>
                   </TableRow>
                 ))

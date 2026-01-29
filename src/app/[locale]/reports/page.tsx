@@ -28,6 +28,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
   eachDayOfInterval,
   format,
+  parse,
   parseISO,
   startOfWeek,
   endOfWeek,
@@ -162,8 +163,8 @@ export default function ReportsPage() {
                 // Night Overtime Calculation
                 const shift = shifts.find(s => s.id === entry.shiftId);
                 if (shift) {
-                    const shiftStartDateTime = parseISO(`${entry.date}T${shift.startTime}:00`);
-                    let shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}:00`);
+                    const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    let shiftEndDateTime = parse(`${entry.date} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
                     if (shiftEndDateTime <= shiftStartDateTime) shiftEndDateTime = addDays(shiftEndDateTime, 1);
                     
                     const overtimeStartDateTime = shiftEndDateTime;
@@ -332,16 +333,16 @@ export default function ReportsPage() {
             <CardContent className="space-y-4">
                 <Card className="p-4 text-center">
                     <CardDescription>{t('regularHours')}</CardDescription>
-                    <CardTitle className="text-4xl">{reportSummary.regularHours}<span className="text-2xl font-medium"> {t('hourUnit')}</span></CardTitle>
+                    <CardTitle className="text-4xl font-mono tabular-nums">{reportSummary.regularHours}<span className="text-2xl font-medium"> {t('hourUnit')}</span></CardTitle>
                 </Card>
                 <Card className="p-4 text-center">
                     <CardDescription>{tBulletin('overtimeLabel')}</CardDescription>
-                    <CardTitle className="text-4xl text-destructive">{reportSummary.totalOvertimeHours}<span className="text-2xl font-medium"> {t('hourUnit')}</span></CardTitle>
+                    <CardTitle className="text-4xl text-destructive font-mono tabular-nums">{reportSummary.totalOvertimeHours}<span className="text-2xl font-medium"> {t('hourUnit')}</span></CardTitle>
                 </Card>
                 <Card className="p-4 text-center bg-primary/5">
                     <CardDescription className="text-primary">{tExport('estimatedPayout')}</CardDescription>
-                    <CardTitle className="text-4xl text-primary">
-                      {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+                    <CardTitle className="text-4xl text-primary font-mono tabular-nums">
+                      {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} 
                       <span className="text-2xl font-medium"> {profile.currency}</span>
                     </CardTitle>
                 </Card>
@@ -357,16 +358,18 @@ export default function ReportsPage() {
                 <div>
                     <h4 className="font-semibold mb-2">{t('hourlyRateFormulaTitle')}</h4>
                     <div className="p-3 bg-background/50 rounded-md font-mono text-center text-base md:text-lg">
+                        <span className="tabular-nums">
                         {t('hourlyRateFormula', {
                             salary: profile.monthlyBaseSalary.toLocaleString('fr-FR'),
                             rate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
                             currency: profile.currency,
                         })}
+                        </span>
                     </div>
                 </div>
                 <div>
                     <h4 className="font-semibold mb-2">{t('overtimePayoutFormulaTitle')}</h4>
-                    <div className="space-y-2 p-3 bg-background/50 rounded-md">
+                    <div className="space-y-2 p-3 bg-background/50 rounded-md font-mono tabular-nums">
                         {Object.entries(reportSummary.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => {
                              const tierKey = key as keyof typeof reportSummary.overtimeBreakdown;
                             let label;
@@ -384,13 +387,21 @@ export default function ReportsPage() {
                                     hours: (tier.minutes / 60).toFixed(2),
                                     hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
                                     multiplier: tier.rate,
-                                    payout: tier.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+                                    payout: tier.payout.toLocaleString('fr-FR', { minimumFractionDigits: 0 }),
                                     currency: profile.currency
                                 })}
                             </p>
                         )})}
                         <Separator className="my-2"/>
-                        <p className="font-bold text-right pt-2">{t('totalEstimatedPayout')}: {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</p>
+                        <p className="font-bold text-right pt-2">{t('totalEstimatedPayout')}: {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</p>
+                    </div>
+                </div>
+                 <div>
+                    <h4 className="font-semibold mb-2">{t('estimatedDeductionsTitle')}</h4>
+                    <div className="space-y-2 p-3 bg-background/50 rounded-md font-mono tabular-nums">
+                        <p>{t('cnpsDeductionLabel')}: -{reportSummary.cnpsDeduction.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</p>
+                        <Separator className="my-2"/>
+                        <p className="font-bold text-right pt-2">{t('estimatedNetPayout')}: {reportSummary.netPayout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</p>
                     </div>
                 </div>
             </CardContent>
@@ -435,4 +446,5 @@ export default function ReportsPage() {
     
 
     
+
 

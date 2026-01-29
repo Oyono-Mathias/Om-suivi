@@ -1,11 +1,11 @@
 import { ReactNode } from 'react';
 import './globals.css';
-import { Roboto } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 
-const roboto = Roboto({ 
+const poppins = Poppins({ 
   subsets: ['latin'],
-  variable: '--font-roboto',
-  weight: ['400', '500', '700']
+  variable: '--font-poppins',
+  weight: ['400', '500', '600', '700']
 });
 
 export default function RootLayout({
@@ -16,10 +16,10 @@ export default function RootLayout({
   params: { locale: string };
 }) {
   return (
-    <html lang={locale} suppressHydrationWarning className={roboto.variable}>
+    <html lang={locale} suppressHydrationWarning className={poppins.variable}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1DB954" />
+        <meta name="theme-color" content="#00D68F" />
       </head>
       <body>
         {children}

@@ -84,7 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <LanguageSwitcher />
             </div>
           </header>
-          <main className="flex-1 p-4 pb-28">{children}</main>
+          <main className="flex-1 p-4 pb-32">{children}</main>
           {user && <MobileBottomNav />}
         </div>
       )
@@ -109,7 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <LanguageSwitcher />
           </div>
         </header>
-        <main className="flex-1 p-4 pb-28">{children}</main>
+        <main className="flex-1 p-4 pb-32">{children}</main>
         {user && <MobileBottomNav />}
       </div>
     )

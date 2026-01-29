@@ -14,7 +14,7 @@ const NavLink = ({ href, icon: Icon, label, isActive }: { href: string; icon: Re
     <div className={cn("p-2 rounded-full transition-colors", isActive ? "bg-primary/10" : "")}>
         <Icon className={cn("h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
     </div>
-    <span className={cn("transition-colors text-xs", isActive ? "text-primary font-medium" : "text-muted-foreground")}>{label}</span>
+    <span className={cn("transition-colors text-[10px]", isActive ? "text-primary font-medium" : "text-muted-foreground")}>{label}</span>
   </Link>
 );
 
@@ -42,7 +42,7 @@ export default function MobileBottomNav() {
   const adminNavItem = { href: "/admin", label: t('administration'), icon: Shield };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-24 items-stretch justify-around border-t bg-background/95 backdrop-blur-sm md:hidden">
+    <nav className="fixed bottom-4 inset-x-4 z-40 flex h-20 items-stretch justify-around border border-white/10 bg-black/20 backdrop-blur-lg rounded-full shadow-2xl md:hidden">
       {navItems.map((item) => (
         <NavLink key={item.href} {...item} isActive={pathname === item.href} />
       ))}

@@ -192,7 +192,7 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
                                         <TableCell>
                                             {entry.startTime} - {entry.endTime}
                                             {entry.modified_manually && (
-                                                <Badge variant="destructive" className="ml-2 gap-1">
+                                                <Badge variant="destructive" className="ml-2 gap-1 rounded-full">
                                                   <AlertTriangle className="h-3 w-3" />
                                                   {t('manualModificationLabel')}
                                                 </Badge>
@@ -587,12 +587,12 @@ export default function AdminPage() {
                                 </div>
                             </div>
                             <div className="flex flex-col items-start sm:items-end gap-1 text-sm w-full sm:w-auto pt-1">
-                                <div className="font-semibold">
+                                <div className="font-semibold font-mono tabular-nums">
                                     <span>{p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')}` : 'N/A'}</span>
                                     <span className="text-muted-foreground"> {p.currency}</span>
                                 </div>
                                 <div className="text-muted-foreground">{p.profession ? tProfile(`professions.${p.profession}`) : ''}</div>
-                                <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs mt-1">
+                                <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs mt-1 rounded-full">
                                     {p.role === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                                     {p.role}
                                 </Badge>

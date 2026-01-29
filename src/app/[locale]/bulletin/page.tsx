@@ -14,6 +14,8 @@ import { useTranslations, useLocale } from 'next-intl';
 import { shifts } from '@/lib/shifts';
 import { getPayrollCycle } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import NetPayableCard from '@/components/net-payable-card';
+import Image from 'next/image';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -251,7 +253,7 @@ export default function BulletinPage() {
         );
     }
 
-    const formatCurrency = (amount: number) => Math.round(amount).toLocaleString('fr-FR');
+    const formatCurrency = (amount: number) => <span className='font-mono tabular-nums'>{Math.round(amount).toLocaleString('fr-FR')}</span>;
     const formatHours = (minutes: number) => (minutes / 60).toFixed(2);
     
     return (
@@ -275,8 +277,8 @@ export default function BulletinPage() {
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
 
-            <div className="p-1 print-container">
-                <header className="flex justify-between items-start mb-8 border-b pb-6">
+            <div className="p-1 print-container space-y-6">
+                <header className="flex justify-between items-start mb-2 border-b pb-4">
                     <div>
                         <h2 className="text-2xl font-bold text-primary font-headline">{t('title')}</h2>
                         <p>{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yy')} - {format(payrollData.cycleEnd, 'dd/MM/yy')}</p>
@@ -287,9 +289,9 @@ export default function BulletinPage() {
                     </div>
                 </header>
 
-                <div className="space-y-6">
+                <div className="space-y-6 md:space-y-0 md:grid md:grid-cols-2 md:gap-6">
                     {/* Gains Card */}
-                    <Card>
+                    <Card className="md:col-span-1">
                         <CardHeader>
                             <CardTitle>{t('gainsSectionTitle')}</CardTitle>
                         </CardHeader>
@@ -323,7 +325,7 @@ export default function BulletinPage() {
                     </Card>
 
                     {/* Deductions Card */}
-                     <Card>
+                     <Card className="md:col-span-1">
                         <CardHeader>
                             <CardTitle>{t('deductionsSectionTitle')}</CardTitle>
                         </CardHeader>
@@ -332,21 +334,16 @@ export default function BulletinPage() {
                             <div className="flex justify-between py-3"><p>{t('cacLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.cacDeduction)}</p></div>
                             <div className="flex justify-between py-3"><p>{t('irppLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.irppDeduction)}</p></div>
                             <div className="flex justify-between py-3"><p>{t('communalTaxLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.communalTaxDeduction)}</p></div>
-                            {payrollData.absenceDeduction > 0 && <div className="flex justify-between py-3"><p>{t('absenceDeductionLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.absenceDeduction)}</p></div>}
+                            {payrollData.absenceDeduction > 0 && <div className="flex justify-between py-3"><p>{t('absenceDeductionLabel')}</p><p className="font-medium text-destructive">-{formatCurrency(payrollData.absenceDeduction)}</p></div>}
                             <div className="flex justify-between pt-4 font-bold text-base"><p>{t('totalDeductionsLabel')}</p><p>-{formatCurrency(payrollData.totalDeductions)} FCFA</p></div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Net Payable Card */}
-                    <Card className="bg-muted/30">
-                        <CardContent className="p-6 text-center">
-                            <p className="text-lg font-semibold text-muted-foreground">{t('netPayableLabel')}</p>
-                            <p className="text-4xl font-bold text-primary">{formatCurrency(payrollData.netPay)} FCFA</p>
                         </CardContent>
                     </Card>
                 </div>
 
-                <footer className="mt-12 pt-6 border-t text-center text-xs text-muted-foreground">
+                {/* Net Payable Card */}
+                <NetPayableCard netPay={payrollData.netPay} />
+
+                <footer className="mt-6 pt-6 border-t text-center text-xs text-muted-foreground">
                     <p>{t('footerText')}</p>
                 </footer>
             </div>
