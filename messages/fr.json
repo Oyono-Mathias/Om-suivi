@@ -175,7 +175,7 @@
     "financialSummaryDescription": "Un aperçu de vos heures normales, de vos heures supplémentaires et de vos gains estimés pour le mois en cours.",
     "regularHours": "Heures Normales",
     "totalOvertimeHours": "Total Heures Sup.",
-    "estimatedPayout": "Paiement Estimé des Heures Sup.",
+    "estimatedPayout": "Paiement Brut Estimé des Heures Sup.",
     "weeklyBreakdownTitle": "Répartition Hebdomadaire des Heures",
     "weeklyBreakdownDescription": "Heures normales vs heures supplémentaires enregistrées chaque jour de la semaine en cours.",
     "chartRegular": "Normales",
@@ -189,9 +189,17 @@
     "overtimePayoutFormulaTitle": "Calcul des Gains des Heures Supplémentaires",
     "overtimeTierLabel": "Heures sup. ({rate}%)",
     "overtimeTierFormula": "{hours}h x ({hourlyRate} {currency} x {multiplier}) = {payout} {currency}",
-    "totalEstimatedPayout": "Total des Gains Estimés",
+    "totalEstimatedPayout": "Total Brut Estimé",
     "seeCalculationDetailsTooltip": "Voir les détails du calcul",
-    "overtimeBreakdownTitle": "Détail des Heures Supplémentaires"
+    "overtimeBreakdownTitle": "Détail des Heures Supplémentaires",
+    "overtimeTier1": "HS à {rate}% (Palier 1)",
+    "overtimeTier2": "HS à {rate}% (Palier 2)",
+    "overtimeNight": "HS de Nuit à {rate}%",
+    "overtimeSunday": "HS du Dimanche à {rate}%",
+    "overtimeHoliday": "HS Jours Fériés à {rate}%",
+    "estimatedDeductionsTitle": "Retenues Estimées",
+    "cnpsDeductionLabel": "CNPS (4.2%)",
+    "estimatedNetPayout": "Net à Percevoir Estimé"
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",

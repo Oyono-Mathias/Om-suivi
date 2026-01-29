@@ -94,7 +94,9 @@ export default function ReportsPage() {
             return {
                 regularHours: '0.00',
                 totalOvertimeHours: '0.00',
-                estimatedPayout: '0.00',
+                estimatedPayout: 0,
+                cnpsDeduction: 0,
+                netPayout: 0,
                 hourlyRate: 0,
                 overtimeBreakdown: {
                     tier1: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.tier1, payout: 0 },
@@ -211,11 +213,15 @@ export default function ReportsPage() {
         breakdown.holiday.payout = (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
 
         const totalPayout = breakdown.tier1.payout + breakdown.tier2.payout + breakdown.night.payout + breakdown.sunday.payout + breakdown.holiday.payout;
+        const cnpsDeduction = totalPayout * 0.042;
+        const netPayout = totalPayout - cnpsDeduction;
 
         return {
             regularHours: ((totalDurationMinutes - totalOvertimeMinutes) / 60).toFixed(2),
             totalOvertimeHours: (totalOvertimeMinutes / 60).toFixed(2),
-            estimatedPayout: totalPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            estimatedPayout: totalPayout,
+            cnpsDeduction: cnpsDeduction,
+            netPayout: netPayout,
             hourlyRate,
             overtimeBreakdown: breakdown,
             rates,
@@ -341,11 +347,12 @@ export default function ReportsPage() {
                             const tierKey = key as keyof typeof reportSummary.overtimeBreakdown;
                             let label;
                             switch(tierKey) {
-                                case 'tier1': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'tier2': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'night': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'sunday': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'holiday': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'tier1': label = t('overtimeTier1', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'tier2': label = t('overtimeTier2', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'night': label = t('overtimeNight', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'sunday': label = t('overtimeSunday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'holiday': label = t('overtimeHoliday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                default: label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) });
                             }
                              return (
                                 <div key={key} className="grid grid-cols-3 items-center gap-x-4">
@@ -360,9 +367,20 @@ export default function ReportsPage() {
 
                 <Separator />
                 
-                <div className="flex justify-between items-center font-bold text-xl">
-                    <span>{t('totalEstimatedPayout')}</span>
-                    <span className="text-primary">{reportSummary.estimatedPayout} {profile.currency}</span>
+                <div className="flex justify-between items-center">
+                    <span className="font-medium">{t('totalEstimatedPayout')}</span>
+                    <span className="font-medium">{reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</span>
+                </div>
+                <Separator />
+                <h4 className="font-medium pt-4">{t('estimatedDeductionsTitle')}</h4>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">{t('cnpsDeductionLabel')}</span>
+                    <span className="font-medium text-destructive">- {reportSummary.cnpsDeduction.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center font-bold text-xl pt-2">
+                    <span>{t('estimatedNetPayout')}</span>
+                    <span className="text-primary">{reportSummary.netPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</span>
                 </div>
             </CardContent>
         </Card>
@@ -386,9 +404,20 @@ export default function ReportsPage() {
                 <div>
                     <h4 className="font-semibold mb-2">{t('overtimePayoutFormulaTitle')}</h4>
                     <div className="space-y-2 p-3 bg-background/50 rounded-md">
-                        {Object.entries(reportSummary.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
-                             <p key={key}>
-                                {t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) })}: {t('overtimeTierFormula', {
+                        {Object.entries(reportSummary.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => {
+                             const tierKey = key as keyof typeof reportSummary.overtimeBreakdown;
+                            let label;
+                            switch(tierKey) {
+                                case 'tier1': label = t('overtimeTier1', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'tier2': label = t('overtimeTier2', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'night': label = t('overtimeNight', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'sunday': label = t('overtimeSunday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'holiday': label = t('overtimeHoliday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                default: label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) });
+                            }
+                            return(
+                            <p key={key}>
+                                <span className="font-semibold">{label}:</span> {t('overtimeTierFormula', {
                                     hours: (tier.minutes / 60).toFixed(2),
                                     hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
                                     multiplier: tier.rate,
@@ -396,9 +425,9 @@ export default function ReportsPage() {
                                     currency: profile.currency
                                 })}
                             </p>
-                        ))}
+                        )})}
                         <Separator className="my-2"/>
-                        <p className="font-bold text-right pt-2">{t('totalEstimatedPayout')}: {reportSummary.estimatedPayout} {profile.currency}</p>
+                        <p className="font-bold text-right pt-2">{t('totalEstimatedPayout')}: {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {profile.currency}</p>
                     </div>
                 </div>
             </CardContent>

@@ -175,7 +175,7 @@
     "financialSummaryDescription": "An overview of your regular hours, overtime, and estimated earnings for the current month.",
     "regularHours": "Regular Hours",
     "totalOvertimeHours": "Total Overtime",
-    "estimatedPayout": "Estimated Overtime Payout",
+    "estimatedPayout": "Estimated Gross Overtime Payout",
     "weeklyBreakdownTitle": "Weekly Hours Breakdown",
     "weeklyBreakdownDescription": "Regular vs. overtime hours logged each day of the current week.",
     "chartRegular": "Regular",
@@ -189,9 +189,17 @@
     "overtimePayoutFormulaTitle": "Overtime Payout Calculation",
     "overtimeTierLabel": "Overtime ({rate}%)",
     "overtimeTierFormula": "{hours}h x ({hourlyRate} {currency} x {multiplier}) = {payout} {currency}",
-    "totalEstimatedPayout": "Total Estimated Payout",
+    "totalEstimatedPayout": "Total Estimated Gross Payout",
     "seeCalculationDetailsTooltip": "See calculation details",
-    "overtimeBreakdownTitle": "Overtime Breakdown"
+    "overtimeBreakdownTitle": "Overtime Breakdown",
+    "overtimeTier1": "OT at {rate}% (Tier 1)",
+    "overtimeTier2": "OT at {rate}% (Tier 2)",
+    "overtimeNight": "Night OT at {rate}%",
+    "overtimeSunday": "Sunday OT at {rate}%",
+    "overtimeHoliday": "Holiday OT at {rate}%",
+    "estimatedDeductionsTitle": "Estimated Deductions",
+    "cnpsDeductionLabel": "CNPS (4.2%)",
+    "estimatedNetPayout": "Estimated Net Payout"
   },
   "ExportReportPage": {
     "title": "Export Report",
