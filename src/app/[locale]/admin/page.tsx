@@ -200,6 +200,7 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
 export default function AdminPage() {
   const t = useTranslations('AdminPage');
   const tShared = useTranslations('Shared');
+  const tProfile = useTranslations('ProfilePage');
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -279,25 +280,26 @@ export default function AdminPage() {
             <div className="space-y-4">
               {filteredProfiles && filteredProfiles.length > 0 ? (
                 filteredProfiles.map((p) => (
-                  <Card key={p.id} onClick={() => setViewingUser(p)} className="flex flex-col sm:flex-row sm:items-center p-4 gap-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <Card key={p.id} onClick={() => setViewingUser(p)} className="flex flex-col sm:flex-row items-start p-4 gap-4 cursor-pointer hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-4 flex-1">
-                      <Avatar className="h-12 w-12">
-                          <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                          <p className="font-medium">{p.name}</p>
-                          <p className="text-sm text-muted-foreground">{p.email}</p>
-                      </div>
+                        <Avatar className="h-12 w-12">
+                            <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <p className="font-medium">{p.name}</p>
+                            <p className="text-sm text-muted-foreground">{p.email}</p>
+                        </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0">
-                      <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs">
-                          {p.role === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-                          {p.role}
-                      </Badge>
-                      <div className="text-right text-sm">
-                        <span className="font-medium">{p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')}` : 'N/A'}</span>
-                        <span className="text-muted-foreground"> {p.currency}</span>
-                      </div>
+                    <div className="flex flex-col items-start sm:items-end gap-1 text-sm w-full sm:w-auto pt-1">
+                        <div className="font-semibold">
+                            <span>{p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')}` : 'N/A'}</span>
+                            <span className="text-muted-foreground"> {p.currency}</span>
+                        </div>
+                        <div className="text-muted-foreground">{p.profession ? tProfile(`professions.${p.profession}`) : ''}</div>
+                        <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs mt-1">
+                            {p.role === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                            {p.role}
+                        </Badge>
                     </div>
                   </Card>
                 ))

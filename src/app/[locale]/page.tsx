@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -530,10 +531,24 @@ export default function TimeTrackingPage() {
   
   
   const handleManualStart = async () => {
-    if (!selectedShiftId) {
-      toast({ variant: 'destructive', title: t('shiftNotSelectedTitle'), description: t('shiftNotSelectedDescription') });
-      return;
+    // Use manually selected shift, otherwise try to infer one.
+    const shiftIdToUse = selectedShiftId || (() => {
+        const now = new Date();
+        const currentHour = now.getHours();
+        if (currentHour >= 5 && currentHour < 14) return 'morningA';
+        if (currentHour >= 14 && currentHour < 22) return 'afternoon';
+        if (currentHour >= 22 || currentHour < 5) return 'night';
+        return null;
+    })();
+
+    if (!shiftIdToUse) {
+        toast({ variant: 'destructive', title: t('shiftNotSelectedTitle'), description: t('shiftNotSelectedDescription') });
+        return;
     }
+    
+    // Persist the decided shiftId in state so the confirmation dialog can use it.
+    setSelectedShiftId(shiftIdToUse);
+
     if (!user || !firestore) return;
 
     if (!currentCoordinates) {
@@ -553,7 +568,7 @@ export default function TimeTrackingPage() {
     } catch (error) {
         console.error("AI suggestion failed:", error);
         toast({ variant: 'destructive', title: t('geoSuggestErrorTitle'), description: t('geoSuggestErrorDescription') });
-        const shift = shifts.find(s => s.id === selectedShiftId);
+        const shift = shifts.find(s => s.id === shiftIdToUse);
         if (shift) {
             await startShift(shift, currentLocationAddress || `Lat: ${currentCoordinates.lat}, Lon: ${currentCoordinates.lon}`);
         }
@@ -686,7 +701,7 @@ export default function TimeTrackingPage() {
             {formatElapsedTime(elapsedTime)}
           </div>
           <div className="max-w-xs mx-auto">
-            <Select onValueChange={setSelectedShiftId} disabled={isShiftActive}>
+            <Select onValueChange={setSelectedShiftId} value={selectedShiftId ?? ''} disabled={isShiftActive}>
               <SelectTrigger>
                 <SelectValue placeholder={t('selectShiftPlaceholder')} />
               </SelectTrigger>
