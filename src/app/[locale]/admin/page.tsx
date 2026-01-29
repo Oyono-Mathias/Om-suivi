@@ -98,6 +98,8 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
       endTime: values.endTime,
       duration: totalDuration,
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+      modified_manually: true,
+      modification_reason: 'admin_edit',
     });
 
     toast({ title: "Pointage mis à jour", description: "L'entrée de temps a été modifiée avec succès." });

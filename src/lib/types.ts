@@ -22,7 +22,7 @@ export interface TimeEntry {
   userProfileId: string;
   profession: Profession;
   modified_manually?: boolean;
-  modification_reason?: 'pause_limit_exceeded';
+  modification_reason?: 'pause_limit_exceeded' | 'admin_edit';
 }
 
 export interface Workplace {

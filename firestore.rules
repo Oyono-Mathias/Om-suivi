@@ -27,11 +27,6 @@ service cloud.firestore {
       return request.resource.data.userProfileId == userId;
     }
     
-    function isUserProfileIdImmutable() {
-      // The userProfileId field should not be included in an update request, making it immutable.
-      return !('userProfileId' in request.resource.data);
-    }
-    
     function isTeamMember() {
       return isSignedIn() && request.auth.uid in resource.data.memberIds;
     }
@@ -57,8 +52,8 @@ service cloud.firestore {
       match /timeEntries/{timeEntryId} {
         allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
-        allow update: if (isExistingOwner(userId) && isUserProfileIdImmutable()) || isAdmin();
-        allow delete: if isExistingOwner(userId);
+        allow update: if isExistingOwner(userId) || isAdmin();
+        allow delete: if isExistingOwner(userId) || isAdmin();
       }
       
       match /workplaceUpdateLogs/{logId} {
