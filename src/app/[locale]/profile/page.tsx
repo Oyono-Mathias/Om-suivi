@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -43,8 +42,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { doc, collection, serverTimestamp, setDoc } from "firebase/firestore";
 import { Loader2, MapPin } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
@@ -67,6 +66,7 @@ export default function ProfilePage() {
   const [isLocating, setIsLocating] = useState(false);
   const [showLocationConfirm, setShowLocationConfirm] = useState(false);
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [isSaving, setIsSaving] = useState(false);
   
   const profileSchema = z.object({
     name: z.string().min(2, { message: t('nameMinLengthError') }),
@@ -177,28 +177,37 @@ export default function ProfilePage() {
       }
     };
     
-    // Request permission once when the component mounts
     if (Notification.permission !== 'granted') {
         Notification.requestPermission();
     }
     
-    const intervalId = setInterval(checkFixedTimeAndNotify, 60000); // Check every minute
+    const intervalId = setInterval(checkFixedTimeAndNotify, 60000); 
     
     return () => clearInterval(intervalId);
   }, [t]);
 
 
-  function onSubmit(values: z.infer<typeof profileSchema>) {
+  async function onSubmit(values: z.infer<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
     
-    setDocumentNonBlocking(userProfileRef, values, { merge: true });
-    
-    toast({
-      title: t('settingsUpdatedTitle'),
-      description: t('settingsUpdatedDescription'),
-    });
-    
-    tryShowAd();
+    setIsSaving(true);
+    try {
+      await setDoc(userProfileRef, values, { merge: true });
+      toast({
+        title: t('settingsUpdatedTitle'),
+        description: t('settingsUpdatedDescription'),
+      });
+      tryShowAd();
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Erreur de sauvegarde",
+        description: "Impossible d'enregistrer les modifications. Veuillez réessayer.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const handleSetWorkplace = () => {
@@ -256,7 +265,7 @@ export default function ProfilePage() {
       newWorkplace: newWorkplace,
     });
     
-    setDocumentNonBlocking(userProfileRef, { workplace: newWorkplace }, { merge: true });
+    setDoc(userProfileRef, { workplace: newWorkplace }, { merge: true });
     
     toast({
       title: t('workplaceSetTitle'),
@@ -343,7 +352,7 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('professionLabel')}</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={t('professionPlaceholder')} />
@@ -486,7 +495,10 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
           
-          <Button type="submit">{t('saveButton')}</Button>
+          <Button type="submit" disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t('saveButton')}
+          </Button>
         </form>
       </Form>
 

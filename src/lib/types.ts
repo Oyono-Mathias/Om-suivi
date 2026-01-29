@@ -15,14 +15,13 @@ export interface TimeEntry {
   endTime: string;
   duration: number; // in minutes
   overtimeDuration: number; // in minutes
-  unpaidBreakDuration?: number; // in minutes
   location?: string;
   shiftId: string;
   isPublicHoliday?: boolean;
   userProfileId: string;
   profession: Profession;
   modified_manually?: boolean;
-  modification_reason?: 'pause_limit_exceeded' | 'admin_edit';
+  modification_reason?: 'admin_edit';
 }
 
 export interface Workplace {
