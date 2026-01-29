@@ -8,7 +8,7 @@ import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, 
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection } from "firebase/firestore";
+import { doc, collection, query, where } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
 import { Link } from '@/navigation';
 import { useTranslations, useLocale } from 'next-intl';
@@ -53,7 +53,21 @@ export default function BulletinPage() {
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
-    const timeEntriesQuery = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'timeEntries') : null, [firestore, user]);
+    const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
+
+    // Memoize the date strings to keep the Firestore query stable across re-renders.
+    const cycleStartString = useMemo(() => format(cycleStart, 'yyyy-MM-dd'), [cycleStart]);
+    const cycleEndString = useMemo(() => format(cycleEnd, 'yyyy-MM-dd'), [cycleEnd]);
+
+    const timeEntriesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        // Optimize query to only fetch entries within the current payroll cycle.
+        return query(
+            collection(firestore, 'users', user.uid, 'timeEntries'),
+            where('date', '>=', cycleStartString),
+            where('date', '<=', cycleEndString)
+        );
+    }, [firestore, user, cycleStartString, cycleEndString]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
     const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
@@ -67,13 +81,9 @@ export default function BulletinPage() {
         if (!timeEntries || !profile || !globalSettings) {
             return null;
         }
-
-        const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
-
-        const cycleEntries = timeEntries.filter(entry => {
-            const entryDate = parseISO(entry.date);
-            return entryDate >= cycleStart && entryDate <= cycleEnd;
-        });
+        
+        // No longer need to filter; the query fetches only relevant entries.
+        const cycleEntries = timeEntries;
 
         const rates = globalSettings.overtimeRates || DEFAULT_OVERTIME_RATES;
         const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
@@ -191,7 +201,7 @@ export default function BulletinPage() {
             netPay,
         };
 
-    }, [timeEntries, profile, globalSettings]);
+    }, [timeEntries, profile, globalSettings, cycleStart, cycleEnd]);
     
     if (isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings) {
         return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
@@ -329,5 +339,3 @@ export default function BulletinPage() {
         </div>
     );
 }
-
-    
