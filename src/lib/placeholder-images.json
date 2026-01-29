@@ -41,6 +41,12 @@
       "description": "Image for Digital Marketing course",
       "imageUrl": "https://images.unsplash.com/photo-1761864293806-51e7500c08e6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MXwxfHNlYXJjaHwxfHxzb2NpYWwlMjBtZWRpYXxlbnwwfHx8fDE3Njk2MjE2Njl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "social media"
+    },
+    {
+      "id": "app-logo",
+      "description": "Application logo for OM Suivi",
+      "imageUrl": "https://placehold.co/64x64/1db954/FFFFFF?text=OM",
+      "imageHint": "logo initial"
     }
   ]
 }

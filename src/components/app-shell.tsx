@@ -35,6 +35,7 @@ import type { Profile } from "@/lib/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileBottomNav from "./mobile-bottom-nav";
 import { Skeleton } from "./ui/skeleton";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -43,6 +44,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const t = useTranslations("AppShell");
   const isMobile = useIsMobile();
+  
+  const logo = PlaceHolderImages.find(p => p.id === 'app-logo');
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -81,7 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
        <div className="flex flex-col min-h-screen bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <Image src="https://placehold.co/24x24/1db954/FFFFFF?text=OM" alt="OM Suivi Logo" width={24} height={24} className="rounded-md" />
+            {logo && <Image src={logo.imageUrl} alt={logo.description} width={24} height={24} className="rounded-md" data-ai-hint={logo.imageHint} />}
             <h1 className="text-lg font-semibold">{t('appName')}</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -99,7 +102,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar className="no-print">
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-3">
-            <Image src="https://placehold.co/32x32/1db954/FFFFFF?text=OM" alt="OM Suivi Logo" width={32} height={32} className="rounded-md" />
+            {logo && <Image src={logo.imageUrl} alt={logo.description} width={32} height={32} className="rounded-md" data-ai-hint={logo.imageHint} />}
             <div className="flex flex-col">
               <span className="text-lg font-headline font-semibold text-sidebar-foreground">
                 {t('appName')}
