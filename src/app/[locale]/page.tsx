@@ -111,13 +111,41 @@ export default function TimeTrackingPage() {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
   };
   
+  const restoreShift = useCallback((stateToRestore: ActiveShiftState) => {
+    const now = new Date();
+    const startTime = new Date(stateToRestore.startTimeISO);
+    const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+
+    setActiveTimeEntryId(stateToRestore.activeTimeEntryId);
+    setSelectedShiftId(stateToRestore.shiftId);
+    setStatus('in_progress');
+    setIsShiftActive(true);
+    setElapsedTime(elapsedSeconds);
+
+    const timer = setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
+    setActiveTimer(timer);
+  }, [setIsShiftActive]);
+
   useEffect(() => {
     const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedStateJSON) {
       const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
-      setRecoveryData(savedState);
+      const now = new Date();
+      const lastSeen = new Date(savedState.lastSeenISO);
+      const diffSeconds = (now.getTime() - lastSeen.getTime()) / 1000;
+
+      // If the page was reloaded or tab was closed for a very short time, auto-recover.
+      if (diffSeconds < 20) {
+        restoreShift(savedState);
+      } else {
+        // Otherwise, it was a longer disconnection, so ask the user what to do.
+        setRecoveryData(savedState);
+      }
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoreShift]);
 
   const handleRecoveryEndShift = () => {
     if (!recoveryData) return;
@@ -128,18 +156,7 @@ export default function TimeTrackingPage() {
 
   const handleRecoveryContinue = () => {
     if (!recoveryData) return;
-    const now = new Date();
-    const startTime = new Date(recoveryData.startTimeISO);
-    const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
-
-    setActiveTimeEntryId(recoveryData.activeTimeEntryId);
-    setStatus('in_progress');
-    setIsShiftActive(true);
-    const timer = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-    setActiveTimer(timer);
-
+    restoreShift(recoveryData);
     toast({ title: "Session restaurée", description: "Votre session de travail a été reprise." });
     setRecoveryData(null);
   };
@@ -156,7 +173,7 @@ export default function TimeTrackingPage() {
     clearActiveShiftFromLocal();
   }, [activeTimer, setIsShiftActive]);
 
-  const startTimer = (entryId: string, startTime: Date, shiftId: string) => {
+  const startTimer = useCallback((entryId: string, startTime: Date, shiftId: string) => {
       setActiveTimeEntryId(entryId);
       setStatus('in_progress');
       setIsShiftActive(true);
@@ -172,7 +189,7 @@ export default function TimeTrackingPage() {
         shiftId: shiftId,
         lastSeenISO: new Date().toISOString(),
       });
-  }
+  }, [setIsShiftActive]);
 
   useEffect(() => {
     if (navigator.geolocation) {
