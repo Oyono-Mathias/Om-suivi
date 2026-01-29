@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,17 +33,24 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, CalendarIcon } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
-import { useTranslations } from "next-intl";
-import { format } from "date-fns";
+import { useTranslations, useLocale } from "next-intl";
+import { format, parseISO, differenceInCalendarMonths } from "date-fns";
+import { fr, enUS } from "date-fns/locale";
 import { useAd } from "@/context/AdContext";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+
 
 export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
   const tShared = useTranslations('Shared');
   const tGeo = useTranslations('TimeTrackingPage');
+  const locale = useLocale();
+  const dateFnsLocale = locale === 'fr' ? fr : enUS;
   
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -57,6 +64,8 @@ export default function ProfilePage() {
     profession: z.enum(['machinist', 'storekeeper', 'deliveryDriver', 'chauffeur', 'securityAgent', 'other']),
     monthlyBaseSalary: z.coerce.number().min(0, { message: t('salaryMinError') }),
     currency: z.string().min(1, { message: t('currencyRequiredError')}),
+    hireDate: z.date().optional(),
+    leaveStartDate: z.date().optional(),
     reminders: z.object({
       enabled: z.boolean(),
       time: z.string(),
@@ -80,6 +89,8 @@ export default function ProfilePage() {
       profession: 'other',
       monthlyBaseSalary: 0,
       currency: 'FCFA',
+      hireDate: undefined,
+      leaveStartDate: undefined,
       reminders: { enabled: false, time: '17:00' },
       workRadius: 50,
     }
@@ -92,6 +103,8 @@ export default function ProfilePage() {
         profession: profile.profession || 'other',
         monthlyBaseSalary: profile.monthlyBaseSalary || 0,
         currency: profile.currency || 'FCFA',
+        hireDate: profile.hireDate ? parseISO(profile.hireDate) : undefined,
+        leaveStartDate: profile.leaveStartDate ? parseISO(profile.leaveStartDate) : undefined,
         reminders: profile.reminders || { enabled: false, time: '17:00' },
         workLatitude: profile.workLatitude,
         workLongitude: profile.workLongitude,
@@ -202,7 +215,12 @@ export default function ProfilePage() {
     
     setIsSaving(true);
     try {
-      await setDoc(userProfileRef, values, { merge: true });
+       const dataToSave = {
+        ...values,
+        hireDate: values.hireDate ? format(values.hireDate, 'yyyy-MM-dd') : undefined,
+        leaveStartDate: values.leaveStartDate ? format(values.leaveStartDate, 'yyyy-MM-dd') : undefined,
+      };
+      await setDoc(userProfileRef, dataToSave, { merge: true });
       toast({
         title: t('settingsUpdatedTitle'),
         description: t('settingsUpdatedDescription'),
@@ -219,6 +237,12 @@ export default function ProfilePage() {
       setIsSaving(false);
     }
   }
+
+  const leaveBalance = useMemo(() => {
+    if (!profile?.leaveStartDate) return 0;
+    const months = differenceInCalendarMonths(new Date(), parseISO(profile.leaveStartDate));
+    return months > 0 ? (months * 1.5).toFixed(1) : 0;
+  }, [profile?.leaveStartDate]);
 
   if (isUserLoading || isLoadingProfile) {
     return (
@@ -328,6 +352,88 @@ export default function ProfilePage() {
                   )}
                 />
               </div>
+               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="hireDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>{t('hireDateLabel')}</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? format(field.value, "PPP", {locale: dateFnsLocale}) : <span>Choisir une date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) => date > new Date() || date < new Date("1980-01-01")}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="leaveStartDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>{t('leaveStartDateLabel')}</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? format(field.value, "PPP", {locale: dateFnsLocale}) : <span>Choisir une date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) => date > new Date()}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+              </div>
+            </CardContent>
+          </Card>
+
+           <Card>
+            <CardHeader>
+              <CardTitle>{t('leaveBalanceTitle')}</CardTitle>
+              <CardDescription>{t('leaveBalanceDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-4xl font-bold">{leaveBalance} <span className="text-xl font-medium text-muted-foreground">{t('leaveBalanceDays')}</span></p>
             </CardContent>
           </Card>
           

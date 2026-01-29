@@ -166,7 +166,12 @@
     "radiusMinError": "Radius must be at least 10 meters.",
     "latitudeLabel": "Latitude",
     "longitudeLabel": "Longitude",
-    "undefinedPlaceholder": "Not set"
+    "undefinedPlaceholder": "Not set",
+    "hireDateLabel": "Hire Date",
+    "leaveStartDateLabel": "Leave Cycle Start Date",
+    "leaveBalanceTitle": "My Leave Balance",
+    "leaveBalanceDescription": "Estimated leave days accrued during the current cycle.",
+    "leaveBalanceDays": "days"
   },
   "ReportsPage": {
     "title": "Dashboard",
@@ -337,8 +342,7 @@
     "tableDesignation": "Description",
     "tableNumber": "Number",
     "tableGain": "Gain",
-    "grossMonthlySalaryLabel": "Gross Monthly Salary"
+    "grossMonthlySalaryLabel": "Gross Monthly Salary",
+    "absenceDeductionLabel": "Absence Deduction"
   }
 }
-
-    

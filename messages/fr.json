@@ -166,7 +166,12 @@
     "radiusMinError": "Le rayon doit être d'au moins 10 mètres.",
     "latitudeLabel": "Latitude",
     "longitudeLabel": "Longitude",
-    "undefinedPlaceholder": "Non défini"
+    "undefinedPlaceholder": "Non défini",
+    "hireDateLabel": "Date d'embauche",
+    "leaveStartDateLabel": "Date de début du cycle de congé",
+    "leaveBalanceTitle": "Mon Solde Congé",
+    "leaveBalanceDescription": "Jours de congé estimés accumulés pendant le cycle actuel.",
+    "leaveBalanceDays": "jours"
   },
   "ReportsPage": {
     "title": "Tableau de Bord",
@@ -337,8 +342,7 @@
     "tableDesignation": "Désignation",
     "tableNumber": "Nombre",
     "tableGain": "Gain",
-    "grossMonthlySalaryLabel": "Salaire Brut Mensuel"
+    "grossMonthlySalaryLabel": "Salaire Brut Mensuel",
+    "absenceDeductionLabel": "Retenue pour Absence"
   }
 }
-
-    

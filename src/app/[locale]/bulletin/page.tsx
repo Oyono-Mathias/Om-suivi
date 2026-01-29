@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -55,13 +55,11 @@ export default function BulletinPage() {
 
     const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
 
-    // Memoize the date strings to keep the Firestore query stable across re-renders.
     const cycleStartString = useMemo(() => format(cycleStart, 'yyyy-MM-dd'), [cycleStart]);
     const cycleEndString = useMemo(() => format(cycleEnd, 'yyyy-MM-dd'), [cycleEnd]);
 
     const timeEntriesQuery = useMemoFirebase(() => {
         if (!user) return null;
-        // Optimize query to only fetch entries within the current payroll cycle.
         return query(
             collection(firestore, 'users', user.uid, 'timeEntries'),
             where('date', '>=', cycleStartString),
@@ -82,11 +80,10 @@ export default function BulletinPage() {
             return null;
         }
         
-        // No longer need to filter; the query fetches only relevant entries.
         const cycleEntries = timeEntries;
-
         const rates = globalSettings.overtimeRates || DEFAULT_OVERTIME_RATES;
         const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
+        const baseSalary = profile.monthlyBaseSalary;
 
         const breakdown = {
             tier1: { minutes: 0, rate: rates.tier1, payout: 0 },
@@ -163,15 +160,36 @@ export default function BulletinPage() {
         const nightBonusCount = cycleEntries.filter(e => e.shiftId === 'night').length;
         const nightBonusPayout = nightBonusCount * 1400;
 
-        // Fixed Primes
-        const seniorityBonus = 0;
-        const attendanceBonus = 3000;
-        const performanceBonus = 4000;
+        // --- Seniority and Absence Logic ---
+        let seniorityBonus = 0;
+        if (profile.hireDate) {
+            const yearsOfService = differenceInYears(new Date(), parseISO(profile.hireDate));
+            if (yearsOfService >= 2) {
+                const bonusTiers = Math.floor(yearsOfService / 2);
+                seniorityBonus = bonusTiers * (baseSalary * 0.02);
+            }
+        }
+        
+        const workDaysInCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(day => getDay(day) !== 0); // Mon-Sat
+        const workedDays = new Set(cycleEntries.map(entry => entry.date));
+        const absenceCount = workDaysInCycle.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
+
+        let attendanceBonus = 3000;
+        let performanceBonus = 4000;
+        let absenceDeduction = 0;
         const transportBonus = 18325;
+
+        if (absenceCount > 0) {
+            attendanceBonus = 0;
+            performanceBonus = 0;
+            const dailySalaryDeduction = baseSalary / 26;
+            const dailyTransportDeduction = transportBonus / 26;
+            absenceDeduction = absenceCount * (dailySalaryDeduction + dailyTransportDeduction);
+        }
+
         const housingBonus = 7280;
         const totalFixedPrimes = seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus;
-
-        const grossSalary = profile.monthlyBaseSalary + totalFixedPrimes + totalOvertimePayout + nightBonusPayout;
+        const grossSalary = baseSalary + totalFixedPrimes + totalOvertimePayout + nightBonusPayout;
 
         // Deductions
         const cnpsDeduction = grossSalary * 0.042;
@@ -180,13 +198,13 @@ export default function BulletinPage() {
         const irppDeduction = calculateIRPP(taxableForIRPP);
         const communalTaxDeduction = 2500; 
 
-        const totalDeductions = cnpsDeduction + irppDeduction + cacDeduction + communalTaxDeduction;
+        const totalDeductions = cnpsDeduction + irppDeduction + cacDeduction + communalTaxDeduction + absenceDeduction;
         const netPay = grossSalary - totalDeductions;
 
         return {
             cycleStart,
             cycleEnd,
-            baseSalary: profile.monthlyBaseSalary,
+            baseSalary,
             seniorityBonus, attendanceBonus, performanceBonus, transportBonus, housingBonus,
             overtimeBreakdown: breakdown,
             totalOvertimePayout,
@@ -197,6 +215,7 @@ export default function BulletinPage() {
             irppDeduction,
             cacDeduction,
             communalTaxDeduction,
+            absenceDeduction,
             totalDeductions,
             netPay,
         };
@@ -284,7 +303,7 @@ export default function BulletinPage() {
                         <TableCell className="text-center">173.33h</TableCell>
                         <TableCell className="text-right">{formatCurrency(payrollData.baseSalary)}</TableCell>
                     </TableRow>
-                    <TableRow><TableCell>{t('seniorityBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.seniorityBonus)}</TableCell></TableRow>
+                    {payrollData.seniorityBonus > 0 && <TableRow><TableCell>{t('seniorityBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.seniorityBonus)}</TableCell></TableRow>}
                     <TableRow><TableCell>{t('attendanceBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.attendanceBonus)}</TableCell></TableRow>
                     <TableRow><TableCell>{t('performanceBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.performanceBonus)}</TableCell></TableRow>
                     <TableRow><TableCell>{t('transportBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.transportBonus)}</TableCell></TableRow>
@@ -318,6 +337,7 @@ export default function BulletinPage() {
                     <TableRow><TableCell>{t('cacLabel')}</TableCell><TableCell className="text-center">{formatCurrency(payrollData.grossSalary)}</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.cacDeduction)}</TableCell></TableRow>
                     <TableRow><TableCell>{t('irppLabel')}</TableCell><TableCell className="text-center">{formatCurrency(payrollData.grossSalary-payrollData.cnpsDeduction)}</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.irppDeduction)}</TableCell></TableRow>
                     <TableRow><TableCell>{t('communalTaxLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.communalTaxDeduction)}</TableCell></TableRow>
+                    {payrollData.absenceDeduction > 0 && <TableRow><TableCell>{t('absenceDeductionLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.absenceDeduction)}</TableCell></TableRow>}
 
                      <TableRow className="bg-muted/50 font-bold text-base">
                         <TableCell>{t('totalDeductionsLabel')}</TableCell>

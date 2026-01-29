@@ -34,6 +34,8 @@ export interface Profile {
   monthlyBaseSalary: number;
   currency: string;
   createdAt: any; // serverTimestamp
+  hireDate?: string; // YYYY-MM-DD
+  leaveStartDate?: string; // YYYY-MM-DD
   reminders?: {
     enabled: boolean;
     time: string; // e.g., "17:00"

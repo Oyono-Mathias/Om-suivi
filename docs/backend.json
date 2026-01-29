@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -63,6 +64,16 @@
         "workRadius": {
           "type": "number",
           "description": "The radius in meters for the geofence around the user's work location."
+        },
+        "hireDate": {
+          "type": "string",
+          "format": "date",
+          "description": "The user's hiring date."
+        },
+        "leaveStartDate": {
+          "type": "string",
+          "format": "date",
+          "description": "The start date of the user's current annual leave cycle."
         }
       },
       "required": [
