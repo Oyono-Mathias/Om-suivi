@@ -181,7 +181,16 @@
     "chartRegular": "Normales",
     "chartOvertime": "Heures Sup.",
     "hourUnit": "h",
-    "jobTitleLabel": "Profession"
+    "jobTitleLabel": "Profession",
+    "calculationDetailsTitle": "Détails du Calcul",
+    "calculationDetailsDescription": "Explication du calcul de votre paiement estimé.",
+    "hourlyRateFormulaTitle": "Calcul du Taux Horaire",
+    "hourlyRateFormula": "{salary} / 173.33 = {rate} {currency}/h",
+    "overtimePayoutFormulaTitle": "Calcul des Gains des Heures Supplémentaires",
+    "overtimeTierLabel": "Heures sup. ({rate}%)",
+    "overtimeTierFormula": "{hours}h x ({hourlyRate} {currency} x {multiplier}) = {payout} {currency}",
+    "totalEstimatedPayout": "Total des Gains Estimés",
+    "seeCalculationDetailsTooltip": "Voir les détails du calcul"
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -276,3 +285,5 @@
     "description": "La page que vous recherchez n'existe pas."
   }
 }
+
+    

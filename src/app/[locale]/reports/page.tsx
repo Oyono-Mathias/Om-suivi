@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { Link } from '@/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 import {
   ChartContainer,
   ChartTooltip,
@@ -33,7 +40,7 @@ import {
 import type { TimeEntry, Profile } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
+import { Loader2, HelpCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 
@@ -48,6 +55,7 @@ export default function ReportsPage() {
     const t = useTranslations('ReportsPage');
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');
+    const detailsRef = useRef<HTMLDivElement>(null);
     
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -64,92 +72,110 @@ export default function ReportsPage() {
     }, [firestore, user]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
-  const monthTotals = useMemo(() => {
-    if (!timeEntries || !profile) {
-        return { regularHours: '0.00', overtimeHours: '0.00', estimatedPayout: '0.00' };
-    }
-
-    const currentMonthStart = startOfMonth(new Date());
-    const currentMonthEnd = endOfMonth(new Date());
-
-    const monthEntries = timeEntries.filter(entry => {
-        const entryDate = parseISO(entry.date);
-        return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
-    });
-
-    let totalMinutes = 0;
-    let totalOvertimeMinutes = 0;
-
-    monthEntries.forEach(entry => {
-        totalMinutes += entry.duration;
-        totalOvertimeMinutes += entry.overtimeDuration;
-    });
-    
-    const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
-
-    const breakdown = {
-        tier1: { minutes: 0, rate: OVERTIME_RATES.tier1 },
-        tier2: { minutes: 0, rate: OVERTIME_RATES.tier2 },
-        sunday: { minutes: 0, rate: OVERTIME_RATES.sunday },
-        holiday: { minutes: 0, rate: OVERTIME_RATES.holiday },
+    const scrollToDetails = () => {
+        detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const entriesByWeek: { [week: number]: TimeEntry[] } = {};
-    monthEntries.forEach(entry => {
-        const week = getWeek(parseISO(entry.date), { weekStartsOn: 1 });
-        if (!entriesByWeek[week]) entriesByWeek[week] = [];
-        entriesByWeek[week].push(entry);
-    });
+    const reportSummary = useMemo(() => {
+        if (!timeEntries || !profile) {
+            return {
+                regularHours: '0.00',
+                overtimeHours: '0.00',
+                estimatedPayout: '0.00',
+                hourlyRate: 0,
+                overtimeBreakdown: {
+                    tier1: { minutes: 0, rate: OVERTIME_RATES.tier1, payout: 0 },
+                    tier2: { minutes: 0, rate: OVERTIME_RATES.tier2, payout: 0 },
+                    sunday: { minutes: 0, rate: OVERTIME_RATES.sunday, payout: 0 },
+                    holiday: { minutes: 0, rate: OVERTIME_RATES.holiday, payout: 0 },
+                },
+            };
+        }
 
-    for (const weekEntries of Object.values(entriesByWeek)) {
-        let weeklyOvertimeMinutes = 0;
-        weekEntries.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+        const currentMonthStart = startOfMonth(new Date());
+        const currentMonthEnd = endOfMonth(new Date());
 
-        for (const entry of weekEntries) {
-            if (entry.overtimeDuration <= 0) continue;
-            
-            const dayOfWeek = getDay(parseISO(entry.date)); // Sunday is 0
+        const monthEntries = timeEntries.filter(entry => {
+            const entryDate = parseISO(entry.date);
+            return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
+        });
 
-            if (entry.isPublicHoliday) {
-                breakdown.holiday.minutes += entry.overtimeDuration;
-                continue;
-            }
+        let totalMinutes = 0;
+        let totalOvertimeMinutes = 0;
 
-            if (dayOfWeek === 0) {
-                breakdown.sunday.minutes += entry.overtimeDuration;
-                continue;
-            }
+        monthEntries.forEach(entry => {
+            totalMinutes += entry.duration;
+            totalOvertimeMinutes += entry.overtimeDuration;
+        });
 
-            const remainingWeeklyTier1Cap = (8 * 60) - weeklyOvertimeMinutes;
-            if (remainingWeeklyTier1Cap > 0) {
-                const toTier1 = Math.min(entry.overtimeDuration, remainingWeeklyTier1Cap);
-                breakdown.tier1.minutes += toTier1;
-                weeklyOvertimeMinutes += toTier1;
-                
-                const toTier2 = entry.overtimeDuration - toTier1;
-                if (toTier2 > 0) {
-                    breakdown.tier2.minutes += toTier2;
-                    weeklyOvertimeMinutes += toTier2;
+        const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
+
+        const breakdown = {
+            tier1: { minutes: 0, rate: OVERTIME_RATES.tier1, payout: 0 },
+            tier2: { minutes: 0, rate: OVERTIME_RATES.tier2, payout: 0 },
+            sunday: { minutes: 0, rate: OVERTIME_RATES.sunday, payout: 0 },
+            holiday: { minutes: 0, rate: OVERTIME_RATES.holiday, payout: 0 },
+        };
+
+        const entriesByWeek: { [week: number]: TimeEntry[] } = {};
+        monthEntries.forEach(entry => {
+            const week = getWeek(parseISO(entry.date), { weekStartsOn: 1 });
+            if (!entriesByWeek[week]) entriesByWeek[week] = [];
+            entriesByWeek[week].push(entry);
+        });
+
+        for (const weekEntries of Object.values(entriesByWeek)) {
+            let weeklyTotalOvertimeMinutes = 0;
+            weekEntries.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
+            for (const entry of weekEntries) {
+                if (entry.overtimeDuration <= 0) continue;
+
+                const dayOfWeek = getDay(parseISO(entry.date)); // Sunday is 0
+
+                if (entry.isPublicHoliday) {
+                    breakdown.holiday.minutes += entry.overtimeDuration;
+                    continue; 
                 }
-            } else {
-                breakdown.tier2.minutes += entry.overtimeDuration;
-                weeklyOvertimeMinutes += toTier2;
+
+                if (dayOfWeek === 0) {
+                    breakdown.sunday.minutes += entry.overtimeDuration;
+                    continue; 
+                }
+                
+                const weeklyTier1CapInMinutes = 8 * 60;
+                const overtimeAlreadyProcessedThisWeek = weeklyTotalOvertimeMinutes;
+                const tier1Applicable = Math.max(0, weeklyTier1CapInMinutes - overtimeAlreadyProcessedThisWeek);
+                const tier1MinutesForThisEntry = Math.min(entry.overtimeDuration, tier1Applicable);
+
+                if (tier1MinutesForThisEntry > 0) {
+                    breakdown.tier1.minutes += tier1MinutesForThisEntry;
+                }
+
+                const tier2MinutesForThisEntry = entry.overtimeDuration - tier1MinutesForThisEntry;
+                if (tier2MinutesForThisEntry > 0) {
+                    breakdown.tier2.minutes += tier2MinutesForThisEntry;
+                }
+                
+                weeklyTotalOvertimeMinutes += entry.overtimeDuration;
             }
         }
-    }
-    
-    let estimatedPayout = 0;
-    estimatedPayout += (breakdown.tier1.minutes / 60) * hourlyRate * breakdown.tier1.rate;
-    estimatedPayout += (breakdown.tier2.minutes / 60) * hourlyRate * breakdown.tier2.rate;
-    estimatedPayout += (breakdown.sunday.minutes / 60) * hourlyRate * breakdown.sunday.rate;
-    estimatedPayout += (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
 
-    return {
-      regularHours: ((totalMinutes - totalOvertimeMinutes) / 60).toFixed(2),
-      overtimeHours: (totalOvertimeMinutes / 60).toFixed(2),
-      estimatedPayout: estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    };
-  }, [timeEntries, profile]);
+        breakdown.tier1.payout = (breakdown.tier1.minutes / 60) * hourlyRate * breakdown.tier1.rate;
+        breakdown.tier2.payout = (breakdown.tier2.minutes / 60) * hourlyRate * breakdown.tier2.rate;
+        breakdown.sunday.payout = (breakdown.sunday.minutes / 60) * hourlyRate * breakdown.sunday.rate;
+        breakdown.holiday.payout = (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
+
+        const totalPayout = breakdown.tier1.payout + breakdown.tier2.payout + breakdown.sunday.payout + breakdown.holiday.payout;
+
+        return {
+            regularHours: ((totalMinutes - totalOvertimeMinutes) / 60).toFixed(2),
+            overtimeHours: (totalOvertimeMinutes / 60).toFixed(2),
+            estimatedPayout: totalPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            hourlyRate,
+            overtimeBreakdown: breakdown,
+        };
+    }, [timeEntries, profile]);
 
 
   const weeklyChartData = useMemo(() => {
@@ -242,18 +268,102 @@ export default function ReportsPage() {
         <CardContent className="grid grid-cols-1 gap-6 text-center md:grid-cols-3">
           <div className="flex flex-col gap-2 rounded-lg border bg-background/50 p-4">
             <p className="text-sm font-medium text-muted-foreground">{t('regularHours')}</p>
-            <p className="text-3xl font-bold">{monthTotals.regularHours} {t('hourUnit')}</p>
+            <p className="text-3xl font-bold">{reportSummary.regularHours} {t('hourUnit')}</p>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border bg-background/50 p-4">
             <p className="text-sm font-medium text-muted-foreground">{t('overtimeHours')}</p>
-            <p className="text-3xl font-bold text-destructive">{monthTotals.overtimeHours} {t('hourUnit')}</p>
+            <p className="text-3xl font-bold text-destructive">{reportSummary.overtimeHours} {t('hourUnit')}</p>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border bg-primary/10 p-4">
-            <p className="text-sm font-medium text-muted-foreground">{t('estimatedPayout')}</p>
-            <p className="text-3xl font-bold text-primary">{monthTotals.estimatedPayout} {profile.currency}</p>
+            <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
+                <span>{t('estimatedPayout')}</span>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button onClick={scrollToDetails} className="cursor-pointer" aria-label={t('seeCalculationDetailsTooltip')}>
+                                <HelpCircle className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{t('seeCalculationDetailsTooltip')}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </div>
+            <p className="text-3xl font-bold text-primary">{reportSummary.estimatedPayout} {profile.currency}</p>
           </div>
         </CardContent>
       </Card>
+
+        <Card ref={detailsRef} className="bg-muted/30 scroll-mt-20">
+            <CardHeader>
+                <CardTitle>{t('calculationDetailsTitle')}</CardTitle>
+                <CardDescription>{t('calculationDetailsDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 text-sm">
+                <div>
+                    <h4 className="font-semibold mb-2">{t('hourlyRateFormulaTitle')}</h4>
+                    <div className="p-3 bg-background/50 rounded-md font-mono text-center text-base md:text-lg">
+                        {t('hourlyRateFormula', {
+                            salary: profile.monthlyBaseSalary.toLocaleString('fr-FR'),
+                            rate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
+                            currency: profile.currency,
+                        })}
+                    </div>
+                </div>
+                <div>
+                    <h4 className="font-semibold mb-2">{t('overtimePayoutFormulaTitle')}</h4>
+                    <div className="space-y-2 p-3 bg-background/50 rounded-md">
+                        {reportSummary.overtimeBreakdown.tier1.minutes > 0 && (
+                            <p>
+                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.tier1.rate - 1) * 100 })}: {t('overtimeTierFormula', {
+                                    hours: (reportSummary.overtimeBreakdown.tier1.minutes / 60).toFixed(2),
+                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
+                                    multiplier: reportSummary.overtimeBreakdown.tier1.rate,
+                                    payout: reportSummary.overtimeBreakdown.tier1.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+                                    currency: profile.currency
+                                })}
+                            </p>
+                        )}
+                         {reportSummary.overtimeBreakdown.tier2.minutes > 0 && (
+                            <p>
+                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.tier2.rate - 1) * 100 })}: {t('overtimeTierFormula', {
+                                    hours: (reportSummary.overtimeBreakdown.tier2.minutes / 60).toFixed(2),
+                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
+                                    multiplier: reportSummary.overtimeBreakdown.tier2.rate,
+                                    payout: reportSummary.overtimeBreakdown.tier2.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+                                    currency: profile.currency
+                                })}
+                            </p>
+                        )}
+                        {reportSummary.overtimeBreakdown.sunday.minutes > 0 && (
+                            <p>
+                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.sunday.rate - 1) * 100 })}: {t('overtimeTierFormula', {
+                                    hours: (reportSummary.overtimeBreakdown.sunday.minutes / 60).toFixed(2),
+                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
+                                    multiplier: reportSummary.overtimeBreakdown.sunday.rate,
+                                    payout: reportSummary.overtimeBreakdown.sunday.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+                                    currency: profile.currency
+                                })}
+                            </p>
+                        )}
+                        {reportSummary.overtimeBreakdown.holiday.minutes > 0 && (
+                             <p>
+                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.holiday.rate - 1) * 100 })}: {t('overtimeTierFormula', {
+                                    hours: (reportSummary.overtimeBreakdown.holiday.minutes / 60).toFixed(2),
+                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
+                                    multiplier: reportSummary.overtimeBreakdown.holiday.rate,
+                                    payout: reportSummary.overtimeBreakdown.holiday.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+                                    currency: profile.currency
+                                })}
+                            </p>
+                        )}
+                        <Separator className="my-2"/>
+                        <p className="font-bold text-right pt-2">{t('totalEstimatedPayout')}: {reportSummary.estimatedPayout} {profile.currency}</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
 
       <Card>
         <CardHeader>
@@ -291,4 +401,6 @@ export default function ReportsPage() {
     </div>
   );
 }
+    
+
     

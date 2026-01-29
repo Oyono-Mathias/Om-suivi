@@ -181,7 +181,16 @@
     "chartRegular": "Regular",
     "chartOvertime": "Overtime",
     "hourUnit": "h",
-    "jobTitleLabel": "Job Title"
+    "jobTitleLabel": "Job Title",
+    "calculationDetailsTitle": "Calculation Details",
+    "calculationDetailsDescription": "An explanation of how your estimated payout is calculated.",
+    "hourlyRateFormulaTitle": "Hourly Rate Calculation",
+    "hourlyRateFormula": "{salary} / 173.33 = {rate} {currency}/h",
+    "overtimePayoutFormulaTitle": "Overtime Payout Calculation",
+    "overtimeTierLabel": "Overtime ({rate}%)",
+    "overtimeTierFormula": "{hours}h x ({hourlyRate} {currency} x {multiplier}) = {payout} {currency}",
+    "totalEstimatedPayout": "Total Estimated Payout",
+    "seeCalculationDetailsTooltip": "See calculation details"
   },
   "ExportReportPage": {
     "title": "Export Report",
@@ -276,3 +285,5 @@
     "description": "The page you are looking for does not exist."
   }
 }
+
+    
