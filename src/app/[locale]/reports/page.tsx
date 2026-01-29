@@ -28,15 +28,12 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
   eachDayOfInterval,
   format,
-  parse,
   parseISO,
   startOfWeek,
   endOfWeek,
   getDay,
   isThisWeek,
   getWeek,
-  startOfMonth,
-  endOfMonth,
   addDays,
   set,
   getHours,
@@ -52,6 +49,7 @@ import { doc, collection } from "firebase/firestore";
 import { Loader2, HelpCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
+import { getPayrollCycle } from "@/lib/utils";
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -110,12 +108,11 @@ export default function ReportsPage() {
         }
 
         const rates = globalSettings?.overtimeRates || DEFAULT_OVERTIME_RATES;
-        const currentMonthStart = startOfMonth(new Date());
-        const currentMonthEnd = endOfMonth(new Date());
+        const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
 
         const monthEntries = timeEntries.filter(entry => {
             const entryDate = parseISO(entry.date);
-            return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
+            return entryDate >= cycleStart && entryDate <= cycleEnd;
         });
 
         let totalDurationMinutes = 0;

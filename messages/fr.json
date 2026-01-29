@@ -38,6 +38,7 @@
     "appName": "OM Suivi",
     "timeTracking": "Suivi du Temps",
     "reports": "Rapports",
+    "bulletin": "Bulletin de Paie",
     "team": "Équipe",
     "settings": "Paramètres",
     "administration": "Administration",
@@ -203,7 +204,7 @@
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
-    "description": "Preuve de travail pour {reportMonth}.",
+    "description": "Preuve de travail pour la période du {reportMonth}.",
     "printButton": "Imprimer en PDF",
     "appName": "OM Suivi",
     "reportTitle": "Rapport de Feuille de Temps",
@@ -301,5 +302,32 @@
   "NotFound": {
     "title": "Page non trouvée",
     "description": "La page que vous recherchez n'existe pas."
+  },
+  "BulletinPage": {
+    "title": "Bulletin de Paie",
+    "description": "Détail de votre rémunération pour la période du {startDate} au {endDate}.",
+    "printButton": "Imprimer le Bulletin",
+    "periodLabel": "Période",
+    "employeeLabel": "Employé",
+    "jobTitleLabel": "Emploi",
+    "gainsSectionTitle": "Gains",
+    "baseSalaryLabel": "Salaire de Base",
+    "overtimeLabel": "Heures Supplémentaires",
+    "nightBonusLabel": "Prime de Panier de Nuit",
+    "grossSalaryLabel": "Salaire Brut",
+    "deductionsSectionTitle": "Retenues",
+    "cnpsLabel": "Retenue CNPS (4.2%)",
+    "irppLabel": "IRPP",
+    "cacLabel": "Crédit Foncier",
+    "communalTaxLabel": "Taxe Communale",
+    "totalDeductionsLabel": "Total des Retenues",
+    "netPayableLabel": "Net à Payer",
+    "overtimeTier1": "HS à {rate}%",
+    "overtimeTier2": "HS à {rate}%",
+    "overtimeNight": "HS Nuit à {rate}%",
+    "overtimeSunday": "HS Dimanche à {rate}%",
+    "overtimeHoliday": "HS Jour Férié à {rate}%",
+    "noData": "Pas de données pour cette période.",
+    "footerText": "Ce document est généré automatiquement et constitue un résumé de la paie."
   }
 }

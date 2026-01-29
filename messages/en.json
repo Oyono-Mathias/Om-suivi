@@ -38,6 +38,7 @@
     "appName": "OM Suivi",
     "timeTracking": "Time Tracking",
     "reports": "Reports",
+    "bulletin": "Paystub",
     "team": "Team",
     "settings": "Settings",
     "administration": "Administration",
@@ -203,7 +204,7 @@
   },
   "ExportReportPage": {
     "title": "Export Report",
-    "description": "Proof of work for {reportMonth}.",
+    "description": "Proof of work for the period of {reportMonth}.",
     "printButton": "Print to PDF",
     "appName": "OM Suivi",
     "reportTitle": "Timesheet Report",
@@ -301,5 +302,32 @@
   "NotFound": {
     "title": "Page Not Found",
     "description": "The page you are looking for does not exist."
+  },
+  "BulletinPage": {
+    "title": "Paystub",
+    "description": "Your compensation details for the period from {startDate} to {endDate}.",
+    "printButton": "Print Paystub",
+    "periodLabel": "Period",
+    "employeeLabel": "Employee",
+    "jobTitleLabel": "Job Title",
+    "gainsSectionTitle": "Earnings",
+    "baseSalaryLabel": "Base Salary",
+    "overtimeLabel": "Overtime",
+    "nightBonusLabel": "Night Work Bonus",
+    "grossSalaryLabel": "Gross Salary",
+    "deductionsSectionTitle": "Deductions",
+    "cnpsLabel": "CNPS Deduction (4.2%)",
+    "irppLabel": "IRPP (Income Tax)",
+    "cacLabel": "Housing Fund",
+    "communalTaxLabel": "Communal Tax",
+    "totalDeductionsLabel": "Total Deductions",
+    "netPayableLabel": "Net Payable",
+    "overtimeTier1": "OT at {rate}%",
+    "overtimeTier2": "OT at {rate}%",
+    "overtimeNight": "Night OT at {rate}%",
+    "overtimeSunday": "Sunday OT at {rate}%",
+    "overtimeHoliday": "Holiday OT at {rate}%",
+    "noData": "No data for this period.",
+    "footerText": "This document is auto-generated and serves as a pay summary."
   }
 }

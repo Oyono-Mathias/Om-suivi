@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePathname, Link } from '@/navigation';
-import { BarChart3, Clock, Settings, Users, Shield } from 'lucide-react';
+import { BarChart3, Clock, Settings, Users, Shield, Newspaper } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useTranslations } from 'next-intl';
@@ -34,6 +34,7 @@ export default function MobileBottomNav() {
   const navItems = [
     { href: "/", label: t('timeTracking'), icon: Clock },
     { href: "/reports", label: t('reports'), icon: BarChart3 },
+    { href: "/bulletin", label: t('bulletin'), icon: Newspaper },
     { href: "/team", label: t('team'), icon: Users },
     { href: "/profile", label: t('settings'), icon: Settings },
   ];

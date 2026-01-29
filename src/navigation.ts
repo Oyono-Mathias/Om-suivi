@@ -18,6 +18,10 @@ export const pathnames = {
     en: '/reports/export',
     fr: '/rapports/exporter'
   },
+  '/bulletin': {
+    en: '/paystub',
+    fr: '/bulletin'
+  },
   '/team': {
     en: '/team',
     fr: '/equipe'

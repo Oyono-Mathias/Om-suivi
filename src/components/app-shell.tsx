@@ -23,6 +23,7 @@ import {
   Users,
   LogOut,
   Shield,
+  Newspaper,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -54,6 +55,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/", label: t('timeTracking'), icon: Clock },
     { href: "/reports", label: t('reports'), icon: BarChart3 },
+    { href: "/bulletin", label: t('bulletin'), icon: Newspaper },
     { href: "/team", label: t('team'), icon: Users },
     { href: "/profile", label: t('settings'), icon: Settings },
   ];
@@ -68,9 +70,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
   
-  if (pathname.includes('/login') || pathname.includes('/reports/export')) {
-    return <>{children}</>;
+  if (pathname.includes('/login') || pathname.includes('/reports/export') || pathname.includes('/bulletin')) {
+    if (isMobile) {
+      // For print-like views on mobile, we might want a simpler header
+      return (
+        <div className="flex flex-col min-h-screen bg-background">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm no-print">
+            <div className="flex items-center gap-2">
+              <Image src="/logo-om.png" alt="OM Suivi Logo" width={24} height={24} className="rounded-md" />
+              <h1 className="text-lg font-semibold">{t('appName')}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+            </div>
+          </header>
+          <main className="flex-1 p-4 pb-24">{children}</main>
+          {user && <MobileBottomNav />}
+        </div>
+      )
+    }
+     return <>{children}</>;
   }
+
 
   if (isMobile === undefined) {
     return <Skeleton className="w-full h-screen" />;

@@ -5,7 +5,7 @@ import React, { useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, parseISO, getDay, startOfMonth, endOfMonth, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -15,6 +15,7 @@ import { Link } from '@/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { shifts } from '@/lib/shifts';
 import { Separator } from '@/components/ui/separator';
+import { getPayrollCycle } from '@/lib/utils';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -69,12 +70,11 @@ export default function ExportReportPage() {
         }
 
         const rates = globalSettings?.overtimeRates || DEFAULT_OVERTIME_RATES;
-        const currentMonthStart = startOfMonth(new Date());
-        const currentMonthEnd = endOfMonth(new Date());
+        const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
 
         const monthEntries = timeEntries.filter(entry => {
             const entryDate = parseISO(entry.date);
-            return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
+            return entryDate >= cycleStart && entryDate <= cycleEnd;
         });
 
         const sorted = [...monthEntries].sort(
@@ -173,7 +173,7 @@ export default function ExportReportPage() {
         
         const totalPayout = breakdown.tier1.payout + breakdown.tier2.payout + breakdown.night.payout + breakdown.sunday.payout + breakdown.holiday.payout;
 
-        const month = sorted.length > 0 ? format(parseISO(sorted[0].date), 'MMMM yyyy', {locale: dateFnsLocale}) : format(new Date(), 'MMMM yyyy', {locale: dateFnsLocale});
+        const month = `${format(cycleStart, 'd MMM', {locale: dateFnsLocale})} - ${format(cycleEnd, 'd MMM yyyy', {locale: dateFnsLocale})}`;
 
         return {
             sortedEntries: sorted,

@@ -21,3 +21,21 @@ export function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: numb
   const d = R * c; // Distance in km
   return d;
 }
+
+export const getPayrollCycle = (date: Date) => {
+  const day = date.getDate();
+  const month = date.getMonth();
+  const year = date.getFullYear();
+
+  let start: Date;
+  let end: Date;
+
+  if (day >= 26) {
+    start = new Date(year, month, 26, 0, 0, 0);
+    end = new Date(year, month + 1, 25, 23, 59, 59);
+  } else {
+    start = new Date(year, month - 1, 26, 0, 0, 0);
+    end = new Date(year, month, 25, 23, 59, 59);
+  }
+  return { start, end };
+};
