@@ -13,9 +13,8 @@ import { Link } from '@/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { shifts } from '@/lib/shifts';
 import { getPayrollCycle } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-import NetPayableCard from '@/components/net-payable-card';
 import Image from 'next/image';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -25,22 +24,31 @@ const DEFAULT_OVERTIME_RATES = {
   holiday: 1.5,
 };
 
-// This is a placeholder for a real IRPP calculation.
-const calculateIRPP = (taxableSalary: number) => {
-    if (taxableSalary <= 0) return 0;
-    const annualTaxable = taxableSalary * 12;
+const calculateIRPP = (grossSalary: number, transportBonus: number, housingBonus: number, cnpsDeduction: number) => {
+    if (grossSalary <= 0) return 0;
+    
+    // The IRPP base is Gross Salary minus specific non-taxable allowances like transport.
+    const netImposable = grossSalary - transportBonus; 
+    
+    // Professional expenses abatement (30%) on (Net Imposable - CNPS)
+    const taxableBase = (netImposable - cnpsDeduction) * 0.7;
+    
+    const annualTaxable = taxableBase * 12;
     let annualIRPP = 0;
-    if (annualTaxable > 5000000) {
-        annualIRPP = (annualTaxable - 5000000) * 0.35 + 840000;
-    } else if (annualTaxable > 3000000) {
-        annualIRPP = (annualTaxable - 3000000) * 0.25 + 340000;
-    } else if (annualTaxable > 2000000) {
-        annualIRPP = (annualTaxable - 2000000) * 0.15 + 190000;
-    } else if (annualTaxable > 0) {
+
+    if (annualTaxable <= 2000000) {
         annualIRPP = annualTaxable * 0.1;
+    } else if (annualTaxable <= 3000000) {
+        annualIRPP = ((annualTaxable - 2000000) * 0.15) + 200000;
+    } else if (annualTaxable <= 5000000) {
+        annualIRPP = ((annualTaxable - 3000000) * 0.25) + 350000;
+    } else {
+        annualIRPP = ((annualTaxable - 5000000) * 0.35) + 850000;
     }
+
     return Math.round(annualIRPP / 12);
 }
+
 
 export default function BulletinPage() {
     const t = useTranslations('BulletinPage');
@@ -159,10 +167,8 @@ export default function BulletinPage() {
         breakdown.holiday.payout = (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
         
         const totalOvertimePayout = Object.values(breakdown).reduce((sum, tier) => sum + tier.payout, 0);
-        const nightBonusCount = cycleEntries.filter(e => e.shiftId === 'night').length;
-        const nightBonusPayout = nightBonusCount * 1400;
-
-        // --- Seniority and Absence Logic ---
+        
+        // --- Seniority, Absence, and Fixed Bonuses ---
         let seniorityBonus = 0;
         if (profile.hireDate) {
             const yearsOfService = differenceInYears(new Date(), parseISO(profile.hireDate));
@@ -172,7 +178,7 @@ export default function BulletinPage() {
             }
         }
         
-        const workDaysInCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(day => getDay(day) !== 0); // Mon-Sat
+        const workDaysInCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(day => getDay(day) !== 0 && getDay(day) !== 6); // Mon-Fri
         const workedDays = new Set(cycleEntries.map(entry => entry.date));
         const absenceCount = workDaysInCycle.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
 
@@ -180,46 +186,41 @@ export default function BulletinPage() {
         let performanceBonus = 4000;
         let absenceDeduction = 0;
         const transportBonus = 18325;
+        const housingBonus = baseSalary * 0.1; // 10% of base salary
 
         if (absenceCount > 0) {
             attendanceBonus = 0;
             performanceBonus = 0;
-            const dailySalaryDeduction = baseSalary / 26;
-            const dailyTransportDeduction = transportBonus / 26;
-            absenceDeduction = absenceCount * (dailySalaryDeduction + dailyTransportDeduction);
+            const dailySalaryDeduction = baseSalary / 21.67; // Avg working days
+            absenceDeduction = absenceCount * dailySalaryDeduction;
         }
 
-        const housingBonus = 7280;
-        const totalFixedPrimes = seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus;
-        const grossSalary = baseSalary + totalFixedPrimes + totalOvertimePayout + nightBonusPayout;
+        const grossSalary = baseSalary + seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus + totalOvertimePayout - absenceDeduction;
 
         // Deductions
-        const cnpsDeduction = grossSalary * 0.042;
-        const cacDeduction = grossSalary * 0.01;
-        const taxableForIRPP = grossSalary - cnpsDeduction;
-        const irppDeduction = calculateIRPP(taxableForIRPP);
-        const communalTaxDeduction = 2500; 
+        const cnpsBase = grossSalary - transportBonus - housingBonus;
+        const cnpsDeduction = cnpsBase * 0.042;
+        
+        const cacBase = grossSalary - transportBonus;
+        const cacDeduction = cacBase * 0.01;
+        
+        const irppDeduction = calculateIRPP(grossSalary, transportBonus, housingBonus, cnpsDeduction);
+        const cacSurIRPP = irppDeduction * 0.1; // 10% of IRPP
+        const redevanceCRTV = 1950; // Fixed from payslip
+        const cotisationSyndicale = baseSalary * 0.01; // 1% of base salary
+        const taxeCommunale = 270; // Fixed from payslip
 
-        const totalDeductions = cnpsDeduction + irppDeduction + cacDeduction + communalTaxDeduction + absenceDeduction;
+        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
         const netPay = grossSalary - totalDeductions;
+        
+        const totalHours = cycleEntries.reduce((acc, e) => acc + e.duration, 0) / 60;
+        const totalOvertimeHours = Object.values(breakdown).reduce((acc, tier) => acc + tier.minutes, 0) / 60;
 
         return {
-            cycleStart,
-            cycleEnd,
-            baseSalary,
-            seniorityBonus, attendanceBonus, performanceBonus, transportBonus, housingBonus,
-            overtimeBreakdown: breakdown,
-            totalOvertimePayout,
-            nightBonusCount,
-            nightBonusPayout,
-            grossSalary,
-            cnpsDeduction,
-            irppDeduction,
-            cacDeduction,
-            communalTaxDeduction,
-            absenceDeduction,
-            totalDeductions,
-            netPay,
+            cycleStart, cycleEnd, baseSalary, seniorityBonus, attendanceBonus, performanceBonus, transportBonus, housingBonus, absenceDeduction,
+            overtimeBreakdown: breakdown, hourlyRate, totalOvertimePayout, grossSalary,
+            cnpsDeduction, cnpsBase, cacDeduction, cacBase, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
+            totalDeductions, netPay, totalHours, totalOvertimeHours
         };
 
     }, [timeEntries, profile, globalSettings, cycleStart, cycleEnd]);
@@ -252,10 +253,21 @@ export default function BulletinPage() {
             </div>
         );
     }
-
-    const formatCurrency = (amount: number) => <span className='font-mono tabular-nums'>{Math.round(amount).toLocaleString('fr-FR')}</span>;
-    const formatHours = (minutes: number) => (minutes / 60).toFixed(2);
     
+    const formatCurrency = (amount: number) => Math.round(amount).toLocaleString('fr-FR');
+    const formatNumber = (num: number, decimals = 2) => num.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    
+    const renderRow = (label: string, number: string | number | null, base: string | number | null, rate: string | number | null, gain: number | null, deduction: number | null, isBold=false) => (
+        <TableRow className={isBold ? "font-bold" : ""}>
+            <TableCell>{label}</TableCell>
+            <TableCell className="text-right">{number !== null ? (typeof number === 'number' ? formatNumber(number) : number) : ''}</TableCell>
+            <TableCell className="text-right">{base !== null ? (typeof base === 'number' ? formatCurrency(base) : base) : ''}</TableCell>
+            <TableCell className="text-right">{rate !== null ? (typeof rate === 'number' ? formatNumber(rate,3) : rate) : ''}</TableCell>
+            <TableCell className="text-right">{gain !== null ? formatCurrency(gain) : ''}</TableCell>
+            <TableCell className="text-right">{deduction !== null ? formatCurrency(deduction) : ''}</TableCell>
+        </TableRow>
+    );
+
     return (
         <div className="space-y-6">
              <style jsx global>{`
@@ -264,6 +276,8 @@ export default function BulletinPage() {
                     .no-print { display: none !important; }
                     .print-container { padding: 0 !important; border: none !important; box-shadow: none !important; }
                     main { padding: 0 !important; }
+                    .print-table { font-size: 9px; }
+                    .print-table th, .print-table td { padding: 4px 6px; }
                 }
             `}</style>
             <div className="flex flex-wrap items-center justify-between gap-4 no-print">
@@ -277,11 +291,12 @@ export default function BulletinPage() {
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
 
-            <div className="p-1 print-container space-y-6">
-                <header className="flex justify-between items-start mb-2 border-b pb-4">
+            <div className="p-4 sm:p-6 border rounded-lg bg-card text-card-foreground print-container">
+                <header className="flex justify-between items-start mb-6 border-b pb-4">
                     <div>
+                        <Image src="/logo-om.png" alt="Company Logo" width={48} height={48} className="mb-2" />
                         <h2 className="text-2xl font-bold text-primary font-headline">{t('title')}</h2>
-                        <p>{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yy')} - {format(payrollData.cycleEnd, 'dd/MM/yy')}</p>
+                        <p className="text-sm">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yy')} - {format(payrollData.cycleEnd, 'dd/MM/yy')}</p>
                     </div>
                     <div className='text-right'>
                         <p className="font-semibold">{profile.name}</p>
@@ -289,61 +304,59 @@ export default function BulletinPage() {
                     </div>
                 </header>
 
-                <div className="space-y-6 md:space-y-0 md:grid md:grid-cols-2 md:gap-6">
-                    {/* Gains Card */}
-                    <Card className="md:col-span-1">
-                        <CardHeader>
-                            <CardTitle>{t('gainsSectionTitle')}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="divide-y divide-border text-sm">
-                            <div className="flex justify-between py-3"><p>{t('baseSalaryLabel')}</p><p className="font-medium">{formatCurrency(payrollData.baseSalary)}</p></div>
-                            {payrollData.seniorityBonus > 0 && <div className="flex justify-between py-3"><p>{t('seniorityBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.seniorityBonus)}</p></div>}
-                            <div className="flex justify-between py-3"><p>{t('attendanceBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.attendanceBonus)}</p></div>
-                            <div className="flex justify-between py-3"><p>{t('performanceBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.performanceBonus)}</p></div>
-                            <div className="flex justify-between py-3"><p>{t('transportBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.transportBonus)}</p></div>
-                            <div className="flex justify-between py-3"><p>{t('housingBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.housingBonus)}</p></div>
-                            
-                            {Object.values(payrollData.overtimeBreakdown).some(tier => tier.minutes > 0) && (
-                                <div className="py-3">
-                                    <p className="font-semibold mb-2">{t('overtimeLabel')}</p>
-                                    <div className="pl-4 space-y-2">
-                                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
-                                            <div key={key} className="flex justify-between text-sm">
-                                                <p className="text-muted-foreground">{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, { rate: (tier.rate * 100).toFixed(0) })} ({formatHours(tier.minutes)}h)</p>
-                                                <p className="font-medium">{formatCurrency(tier.payout)}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                             {payrollData.nightBonusPayout > 0 && (
-                                 <div className="flex justify-between py-3"><p>{t('nightBonusLabel')} ({payrollData.nightBonusCount})</p><p className="font-medium">{formatCurrency(payrollData.nightBonusPayout)}</p></div>
-                            )}
-                            
-                            <div className="flex justify-between pt-4 font-bold text-base"><p>{t('grossSalaryLabel')}</p><p>{formatCurrency(payrollData.grossSalary)} FCFA</p></div>
-                        </CardContent>
-                    </Card>
+                <div className="overflow-x-auto print-table">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-2/5">{t('tableDesignation')}</TableHead>
+                            <TableHead className="text-right">{t('tableNumber')}</TableHead>
+                            <TableHead className="text-right">{t('tableBase')}</TableHead>
+                            <TableHead className="text-right">{t('tableRate')}</TableHead>
+                            <TableHead className="text-right">{t('tableGain')}</TableHead>
+                            <TableHead className="text-right">{t('tableDeduction')}</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {renderRow(t('baseSalaryLabel'), "30,00", (payrollData.baseSalary / 30).toFixed(2), null, payrollData.baseSalary, null)}
+                        {payrollData.seniorityBonus > 0 && renderRow(t('seniorityBonusLabel'), null, payrollData.baseSalary, '2.000', payrollData.seniorityBonus, null)}
+                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => 
+                            renderRow(t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)}), (tier.minutes/60).toFixed(2), payrollData.hourlyRate, tier.rate*100, tier.payout, null)
+                        )}
+                        {payrollData.attendanceBonus > 0 && renderRow(t('attendanceBonusLabel'), null, null, null, payrollData.attendanceBonus, null)}
+                        {payrollData.performanceBonus > 0 && renderRow(t('performanceBonusLabel'), null, null, null, payrollData.performanceBonus, null)}
+                        {renderRow(t('transportBonusLabel'), null, null, null, payrollData.transportBonus, null)}
+                        {renderRow(t('housingBonusLabel'), payrollData.baseSalary, 0.1, 10, payrollData.housingBonus, null)}
+                        {payrollData.absenceDeduction > 0 && renderRow(t('absenceDeductionLabel'), null, null, null, null, payrollData.absenceDeduction)}
 
-                    {/* Deductions Card */}
-                     <Card className="md:col-span-1">
-                        <CardHeader>
-                            <CardTitle>{t('deductionsSectionTitle')}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="divide-y divide-border text-sm">
-                            <div className="flex justify-between py-3"><p>{t('cnpsLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.cnpsDeduction)}</p></div>
-                            <div className="flex justify-between py-3"><p>{t('cacLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.cacDeduction)}</p></div>
-                            <div className="flex justify-between py-3"><p>{t('irppLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.irppDeduction)}</p></div>
-                            <div className="flex justify-between py-3"><p>{t('communalTaxLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.communalTaxDeduction)}</p></div>
-                            {payrollData.absenceDeduction > 0 && <div className="flex justify-between py-3"><p>{t('absenceDeductionLabel')}</p><p className="font-medium text-destructive">-{formatCurrency(payrollData.absenceDeduction)}</p></div>}
-                            <div className="flex justify-between pt-4 font-bold text-base"><p>{t('totalDeductionsLabel')}</p><p>-{formatCurrency(payrollData.totalDeductions)} FCFA</p></div>
-                        </CardContent>
-                    </Card>
+                        {renderRow(t('grossMonthlySalaryLabel'), null, null, null, null, null, true)}
+                        {renderRow('', null, null, null, payrollData.grossSalary, null, true)}
+                        
+                        <TableRow><TableCell colSpan={6} className="h-4"></TableCell></TableRow>
+
+                        {renderRow(t('cnpsLabel'), payrollData.cnpsBase, '4.200', null, null, payrollData.cnpsDeduction)}
+                        {renderRow(t('cacLabel'), payrollData.cacBase, '1.000', null, null, payrollData.cacDeduction)}
+                        {renderRow(t('redevanceCRTVLabel'), null, null, null, null, payrollData.redevanceCRTV)}
+                        {payrollData.cotisationSyndicale > 0 && renderRow(t('cotisationSyndicaleLabel'), payrollData.baseSalary, '1.000', null, null, payrollData.cotisationSyndicale)}
+                        {renderRow(t('irppLabel'), null, null, null, null, payrollData.irppDeduction)}
+                        {renderRow(t('cacSurIRPPLabel'), payrollData.irppDeduction, '10.000', null, null, payrollData.cacSurIRPP)}
+                        {renderRow(t('communalTaxLabel'), null, null, null, null, payrollData.taxeCommunale)}
+
+                        {renderRow(t('totalDeductionsLabel'), null, null, null, null, null, true)}
+                        {renderRow('', null, null, null, null, payrollData.totalDeductions, true)}
+                    </TableBody>
+                </Table>
+                </div>
+                
+                <div className="flex justify-end mt-8">
+                  <div className="border-2 border-primary rounded-lg p-4 w-full max-w-xs bg-primary/5">
+                      <div className="flex justify-between items-center font-bold text-lg">
+                          <span className="text-primary">{t('netPayableLabel')}</span>
+                          <span className="text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} FCFA</span>
+                      </div>
+                  </div>
                 </div>
 
-                {/* Net Payable Card */}
-                <NetPayableCard netPay={payrollData.netPay} />
-
-                <footer className="mt-6 pt-6 border-t text-center text-xs text-muted-foreground">
+                <footer className="mt-8 pt-4 border-t text-center text-xs text-muted-foreground">
                     <p>{t('footerText')}</p>
                 </footer>
             </div>

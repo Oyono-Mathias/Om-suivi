@@ -323,10 +323,9 @@
     "transportBonusLabel": "Indemnité de Transport",
     "housingBonusLabel": "Indemnité de Logement",
     "overtimeLabel": "Heures Supplémentaires",
-    "nightBonusLabel": "Prime de Panier de Nuit",
     "grossSalaryLabel": "Salaire Brut",
     "deductionsSectionTitle": "Retenues",
-    "cnpsLabel": "Retenue CNPS (4.2%)",
+    "cnpsLabel": "Retenue CNPS (PV)",
     "irppLabel": "IRPP",
     "cacLabel": "Crédit Foncier",
     "communalTaxLabel": "Taxe Communale",
@@ -343,6 +342,15 @@
     "tableNumber": "Nombre",
     "tableGain": "Gain",
     "grossMonthlySalaryLabel": "Salaire Brut Mensuel",
-    "absenceDeductionLabel": "Retenue pour Absence"
+    "absenceDeductionLabel": "Retenue pour Absence",
+    "tableBase": "Base",
+    "tableRate": "Taux",
+    "tableDeduction": "Retenue",
+    "redevanceCRTVLabel": "Redevance CRTV",
+    "cotisationSyndicaleLabel": "Cotisation Syndicale",
+    "cacSurIRPPLabel": "CAC sur IRPP",
+    "netToPayLabel": "NET A PAYER"
   }
 }
+
+    

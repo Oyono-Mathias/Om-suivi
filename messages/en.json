@@ -323,7 +323,6 @@
     "transportBonusLabel": "Transport Allowance",
     "housingBonusLabel": "Housing Allowance",
     "overtimeLabel": "Overtime",
-    "nightBonusLabel": "Night Work Bonus",
     "grossSalaryLabel": "Gross Salary",
     "deductionsSectionTitle": "Deductions",
     "cnpsLabel": "CNPS Deduction (4.2%)",
@@ -343,6 +342,15 @@
     "tableNumber": "Number",
     "tableGain": "Gain",
     "grossMonthlySalaryLabel": "Gross Monthly Salary",
-    "absenceDeductionLabel": "Absence Deduction"
+    "absenceDeductionLabel": "Absence Deduction",
+    "tableBase": "Base",
+    "tableRate": "Rate",
+    "tableDeduction": "Deduction",
+    "redevanceCRTVLabel": "CRTV Fee",
+    "cotisationSyndicaleLabel": "Union Dues",
+    "cacSurIRPPLabel": "CAC on IRPP",
+    "netToPayLabel": "NET PAY"
   }
 }
+
+    
