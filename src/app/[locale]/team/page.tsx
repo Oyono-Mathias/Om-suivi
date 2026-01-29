@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import React, { useState, useEffect } from "react";
 import {
@@ -38,7 +37,7 @@ export default function TeamPage() {
 
   useEffect(() => {
     setIsClient(true);
-    const generatedMembers = PlaceHolderImages.map(p => ({
+    const generatedMembers = PlaceHolderImages.filter(p => p.description.startsWith('Avatar for ')).map(p => ({
         id: p.id,
         name: p.description.replace('Avatar for ', ''),
         avatarUrl: p.imageUrl,
@@ -117,7 +116,7 @@ export default function TeamPage() {
                 ))
               ) : (
                 <div className="space-y-4">
-                  {PlaceHolderImages.map((p) => (
+                  {PlaceHolderImages.filter(p => p.description.startsWith('Avatar for ')).map((p) => (
                       <Card key={p.id} className="flex items-center p-4 gap-4">
                           <Skeleton className="h-12 w-12 rounded-full" />
                           <div className="flex-1 space-y-2">
