@@ -174,7 +174,7 @@
     "financialSummaryTitle": "Résumé Financier de ce Mois",
     "financialSummaryDescription": "Un aperçu de vos heures normales, de vos heures supplémentaires et de vos gains estimés pour le mois en cours.",
     "regularHours": "Heures Normales",
-    "overtimeHours": "Heures Supplémentaires",
+    "totalOvertimeHours": "Total Heures Sup.",
     "estimatedPayout": "Paiement Estimé des Heures Sup.",
     "weeklyBreakdownTitle": "Répartition Hebdomadaire des Heures",
     "weeklyBreakdownDescription": "Heures normales vs heures supplémentaires enregistrées chaque jour de la semaine en cours.",
@@ -190,7 +190,8 @@
     "overtimeTierLabel": "Heures sup. ({rate}%)",
     "overtimeTierFormula": "{hours}h x ({hourlyRate} {currency} x {multiplier}) = {payout} {currency}",
     "totalEstimatedPayout": "Total des Gains Estimés",
-    "seeCalculationDetailsTooltip": "Voir les détails du calcul"
+    "seeCalculationDetailsTooltip": "Voir les détails du calcul",
+    "overtimeBreakdownTitle": "Détail des Heures Supplémentaires"
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -213,6 +214,7 @@
     "overtimeTier2": "Heures sup. à {rate}%",
     "overtimeSunday": "Heures sup. (Dimanche) à {rate}%",
     "overtimeHoliday": "Heures sup. (Férié) à {rate}%",
+    "overtimeNight": "Heures sup. (Nuit) à {rate}%",
     "totalOvertime": "Total Heures Sup.",
     "totalDuration": "Durée Totale",
     "estimatedPayout": "Paiement Estimé des Heures Sup.",
@@ -267,7 +269,15 @@
     "deleteEntryConfirm": "Supprimer",
     "deleteEntryCancel": "Annuler",
     "deleteSuccessTitle": "Pointage supprimé",
-    "deleteSuccessDescription": "L'entrée de temps a été supprimée avec succès."
+    "deleteSuccessDescription": "L'entrée de temps a été supprimée avec succès.",
+    "overtimeRulesTitle": "Règles des Heures Supplémentaires",
+    "overtimeRulesDescription": "Définissez les multiplicateurs de majoration pour chaque palier. Entrez une valeur comme 1.2 pour un taux de 120%.",
+    "tier1RateLabel": "Taux Palier 1 (8 premières h/sem)",
+    "tier2RateLabel": "Taux Palier 2 (> 8h/sem)",
+    "nightRateLabel": "Taux de Nuit (22h-06h)",
+    "sundayRateLabel": "Taux du Dimanche",
+    "holidayRateLabel": "Taux Jours Fériés",
+    "rateMustBePositive": "Le taux doit être un nombre positif supérieur ou égal à 1."
   },
   "Shared": {
     "loading": "Chargement...",
@@ -285,5 +295,3 @@
     "description": "La page que vous recherchez n'existe pas."
   }
 }
-
-    

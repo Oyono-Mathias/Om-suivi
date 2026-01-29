@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, TimeEntry, GlobalSettings } from '@/lib/types';
+import type { Profile, TimeEntry, GlobalSettings, OvertimeRates } from '@/lib/types';
 import { useTranslations, useLocale } from 'next-intl';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -326,7 +326,14 @@ function GlobalSettingsForm() {
     
     const settingsSchema = z.object({
         autoClockInEnabled: z.boolean(),
-        breakDuration: z.coerce.number().min(0)
+        breakDuration: z.coerce.number().min(0),
+        overtimeRates: z.object({
+            tier1: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
+            tier2: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
+            night: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
+            sunday: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
+            holiday: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
+        })
     });
 
     const form = useForm<z.infer<typeof settingsSchema>>({
@@ -334,12 +341,23 @@ function GlobalSettingsForm() {
         defaultValues: {
             autoClockInEnabled: true,
             breakDuration: 40,
+            overtimeRates: {
+                tier1: 1.2,
+                tier2: 1.3,
+                night: 1.4,
+                sunday: 1.5,
+                holiday: 1.5,
+            }
         }
     });
     
     useEffect(() => {
         if (globalSettings) {
-            form.reset(globalSettings);
+            form.reset({
+                autoClockInEnabled: globalSettings.autoClockInEnabled,
+                breakDuration: globalSettings.breakDuration || 40,
+                overtimeRates: globalSettings.overtimeRates || { tier1: 1.2, tier2: 1.3, night: 1.4, sunday: 1.5, holiday: 1.5 }
+            });
         }
     }, [globalSettings, form]);
     
@@ -395,6 +413,71 @@ function GlobalSettingsForm() {
                         />
                     </CardContent>
                 </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('overtimeRulesTitle')}</CardTitle>
+                        <CardDescription>{t('overtimeRulesDescription')}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <FormField
+                            control={form.control}
+                            name="overtimeRates.tier1"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('tier1RateLabel')}</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="overtimeRates.tier2"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('tier2RateLabel')}</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="overtimeRates.night"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('nightRateLabel')}</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="overtimeRates.sunday"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('sundayRateLabel')}</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="overtimeRates.holiday"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('holidayRateLabel')}</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
                 <Button type="submit" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {t('saveConfigButton')}

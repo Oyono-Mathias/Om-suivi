@@ -36,18 +36,27 @@ import {
   getWeek,
   startOfMonth,
   endOfMonth,
+  addDays,
+  set,
+  getHours,
+  startOfDay,
+  addMinutes,
+  differenceInMinutes,
+  max,
+  min
 } from "date-fns";
-import type { TimeEntry, Profile } from "@/lib/types";
+import type { TimeEntry, Profile, GlobalSettings } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { Loader2, HelpCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { shifts } from "@/lib/shifts";
 
-
-const OVERTIME_RATES = {
+const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
   tier2: 1.3,
-  sunday: 1.4,
+  night: 1.4,
+  sunday: 1.5,
   holiday: 1.5,
 };
 
@@ -71,6 +80,9 @@ export default function ReportsPage() {
         return collection(firestore, 'users', user.uid, 'timeEntries');
     }, [firestore, user]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+    
+    const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
+    const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
 
     const scrollToDetails = () => {
         detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,18 +92,21 @@ export default function ReportsPage() {
         if (!timeEntries || !profile) {
             return {
                 regularHours: '0.00',
-                overtimeHours: '0.00',
+                totalOvertimeHours: '0.00',
                 estimatedPayout: '0.00',
                 hourlyRate: 0,
                 overtimeBreakdown: {
-                    tier1: { minutes: 0, rate: OVERTIME_RATES.tier1, payout: 0 },
-                    tier2: { minutes: 0, rate: OVERTIME_RATES.tier2, payout: 0 },
-                    sunday: { minutes: 0, rate: OVERTIME_RATES.sunday, payout: 0 },
-                    holiday: { minutes: 0, rate: OVERTIME_RATES.holiday, payout: 0 },
+                    tier1: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.tier1, payout: 0 },
+                    tier2: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.tier2, payout: 0 },
+                    night: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.night, payout: 0 },
+                    sunday: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.sunday, payout: 0 },
+                    holiday: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.holiday, payout: 0 },
                 },
+                rates: DEFAULT_OVERTIME_RATES
             };
         }
 
+        const rates = globalSettings?.overtimeRates || DEFAULT_OVERTIME_RATES;
         const currentMonthStart = startOfMonth(new Date());
         const currentMonthEnd = endOfMonth(new Date());
 
@@ -100,21 +115,17 @@ export default function ReportsPage() {
             return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
         });
 
-        let totalMinutes = 0;
-        let totalOvertimeMinutes = 0;
-
-        monthEntries.forEach(entry => {
-            totalMinutes += entry.duration;
-            totalOvertimeMinutes += entry.overtimeDuration;
-        });
-
+        let totalDurationMinutes = 0;
+        monthEntries.forEach(entry => totalDurationMinutes += entry.duration);
+        
         const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
 
         const breakdown = {
-            tier1: { minutes: 0, rate: OVERTIME_RATES.tier1, payout: 0 },
-            tier2: { minutes: 0, rate: OVERTIME_RATES.tier2, payout: 0 },
-            sunday: { minutes: 0, rate: OVERTIME_RATES.sunday, payout: 0 },
-            holiday: { minutes: 0, rate: OVERTIME_RATES.holiday, payout: 0 },
+            tier1: { minutes: 0, rate: rates.tier1, payout: 0 },
+            tier2: { minutes: 0, rate: rates.tier2, payout: 0 },
+            night: { minutes: 0, rate: rates.night, payout: 0 },
+            sunday: { minutes: 0, rate: rates.sunday, payout: 0 },
+            holiday: { minutes: 0, rate: rates.holiday, payout: 0 },
         };
 
         const entriesByWeek: { [week: number]: TimeEntry[] } = {};
@@ -124,58 +135,91 @@ export default function ReportsPage() {
             entriesByWeek[week].push(entry);
         });
 
+        let totalOvertimeMinutes = 0;
+
         for (const weekEntries of Object.values(entriesByWeek)) {
-            let weeklyTotalOvertimeMinutes = 0;
+            let weeklyDaytimeOvertimeMinutes = 0;
             weekEntries.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
             for (const entry of weekEntries) {
                 if (entry.overtimeDuration <= 0) continue;
 
-                const dayOfWeek = getDay(parseISO(entry.date)); // Sunday is 0
-
+                totalOvertimeMinutes += entry.overtimeDuration;
+                let overtimeToProcess = entry.overtimeDuration;
+                const entryDate = parseISO(entry.date);
+                
                 if (entry.isPublicHoliday) {
-                    breakdown.holiday.minutes += entry.overtimeDuration;
-                    continue; 
+                    breakdown.holiday.minutes += overtimeToProcess;
+                    continue;
                 }
-
-                if (dayOfWeek === 0) {
-                    breakdown.sunday.minutes += entry.overtimeDuration;
-                    continue; 
-                }
-                
-                const weeklyTier1CapInMinutes = 8 * 60;
-                const overtimeAlreadyProcessedThisWeek = weeklyTotalOvertimeMinutes;
-                const tier1Applicable = Math.max(0, weeklyTier1CapInMinutes - overtimeAlreadyProcessedThisWeek);
-                const tier1MinutesForThisEntry = Math.min(entry.overtimeDuration, tier1Applicable);
-
-                if (tier1MinutesForThisEntry > 0) {
-                    breakdown.tier1.minutes += tier1MinutesForThisEntry;
-                }
-
-                const tier2MinutesForThisEntry = entry.overtimeDuration - tier1MinutesForThisEntry;
-                if (tier2MinutesForThisEntry > 0) {
-                    breakdown.tier2.minutes += tier2MinutesForThisEntry;
+                if (getDay(entryDate) === 0) { // Sunday
+                    breakdown.sunday.minutes += overtimeToProcess;
+                    continue;
                 }
                 
-                weeklyTotalOvertimeMinutes += entry.overtimeDuration;
+                // Night Overtime Calculation
+                const shift = shifts.find(s => s.id === entry.shiftId);
+                if (shift) {
+                    const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    let shiftEndDateTime = parse(`${entry.date} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    if (shiftEndDateTime <= shiftStartDateTime) shiftEndDateTime = addDays(shiftEndDateTime, 1);
+                    
+                    const overtimeStartDateTime = shiftEndDateTime;
+                    const overtimeEndDateTime = addMinutes(overtimeStartDateTime, entry.overtimeDuration);
+                    
+                    const dayOfOvertime = startOfDay(overtimeStartDateTime);
+                    let nightWindowStart, nightWindowEnd;
+                    
+                    if (getHours(overtimeStartDateTime) < 6) { // Part of previous day's night window
+                        nightWindowStart = set(addDays(dayOfOvertime, -1), { hours: 22, minutes: 0, seconds: 0, milliseconds: 0 });
+                        nightWindowEnd = set(dayOfOvertime, { hours: 6, minutes: 0, seconds: 0, milliseconds: 0 });
+                    } else { // Part of current day's night window
+                        nightWindowStart = set(dayOfOvertime, { hours: 22, minutes: 0, seconds: 0, milliseconds: 0 });
+                        nightWindowEnd = set(addDays(dayOfOvertime, 1), { hours: 6, minutes: 0, seconds: 0, milliseconds: 0 });
+                    }
+
+                    const overlapStart = max([overtimeStartDateTime, nightWindowStart]);
+                    const overlapEnd = min([overtimeEndDateTime, nightWindowEnd]);
+                    const nightOverlapMinutes = differenceInMinutes(overlapEnd, overlapStart);
+
+                    if (nightOverlapMinutes > 0) {
+                        breakdown.night.minutes += nightOverlapMinutes;
+                        overtimeToProcess -= nightOverlapMinutes;
+                    }
+                }
+                
+                if (overtimeToProcess > 0) {
+                    const weeklyTier1CapInMinutes = 8 * 60;
+                    const remainingTier1Capacity = weeklyTier1CapInMinutes - weeklyDaytimeOvertimeMinutes;
+                    const minutesForTier1 = Math.min(overtimeToProcess, remainingTier1Capacity);
+                    
+                    if (minutesForTier1 > 0) breakdown.tier1.minutes += minutesForTier1;
+                    
+                    const minutesForTier2 = overtimeToProcess - minutesForTier1;
+                    if (minutesForTier2 > 0) breakdown.tier2.minutes += minutesForTier2;
+                    
+                    weeklyDaytimeOvertimeMinutes += overtimeToProcess;
+                }
             }
         }
 
         breakdown.tier1.payout = (breakdown.tier1.minutes / 60) * hourlyRate * breakdown.tier1.rate;
         breakdown.tier2.payout = (breakdown.tier2.minutes / 60) * hourlyRate * breakdown.tier2.rate;
+        breakdown.night.payout = (breakdown.night.minutes / 60) * hourlyRate * breakdown.night.rate;
         breakdown.sunday.payout = (breakdown.sunday.minutes / 60) * hourlyRate * breakdown.sunday.rate;
         breakdown.holiday.payout = (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
 
-        const totalPayout = breakdown.tier1.payout + breakdown.tier2.payout + breakdown.sunday.payout + breakdown.holiday.payout;
+        const totalPayout = breakdown.tier1.payout + breakdown.tier2.payout + breakdown.night.payout + breakdown.sunday.payout + breakdown.holiday.payout;
 
         return {
-            regularHours: ((totalMinutes - totalOvertimeMinutes) / 60).toFixed(2),
-            overtimeHours: (totalOvertimeMinutes / 60).toFixed(2),
+            regularHours: ((totalDurationMinutes - totalOvertimeMinutes) / 60).toFixed(2),
+            totalOvertimeHours: (totalOvertimeMinutes / 60).toFixed(2),
             estimatedPayout: totalPayout.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             hourlyRate,
             overtimeBreakdown: breakdown,
+            rates,
         };
-    }, [timeEntries, profile]);
+    }, [timeEntries, profile, globalSettings]);
 
 
   const weeklyChartData = useMemo(() => {
@@ -212,7 +256,7 @@ export default function ReportsPage() {
     },
   } satisfies ChartConfig;
 
-  if (isUserLoading || isLoadingProfile || isLoadingEntries) {
+  if (isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin" />
@@ -258,42 +302,69 @@ export default function ReportsPage() {
         </Link>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('financialSummaryTitle')}</CardTitle>
-          <CardDescription>
-            {t('financialSummaryDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-6 text-center md:grid-cols-3">
-          <div className="flex flex-col gap-2 rounded-lg border bg-background/50 p-4">
-            <p className="text-sm font-medium text-muted-foreground">{t('regularHours')}</p>
-            <p className="text-3xl font-bold">{reportSummary.regularHours} {t('hourUnit')}</p>
-          </div>
-          <div className="flex flex-col gap-2 rounded-lg border bg-background/50 p-4">
-            <p className="text-sm font-medium text-muted-foreground">{t('overtimeHours')}</p>
-            <p className="text-3xl font-bold text-destructive">{reportSummary.overtimeHours} {t('hourUnit')}</p>
-          </div>
-          <div className="flex flex-col gap-2 rounded-lg border bg-primary/10 p-4">
-            <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
-                <span>{t('estimatedPayout')}</span>
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button onClick={scrollToDetails} className="cursor-pointer" aria-label={t('seeCalculationDetailsTooltip')}>
-                                <HelpCircle className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>{t('seeCalculationDetailsTooltip')}</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-            <p className="text-3xl font-bold text-primary">{reportSummary.estimatedPayout} {profile.currency}</p>
-          </div>
-        </CardContent>
-      </Card>
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>{t('financialSummaryTitle')}</CardTitle>
+                        <CardDescription>{t('financialSummaryDescription')}</CardDescription>
+                    </div>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button onClick={scrollToDetails} variant="ghost" size="icon" className="cursor-pointer" aria-label={t('seeCalculationDetailsTooltip')}>
+                                    <HelpCircle className="h-5 w-5" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{t('seeCalculationDetailsTooltip')}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                    <div className="text-muted-foreground">{t('regularHours')}</div>
+                    <div className="text-right font-medium">{reportSummary.regularHours} {t('hourUnit')}</div>
+                    <div className="text-muted-foreground">{t('totalOvertimeHours')}</div>
+                    <div className="text-right font-medium text-destructive">{reportSummary.totalOvertimeHours} {t('hourUnit')}</div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                    <h4 className="font-medium">{t('overtimeBreakdownTitle')}</h4>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                         {Object.entries(reportSummary.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => {
+                            const tierKey = key as keyof typeof reportSummary.overtimeBreakdown;
+                            let label;
+                            switch(tierKey) {
+                                case 'tier1': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'tier2': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'night': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'sunday': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                                case 'holiday': label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
+                            }
+                             return (
+                                <div key={key} className="grid grid-cols-3 items-center gap-x-4">
+                                    <span>{label}</span>
+                                    <span className="text-center">{(tier.minutes / 60).toFixed(2)}{t('hourUnit')}</span>
+                                    <span className="text-right font-medium text-foreground">{tier.payout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</span>
+                                </div>
+                             )
+                         })}
+                    </div>
+                </div>
+
+                <Separator />
+                
+                <div className="flex justify-between items-center font-bold text-xl">
+                    <span>{t('totalEstimatedPayout')}</span>
+                    <span className="text-primary">{reportSummary.estimatedPayout} {profile.currency}</span>
+                </div>
+            </CardContent>
+        </Card>
 
         <Card ref={detailsRef} className="bg-muted/30 scroll-mt-20">
             <CardHeader>
@@ -314,50 +385,17 @@ export default function ReportsPage() {
                 <div>
                     <h4 className="font-semibold mb-2">{t('overtimePayoutFormulaTitle')}</h4>
                     <div className="space-y-2 p-3 bg-background/50 rounded-md">
-                        {reportSummary.overtimeBreakdown.tier1.minutes > 0 && (
-                            <p>
-                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.tier1.rate - 1) * 100 })}: {t('overtimeTierFormula', {
-                                    hours: (reportSummary.overtimeBreakdown.tier1.minutes / 60).toFixed(2),
+                        {Object.entries(reportSummary.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                             <p key={key}>
+                                {t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) })}: {t('overtimeTierFormula', {
+                                    hours: (tier.minutes / 60).toFixed(2),
                                     hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
-                                    multiplier: reportSummary.overtimeBreakdown.tier1.rate,
-                                    payout: reportSummary.overtimeBreakdown.tier1.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
+                                    multiplier: tier.rate,
+                                    payout: tier.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
                                     currency: profile.currency
                                 })}
                             </p>
-                        )}
-                         {reportSummary.overtimeBreakdown.tier2.minutes > 0 && (
-                            <p>
-                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.tier2.rate - 1) * 100 })}: {t('overtimeTierFormula', {
-                                    hours: (reportSummary.overtimeBreakdown.tier2.minutes / 60).toFixed(2),
-                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
-                                    multiplier: reportSummary.overtimeBreakdown.tier2.rate,
-                                    payout: reportSummary.overtimeBreakdown.tier2.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
-                                    currency: profile.currency
-                                })}
-                            </p>
-                        )}
-                        {reportSummary.overtimeBreakdown.sunday.minutes > 0 && (
-                            <p>
-                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.sunday.rate - 1) * 100 })}: {t('overtimeTierFormula', {
-                                    hours: (reportSummary.overtimeBreakdown.sunday.minutes / 60).toFixed(2),
-                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
-                                    multiplier: reportSummary.overtimeBreakdown.sunday.rate,
-                                    payout: reportSummary.overtimeBreakdown.sunday.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
-                                    currency: profile.currency
-                                })}
-                            </p>
-                        )}
-                        {reportSummary.overtimeBreakdown.holiday.minutes > 0 && (
-                             <p>
-                                {t('overtimeTierLabel', { rate: (reportSummary.overtimeBreakdown.holiday.rate - 1) * 100 })}: {t('overtimeTierFormula', {
-                                    hours: (reportSummary.overtimeBreakdown.holiday.minutes / 60).toFixed(2),
-                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
-                                    multiplier: reportSummary.overtimeBreakdown.holiday.rate,
-                                    payout: reportSummary.overtimeBreakdown.holiday.payout.toLocaleString('fr-FR', { minimumFractionDigits: 2 }),
-                                    currency: profile.currency
-                                })}
-                            </p>
-                        )}
+                        ))}
                         <Separator className="my-2"/>
                         <p className="font-bold text-right pt-2">{t('totalEstimatedPayout')}: {reportSummary.estimatedPayout} {profile.currency}</p>
                     </div>

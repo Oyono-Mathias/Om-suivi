@@ -1,4 +1,5 @@
 
+
 export type Shift = {
   id: string;
   name: string;
@@ -51,8 +52,17 @@ export interface TeamMember {
   overtimeHours: number;
 }
 
+export interface OvertimeRates {
+    tier1: number;
+    tier2: number;
+    night: number;
+    sunday: number;
+    holiday: number;
+}
+
 export interface GlobalSettings {
     id: string;
     autoClockInEnabled: boolean;
     breakDuration?: number;
+    overtimeRates?: OvertimeRates;
 }

@@ -174,7 +174,7 @@
     "financialSummaryTitle": "This Month's Financial Summary",
     "financialSummaryDescription": "An overview of your regular hours, overtime, and estimated earnings for the current month.",
     "regularHours": "Regular Hours",
-    "overtimeHours": "Overtime Hours",
+    "totalOvertimeHours": "Total Overtime",
     "estimatedPayout": "Estimated Overtime Payout",
     "weeklyBreakdownTitle": "Weekly Hours Breakdown",
     "weeklyBreakdownDescription": "Regular vs. overtime hours logged each day of the current week.",
@@ -190,7 +190,8 @@
     "overtimeTierLabel": "Overtime ({rate}%)",
     "overtimeTierFormula": "{hours}h x ({hourlyRate} {currency} x {multiplier}) = {payout} {currency}",
     "totalEstimatedPayout": "Total Estimated Payout",
-    "seeCalculationDetailsTooltip": "See calculation details"
+    "seeCalculationDetailsTooltip": "See calculation details",
+    "overtimeBreakdownTitle": "Overtime Breakdown"
   },
   "ExportReportPage": {
     "title": "Export Report",
@@ -213,6 +214,7 @@
     "overtimeTier2": "Overtime at {rate}%",
     "overtimeSunday": "Overtime (Sunday) at {rate}%",
     "overtimeHoliday": "Overtime (Holiday) at {rate}%",
+    "overtimeNight": "Overtime (Night) at {rate}%",
     "totalOvertime": "Total Overtime",
     "totalDuration": "Total Duration",
     "estimatedPayout": "Estimated Overtime Payout",
@@ -267,7 +269,15 @@
     "deleteEntryConfirm": "Delete",
     "deleteEntryCancel": "Cancel",
     "deleteSuccessTitle": "Time Entry Deleted",
-    "deleteSuccessDescription": "The time entry has been successfully deleted."
+    "deleteSuccessDescription": "The time entry has been successfully deleted.",
+    "overtimeRulesTitle": "Overtime Rules",
+    "overtimeRulesDescription": "Set the increase percentages for each overtime tier. Enter a value like 1.2 for a 120% rate.",
+    "tier1RateLabel": "Tier 1 Rate (first 8h/week)",
+    "tier2RateLabel": "Tier 2 Rate (> 8h/week)",
+    "nightRateLabel": "Night Rate (22h-06h)",
+    "sundayRateLabel": "Sunday Rate",
+    "holidayRateLabel": "Public Holiday Rate",
+    "rateMustBePositive": "Rate must be a positive number greater than or equal to 1."
   },
   "Shared": {
     "loading": "Loading...",
@@ -285,5 +295,3 @@
     "description": "The page you are looking for does not exist."
   }
 }
-
-    
