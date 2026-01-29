@@ -253,7 +253,13 @@
     "configUpdatedTitle": "Configuration Updated",
     "configUpdatedDescription": "Global settings have been saved successfully.",
     "locationErrorTitle": "Location Error",
-    "locationErrorDescription": "Could not get your position to set the factory center."
+    "locationErrorDescription": "Could not get your position to set the factory center.",
+    "deleteEntryTitle": "Delete Time Entry",
+    "deleteEntryDescription": "Are you sure you want to delete this time entry for {date}? This action cannot be undone.",
+    "deleteEntryConfirm": "Delete",
+    "deleteEntryCancel": "Cancel",
+    "deleteSuccessTitle": "Time Entry Deleted",
+    "deleteSuccessDescription": "The time entry has been successfully deleted."
   },
   "Shared": {
     "loading": "Loading...",

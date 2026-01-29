@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, orderBy, setDoc } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, MapPin } from 'lucide-react';
+import { doc, collection, query, orderBy, setDoc, deleteDoc } from 'firebase/firestore';
+import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, MapPin, Trash2 } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
@@ -52,6 +53,7 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
   const { toast } = useToast();
   
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [deletingEntry, setDeletingEntry] = useState<TimeEntry | null>(null);
 
   const timeEntriesQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.id, 'timeEntries'), orderBy('date', 'desc')) : null,
@@ -64,13 +66,16 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
         startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
         endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
       }).refine(data => {
-        if (!editingEntry) return true;
-        const shift = shifts.find(s => s.id === editingEntry.shiftId);
-        if (shift?.id === 'night') return true; 
-        if (data.startTime >= data.endTime) return false;
+        const start = parse(data.startTime, 'HH:mm', new Date());
+        const end = parse(data.endTime, 'HH:mm', new Date());
+        if (start.getTime() >= end.getTime()) {
+           const associatedShift = editingEntry ? shifts.find(s => s.id === editingEntry.shiftId) : null;
+           // Allow end time to be before start time only for night shift
+           return associatedShift?.id === 'night';
+        }
         return true;
       }, {
-        message: "L'heure de fin doit être après l'heure de début.",
+        message: "L'heure de fin doit être après l'heure de début (sauf pour le poste de nuit).",
         path: ['endTime'],
       });
 
@@ -94,7 +99,7 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
     }
   }, [editingEntry, form]);
 
-  function onEditSubmit(values: z.infer<typeof editFormSchema>) {
+  async function onEditSubmit(values: z.infer<typeof editFormSchema>) {
     if (!editingEntry || !user) return;
 
     const shift = shifts.find(s => s.id === editingEntry.shiftId);
@@ -107,26 +112,27 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
     const startDateTime = parse(`${dateStr} ${values.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
     let endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
-    if (endDateTime < startDateTime) {
+    // If end time is on the next day (typical for night shifts)
+    if (endDateTime <= startDateTime) {
         endDateTime = addDays(endDateTime, 1);
     }
 
     const totalDuration = differenceInMinutes(endDateTime, startDateTime);
 
-    const shiftStartTimeOnDate = parse(shift.startTime, 'HH:mm', startDateTime);
-    let shiftEndDateTime = parse(shift.endTime, 'HH:mm', startDateTime);
+    const shiftStartTimeOnDate = parse(`${dateStr} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    let shiftEndDateTime = parse(`${dateStr} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
-    if (shiftEndDateTime <= shiftStartTimeOnDate) {
+    if (shift.id === 'night') {
         shiftEndDateTime = addDays(shiftEndDateTime, 1);
     }
-
+    
     let overtimeDuration = 0;
     if (endDateTime > shiftEndDateTime) {
         overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
     }
-
+    
     const entryRef = doc(firestore, 'users', user.id, 'timeEntries', editingEntry.id);
-    updateDocumentNonBlocking(entryRef, {
+    await setDoc(entryRef, {
       date: dateStr,
       startTime: values.startTime,
       endTime: values.endTime,
@@ -134,23 +140,34 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
       modified_manually: true,
       modification_reason: 'admin_edit',
-    });
+    }, { merge: true });
+
 
     toast({ title: "Pointage mis à jour", description: "L'entrée de temps a été modifiée avec succès." });
     setEditingEntry(null);
   }
 
+  const handleDeleteEntry = async () => {
+    if (!deletingEntry || !user) return;
+
+    const entryRef = doc(firestore, 'users', user.id, 'timeEntries', deletingEntry.id);
+    await deleteDoc(entryRef);
+
+    toast({ title: t('deleteSuccessTitle'), description: t('deleteSuccessDescription') });
+    setDeletingEntry(null);
+  };
+
   return (
     <>
       <Sheet open={!!user} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-xl p-0">
+        <SheetContent className="w-full sm:max-w-2xl p-0">
             {user && (
                  <SheetHeader className="p-6 border-b">
                     <SheetTitle>Pointages de {user.name}</SheetTitle>
                     <SheetDescription>{user.email}</SheetDescription>
                 </SheetHeader>
             )}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto h-[calc(100vh-80px)]">
                 {isLoadingEntries ? (
                     <div className="flex justify-center items-center h-40">
                         <Loader2 className="h-8 w-8 animate-spin" />
@@ -181,8 +198,9 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
                                                 </Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="text-right space-x-2">
                                             <Button variant="outline" size="sm" onClick={() => setEditingEntry(entry)}>Modifier</Button>
+                                            <Button variant="destructive" size="sm" onClick={() => setDeletingEntry(entry)}>Supprimer</Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -279,6 +297,21 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingEntry} onOpenChange={(open) => !open && setDeletingEntry(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteEntryTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteEntryDescription', { date: deletingEntry ? format(parseISO(deletingEntry.date), 'PPP', { locale: dateFnsLocale }) : '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingEntry(null)}>{t('deleteEntryCancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteEntry}>{t('deleteEntryConfirm')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

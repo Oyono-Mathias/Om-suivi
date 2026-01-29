@@ -253,7 +253,13 @@
     "configUpdatedTitle": "Configuration Mise à Jour",
     "configUpdatedDescription": "Les paramètres globaux ont été enregistrés avec succès.",
     "locationErrorTitle": "Erreur de localisation",
-    "locationErrorDescription": "Impossible d'obtenir votre position pour définir le centre de l'usine."
+    "locationErrorDescription": "Impossible d'obtenir votre position pour définir le centre de l'usine.",
+    "deleteEntryTitle": "Supprimer le pointage",
+    "deleteEntryDescription": "Êtes-vous sûr de vouloir supprimer ce pointage du {date} ? Cette action est irréversible.",
+    "deleteEntryConfirm": "Supprimer",
+    "deleteEntryCancel": "Annuler",
+    "deleteSuccessTitle": "Pointage supprimé",
+    "deleteSuccessDescription": "L'entrée de temps a été supprimée avec succès."
   },
   "Shared": {
     "loading": "Chargement...",
