@@ -325,8 +325,8 @@ function GlobalSettingsForm() {
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
     const settingsSchema = z.object({
-        factoryLatitude: z.number(),
-        factoryLongitude: z.number(),
+        factoryLatitude: z.coerce.number(),
+        factoryLongitude: z.coerce.number(),
         factoryRadius: z.coerce.number().min(1, "Le rayon doit être d'au moins 1 mètre."),
         autoClockInEnabled: z.boolean(),
         breakDuration: z.coerce.number().min(0)
@@ -349,25 +349,6 @@ function GlobalSettingsForm() {
         }
     }, [globalSettings, form]);
     
-    const [isLocating, setIsLocating] = useState(false);
-    
-    const handleSetFactoryCenter = () => {
-        setIsLocating(true);
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                form.setValue('factoryLatitude', latitude);
-                form.setValue('factoryLongitude', longitude);
-                setIsLocating(false);
-                toast({ title: "Centre de l'usine mis à jour", description: "Les coordonnées ont été capturées. N'oubliez pas d'enregistrer."})
-            },
-            () => {
-                toast({ variant: 'destructive', title: t('locationErrorTitle'), description: t('locationErrorDescription') });
-                setIsLocating(false);
-            }
-        )
-    };
-
     const onSubmit = async (values: z.infer<typeof settingsSchema>) => {
         await setDoc(settingsRef, values, { merge: true });
         toast({ title: t('configUpdatedTitle'), description: t('configUpdatedDescription') });
@@ -400,21 +381,36 @@ function GlobalSettingsForm() {
                                 </FormItem>
                             )}
                         />
-                         <FormItem>
-                            <FormLabel>{t('factoryCenterLabel')}</FormLabel>
-                             <div className="flex items-center gap-4 rounded-md border p-3">
-                                <MapPin className="h-6 w-6 text-muted-foreground" />
-                                <div className="flex-1 text-sm">
-                                    <p>Lat: {form.watch('factoryLatitude').toFixed(6)}</p>
-                                    <p>Lon: {form.watch('factoryLongitude').toFixed(6)}</p>
-                                </div>
-                                <Button type="button" variant="outline" onClick={handleSetFactoryCenter} disabled={isLocating}>
-                                    {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    {t('setFactoryCenterButton')}
-                                </Button>
-                             </div>
-                            <FormDescription>{t('factoryCenterDescription')}</FormDescription>
-                        </FormItem>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="factoryLatitude"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t('latitudeLabel')}</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" step="any" placeholder="e.g. 4.0483" {...field} />
+                                        </FormControl>
+                                        <FormDescription>{t('latitudeDescription')}</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="factoryLongitude"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t('longitudeLabel')}</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" step="any" placeholder="e.g. 9.7043" {...field} />
+                                        </FormControl>
+                                        <FormDescription>{t('longitudeDescription')}</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
 
