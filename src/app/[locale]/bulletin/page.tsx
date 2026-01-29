@@ -2,8 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
@@ -14,6 +13,7 @@ import { Link } from '@/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { shifts } from '@/lib/shifts';
 import { getPayrollCycle } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -275,7 +275,7 @@ export default function BulletinPage() {
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
 
-            <Card className="p-4 sm:p-8 print-container">
+            <div className="p-1 print-container">
                 <header className="flex justify-between items-start mb-8 border-b pb-6">
                     <div>
                         <h2 className="text-2xl font-bold text-primary font-headline">{t('title')}</h2>
@@ -287,75 +287,69 @@ export default function BulletinPage() {
                     </div>
                 </header>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('tableDesignation')}</TableHead>
-                      <TableHead className="text-center">{t('tableNumber')}</TableHead>
-                      <TableHead className="text-right">{t('tableGain')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow><TableCell colSpan={3} className="font-semibold text-lg">{t('gainsSectionTitle')}</TableCell></TableRow>
-                    
-                    <TableRow>
-                        <TableCell>{t('baseSalaryLabel')}</TableCell>
-                        <TableCell className="text-center">173.33h</TableCell>
-                        <TableCell className="text-right">{formatCurrency(payrollData.baseSalary)}</TableCell>
-                    </TableRow>
-                    {payrollData.seniorityBonus > 0 && <TableRow><TableCell>{t('seniorityBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.seniorityBonus)}</TableCell></TableRow>}
-                    <TableRow><TableCell>{t('attendanceBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.attendanceBonus)}</TableCell></TableRow>
-                    <TableRow><TableCell>{t('performanceBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.performanceBonus)}</TableCell></TableRow>
-                    <TableRow><TableCell>{t('transportBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.transportBonus)}</TableCell></TableRow>
-                    <TableRow><TableCell>{t('housingBonusLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">{formatCurrency(payrollData.housingBonus)}</TableCell></TableRow>
+                <div className="space-y-6">
+                    {/* Gains Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t('gainsSectionTitle')}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="divide-y divide-border text-sm">
+                            <div className="flex justify-between py-3"><p>{t('baseSalaryLabel')}</p><p className="font-medium">{formatCurrency(payrollData.baseSalary)}</p></div>
+                            {payrollData.seniorityBonus > 0 && <div className="flex justify-between py-3"><p>{t('seniorityBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.seniorityBonus)}</p></div>}
+                            <div className="flex justify-between py-3"><p>{t('attendanceBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.attendanceBonus)}</p></div>
+                            <div className="flex justify-between py-3"><p>{t('performanceBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.performanceBonus)}</p></div>
+                            <div className="flex justify-between py-3"><p>{t('transportBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.transportBonus)}</p></div>
+                            <div className="flex justify-between py-3"><p>{t('housingBonusLabel')}</p><p className="font-medium">{formatCurrency(payrollData.housingBonus)}</p></div>
+                            
+                            {Object.values(payrollData.overtimeBreakdown).some(tier => tier.minutes > 0) && (
+                                <div className="py-3">
+                                    <p className="font-semibold mb-2">{t('overtimeLabel')}</p>
+                                    <div className="pl-4 space-y-2">
+                                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                                            <div key={key} className="flex justify-between text-sm">
+                                                <p className="text-muted-foreground">{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, { rate: (tier.rate * 100).toFixed(0) })} ({formatHours(tier.minutes)}h)</p>
+                                                <p className="font-medium">{formatCurrency(tier.payout)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                             {payrollData.nightBonusPayout > 0 && (
+                                 <div className="flex justify-between py-3"><p>{t('nightBonusLabel')} ({payrollData.nightBonusCount})</p><p className="font-medium">{formatCurrency(payrollData.nightBonusPayout)}</p></div>
+                            )}
+                            
+                            <div className="flex justify-between pt-4 font-bold text-base"><p>{t('grossSalaryLabel')}</p><p>{formatCurrency(payrollData.grossSalary)} FCFA</p></div>
+                        </CardContent>
+                    </Card>
 
-                    {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
-                        <TableRow key={key}>
-                            <TableCell className="pl-6">
-                                {t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, { rate: (tier.rate * 100).toFixed(0) })}
-                            </TableCell>
-                            <TableCell className="text-center">{formatHours(tier.minutes)}h</TableCell>
-                            <TableCell className="text-right">{formatCurrency(tier.payout)}</TableCell>
-                        </TableRow>
-                    ))}
-                     {payrollData.nightBonusPayout > 0 && (
-                         <TableRow>
-                            <TableCell className="pl-6">{t('nightBonusLabel')}</TableCell>
-                            <TableCell className="text-center">{payrollData.nightBonusCount}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(payrollData.nightBonusPayout)}</TableCell>
-                        </TableRow>
-                    )}
-                    
-                    <TableRow className="bg-muted/50 font-bold text-base">
-                        <TableCell>{t('grossSalaryLabel')}</TableCell>
-                        <TableCell colSpan={2} className="text-right">{formatCurrency(payrollData.grossSalary)} FCFA</TableCell>
-                    </TableRow>
+                    {/* Deductions Card */}
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>{t('deductionsSectionTitle')}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="divide-y divide-border text-sm">
+                            <div className="flex justify-between py-3"><p>{t('cnpsLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.cnpsDeduction)}</p></div>
+                            <div className="flex justify-between py-3"><p>{t('cacLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.cacDeduction)}</p></div>
+                            <div className="flex justify-between py-3"><p>{t('irppLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.irppDeduction)}</p></div>
+                            <div className="flex justify-between py-3"><p>{t('communalTaxLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.communalTaxDeduction)}</p></div>
+                            {payrollData.absenceDeduction > 0 && <div className="flex justify-between py-3"><p>{t('absenceDeductionLabel')}</p><p className="font-medium">-{formatCurrency(payrollData.absenceDeduction)}</p></div>}
+                            <div className="flex justify-between pt-4 font-bold text-base"><p>{t('totalDeductionsLabel')}</p><p>-{formatCurrency(payrollData.totalDeductions)} FCFA</p></div>
+                        </CardContent>
+                    </Card>
 
-                    <TableRow><TableCell colSpan={3} className="font-semibold text-lg pt-8">{t('deductionsSectionTitle')}</TableCell></TableRow>
-                    
-                    <TableRow><TableCell>{t('cnpsLabel')}</TableCell><TableCell className="text-center">{formatCurrency(payrollData.grossSalary)}</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.cnpsDeduction)}</TableCell></TableRow>
-                    <TableRow><TableCell>{t('cacLabel')}</TableCell><TableCell className="text-center">{formatCurrency(payrollData.grossSalary)}</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.cacDeduction)}</TableCell></TableRow>
-                    <TableRow><TableCell>{t('irppLabel')}</TableCell><TableCell className="text-center">{formatCurrency(payrollData.grossSalary-payrollData.cnpsDeduction)}</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.irppDeduction)}</TableCell></TableRow>
-                    <TableRow><TableCell>{t('communalTaxLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.communalTaxDeduction)}</TableCell></TableRow>
-                    {payrollData.absenceDeduction > 0 && <TableRow><TableCell>{t('absenceDeductionLabel')}</TableCell><TableCell className="text-center">-</TableCell><TableCell className="text-right">-{formatCurrency(payrollData.absenceDeduction)}</TableCell></TableRow>}
-
-                     <TableRow className="bg-muted/50 font-bold text-base">
-                        <TableCell>{t('totalDeductionsLabel')}</TableCell>
-                        <TableCell colSpan={2} className="text-right">-{formatCurrency(payrollData.totalDeductions)} FCFA</TableCell>
-                    </TableRow>
-
-                  </TableBody>
-                </Table>
-                
-                <div className="text-right mt-8">
-                    <p className="text-muted-foreground">{t('netPayableLabel')}</p>
-                    <p className="text-3xl font-bold text-primary">{formatCurrency(payrollData.netPay)} FCFA</p>
+                    {/* Net Payable Card */}
+                    <Card className="bg-muted/30">
+                        <CardContent className="p-6 text-center">
+                            <p className="text-lg font-semibold text-muted-foreground">{t('netPayableLabel')}</p>
+                            <p className="text-4xl font-bold text-primary">{formatCurrency(payrollData.netPay)} FCFA</p>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <footer className="mt-12 pt-6 border-t text-center text-xs text-muted-foreground">
                     <p>{t('footerText')}</p>
                 </footer>
-            </Card>
+            </div>
         </div>
     );
 }

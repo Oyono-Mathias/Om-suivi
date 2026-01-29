@@ -70,7 +70,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
   
-  if (pathname.includes('/login') || pathname.includes('/reports/export') || pathname.includes('/bulletin')) {
+  if (pathname.includes('/login') || pathname.includes('/reports/export')) {
     if (isMobile) {
       // For print-like views on mobile, we might want a simpler header
       return (
@@ -84,7 +84,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <LanguageSwitcher />
             </div>
           </header>
-          <main className="flex-1 p-4 pb-24">{children}</main>
+          <main className="flex-1 p-4 pb-28">{children}</main>
           {user && <MobileBottomNav />}
         </div>
       )
@@ -109,7 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <LanguageSwitcher />
           </div>
         </header>
-        <main className="flex-1 p-4 pb-24">{children}</main>
+        <main className="flex-1 p-4 pb-28">{children}</main>
         {user && <MobileBottomNav />}
       </div>
     )

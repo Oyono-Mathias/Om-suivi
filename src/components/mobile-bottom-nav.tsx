@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 const NavLink = ({ href, icon: Icon, label, isActive }: { href: string; icon: React.ElementType; label: string; isActive: boolean }) => (
   <Link href={href} className="flex flex-col items-center justify-center gap-1 text-xs flex-1 h-full">
     <div className={cn("p-2 rounded-full transition-colors", isActive ? "bg-primary/10" : "")}>
-        <Icon className={cn("h-5 w-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
+        <Icon className={cn("h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
     </div>
     <span className={cn("transition-colors text-xs", isActive ? "text-primary font-medium" : "text-muted-foreground")}>{label}</span>
   </Link>
@@ -42,7 +42,7 @@ export default function MobileBottomNav() {
   const adminNavItem = { href: "/admin", label: t('administration'), icon: Shield };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-20 items-stretch justify-around border-t bg-background/95 backdrop-blur-sm md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-24 items-stretch justify-around border-t bg-background/95 backdrop-blur-sm md:hidden">
       {navItems.map((item) => (
         <NavLink key={item.href} {...item} isActive={pathname === item.href} />
       ))}

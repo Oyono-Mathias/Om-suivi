@@ -593,7 +593,7 @@ export default function TimeTrackingPage() {
   }
 
   return (
-    <div className="space-y-6 pb-24 md:pb-6">
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
@@ -642,7 +642,7 @@ export default function TimeTrackingPage() {
         </div>
         {!isShiftActive ? (
             <Button
-                className="w-full h-16 text-xl"
+                className="w-full h-20 text-xl"
                 onClick={handleManualStart}
                 disabled={isShiftActive || isFetchingLocation || !currentCoordinates}
             >
@@ -650,7 +650,7 @@ export default function TimeTrackingPage() {
             </Button>
         ) : (
             <Button
-                className="w-full h-16 text-xl"
+                className="w-full h-20 text-xl"
                 variant="destructive"
                 onClick={() => handleEndShift()}
                 disabled={!isShiftActive}
