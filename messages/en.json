@@ -259,7 +259,9 @@
     "pleaseCompleteProfile": "Please complete your profile before viewing reports.",
     "goToProfileButton": "Go to Profile",
     "accessDenied": "Access Denied",
-    "accessDeniedDescription": "You do not have the required permissions to view this page."
+    "accessDeniedDescription": "You do not have the required permissions to view this page.",
+    "pleaseSetProfessionTitle": "Please set your profession",
+    "pleaseSetProfessionDescription": "To start tracking time, you must first select a valid profession in your profile."
   },
   "NotFound": {
     "title": "Page Not Found",

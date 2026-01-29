@@ -259,7 +259,9 @@
     "pleaseCompleteProfile": "Veuillez compléter votre profil avant de consulter les rapports.",
     "goToProfileButton": "Aller au Profil",
     "accessDenied": "Accès Refusé",
-    "accessDeniedDescription": "Vous n'avez pas les autorisations requises pour afficher cette page."
+    "accessDeniedDescription": "Vous n'avez pas les autorisations requises pour afficher cette page.",
+    "pleaseSetProfessionTitle": "Veuillez définir votre profession",
+    "pleaseSetProfessionDescription": "Pour commencer le pointage, vous devez d'abord sélectionner une profession valide dans votre profil."
   },
   "NotFound": {
     "title": "Page non trouvée",

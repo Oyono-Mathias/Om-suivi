@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -42,7 +41,7 @@ import type { TimeEntry, Profile, Shift } from '@/lib/types';
 import { shifts } from '@/lib/shifts';
 import { format, parseISO, differenceInMinutes, addHours } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Briefcase } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
 import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
@@ -353,7 +352,7 @@ export default function TimeTrackingPage() {
     }
     
     // Auto-Clock In Logic
-    if (!isShiftActive && firestore && user && profile) {
+    if (!isShiftActive && firestore && user && profile && profile.profession && profile.profession !== 'other') {
       const now = new Date();
       const currentHour = now.getHours();
       const todayStr = format(now, 'yyyy-MM-dd');
@@ -426,12 +425,14 @@ export default function TimeTrackingPage() {
 
 
   useEffect(() => {
-    if (!profile?.workplace || !isShiftActive) return;
+    // This effect handles geofencing for both auto-start and active shift monitoring.
+    if (!profile?.workplace) return;
 
     const monitorLocation = () => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (!profile.workplace || !activeEntry) return;
+                if (!profile.workplace) return;
+
                 const distance = getDistanceFromLatLonInKm(
                     position.coords.latitude,
                     position.coords.longitude,
@@ -440,50 +441,58 @@ export default function TimeTrackingPage() {
                 );
                 const currentlyInZone = distance * 1000 <= profile.workplace.radius;
 
-                // Pause limit exceeded logic
-                if (exitInfo && !isPauseLimitExceeded) {
-                    const timeOutsideMinutes = differenceInMinutes(new Date(), new Date(exitInfo.timestampISO));
-                    if (timeOutsideMinutes > PAUSE_TOLERANCE_MINUTES) {
-                        setIsPauseLimitExceeded(true);
-                        if (Notification.permission === 'granted' && navigator.serviceWorker) {
-                            navigator.serviceWorker.ready.then((registration) => {
-                                registration.showNotification(t('pauseLimitExceededNotification.title'), {
-                                    body: t('pauseLimitExceededNotification.body'),
-                                    icon: '/icons/icon-192x192.png',
-                                });
-                            });
-                        }
-                    }
-                }
-
-                // Update local storage state
-                const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-                if (savedStateJSON) {
-                    const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
-                    savedState.lastSeenISO = new Date().toISOString();
-                    savedState.exitInfo = exitInfo;
-                    savedState.unpaidBreakMinutes = unpaidBreakMinutes;
-                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
-                }
-                
-                // Geofence transition logic
+                // --- Geofence Transition Logic ---
                 if (isInWorkZone !== null && isInWorkZone !== currentlyInZone) {
                     if (currentlyInZone) {
+                        // User entered the zone
                         handleGeofenceEnter();
-                    } else {
+                    } else if (isShiftActive) {
+                        // User exited the zone while shift is active
                         handleGeofenceExit();
                     }
                 }
                 setIsInWorkZone(currentlyInZone);
-                
-                // Auto-stop logic for users outside the zone after shift end
-                if (exitInfo && !isPauseLimitExceeded) {
-                    const shift = shifts.find(s => s.id === activeEntry.shiftId);
-                    if (shift) {
-                        const shiftEndDateTime = parseISO(`${activeEntry.date}T${shift.endTime}:00`);
-                        const bufferEndDateTime = addHours(shiftEndDateTime, 1);
-                        if (new Date() > bufferEndDateTime) {
-                            handleEndShift();
+
+                // --- Logic for when a shift is ACTIVE ---
+                if (isShiftActive && activeTimeEntryId) {
+                    const activeEntryForLogic = timeEntries?.find(e => e.id === activeTimeEntryId);
+                    if (!activeEntryForLogic) return;
+
+                    // Pause limit exceeded logic
+                    if (exitInfo && !isPauseLimitExceeded) {
+                        const timeOutsideMinutes = differenceInMinutes(new Date(), new Date(exitInfo.timestampISO));
+                        if (timeOutsideMinutes > PAUSE_TOLERANCE_MINUTES) {
+                            setIsPauseLimitExceeded(true);
+                            if (Notification.permission === 'granted' && navigator.serviceWorker) {
+                                navigator.serviceWorker.ready.then((registration) => {
+                                    registration.showNotification(t('pauseLimitExceededNotification.title'), {
+                                        body: t('pauseLimitExceededNotification.body'),
+                                        icon: '/icons/icon-192x192.png',
+                                    });
+                                });
+                            }
+                        }
+                    }
+
+                    // Update local storage state
+                    const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+                    if (savedStateJSON) {
+                        const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
+                        savedState.lastSeenISO = new Date().toISOString();
+                        savedState.exitInfo = exitInfo;
+                        savedState.unpaidBreakMinutes = unpaidBreakMinutes;
+                        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
+                    }
+                    
+                    // Auto-stop logic for users outside the zone after shift end
+                    if (exitInfo && !isPauseLimitExceeded) {
+                        const shift = shifts.find(s => s.id === activeEntryForLogic.shiftId);
+                        if (shift) {
+                            const shiftEndDateTime = parseISO(`${activeEntryForLogic.date}T${shift.endTime}:00`);
+                            const bufferEndDateTime = addHours(shiftEndDateTime, 1);
+                            if (new Date() > bufferEndDateTime) {
+                                handleEndShift();
+                            }
                         }
                     }
                 }
@@ -495,7 +504,7 @@ export default function TimeTrackingPage() {
 
     const intervalId = setInterval(monitorLocation, 60000);
     return () => clearInterval(intervalId);
-  }, [profile, isShiftActive, isInWorkZone, activeEntry, exitInfo, unpaidBreakMinutes, isPauseLimitExceeded, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t]);
+  }, [profile, isShiftActive, isInWorkZone, activeTimeEntryId, timeEntries, exitInfo, unpaidBreakMinutes, isPauseLimitExceeded, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t]);
   
   
   const handleManualStart = async () => {
@@ -614,6 +623,19 @@ export default function TimeTrackingPage() {
                 <Button>{tShared('loginButton')}</Button>
             </Link>
         </div>
+    );
+  }
+
+  if (profile && (!profile.profession || profile.profession === 'other')) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen gap-4 text-center p-4">
+        <Briefcase className="w-16 h-16 text-muted-foreground" />
+        <h2 className="text-2xl font-bold">{tShared('pleaseSetProfessionTitle')}</h2>
+        <p className="text-muted-foreground max-w-sm">{tShared('pleaseSetProfessionDescription')}</p>
+        <Link href="/profile">
+          <Button>{tShared('goToProfileButton')}</Button>
+        </Link>
+      </div>
     );
   }
 
@@ -801,5 +823,3 @@ export default function TimeTrackingPage() {
     </div>
   );
 }
-
-    
