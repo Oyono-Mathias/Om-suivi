@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle } from 'lucide-react';
+import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,8 +21,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { shifts } from '@/lib/shifts';
-import { format, parse, differenceInMinutes, parseISO } from 'date-fns';
+import { format, parse, differenceInMinutes, parseISO, addDays } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 function AccessDenied() {
   const t = useTranslations('Shared');
@@ -53,17 +56,38 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
   );
   const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
-  const editFormSchema = z.object({
-    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  });
+    const editFormSchema = z.object({
+        date: z.date(),
+        startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+        endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+      }).refine(data => {
+        if (!editingEntry) return true;
+        const shift = shifts.find(s => s.id === editingEntry.shiftId);
+        if (shift?.id === 'night') return true; 
+        if (data.startTime >= data.endTime) return false;
+        return true;
+      }, {
+        message: "L'heure de fin doit être après l'heure de début.",
+        path: ['endTime'],
+      });
+
 
   const form = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
+     defaultValues: {
+      date: new Date(),
+      startTime: '00:00',
+      endTime: '00:00',
+    }
   });
 
   React.useEffect(() => {
     if (editingEntry) {
-      form.reset({ endTime: editingEntry.endTime });
+      form.reset({
+        date: parseISO(editingEntry.date),
+        startTime: editingEntry.startTime,
+        endTime: editingEntry.endTime,
+      });
     }
   }, [editingEntry, form]);
 
@@ -76,17 +100,23 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
         return;
     }
 
-    const startDateTime = parse(`${editingEntry.date} ${editingEntry.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
-    const endDateTime = parse(`${editingEntry.date} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    const dateStr = format(values.date, 'yyyy-MM-dd');
+    const startDateTime = parse(`${dateStr} ${values.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    let endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
-    if (endDateTime <= startDateTime) {
-        form.setError('endTime', { message: "L'heure de fin doit être après l'heure de début." });
-        return;
+    if (endDateTime < startDateTime) {
+        endDateTime = addDays(endDateTime, 1);
     }
 
     const totalDuration = differenceInMinutes(endDateTime, startDateTime);
 
-    const shiftEndDateTime = parseISO(`${editingEntry.date}T${shift.endTime}:00`);
+    const shiftStartTimeOnDate = parse(shift.startTime, 'HH:mm', startDateTime);
+    let shiftEndDateTime = parse(shift.endTime, 'HH:mm', startDateTime);
+
+    if (shiftEndDateTime <= shiftStartTimeOnDate) {
+        shiftEndDateTime = addDays(shiftEndDateTime, 1);
+    }
+
     let overtimeDuration = 0;
     if (endDateTime > shiftEndDateTime) {
         overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
@@ -94,8 +124,10 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
 
     const entryRef = doc(firestore, 'users', user.id, 'timeEntries', editingEntry.id);
     updateDocumentNonBlocking(entryRef, {
+      date: dateStr,
+      startTime: values.startTime,
       endTime: values.endTime,
-      duration: totalDuration,
+      duration: totalDuration > 0 ? totalDuration : 0,
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
       modified_manually: true,
       modification_reason: 'admin_edit',
@@ -166,24 +198,74 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
       <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Modifier l'heure de fin</DialogTitle>
+            <DialogTitle>Modifier le pointage</DialogTitle>
             {editingEntry && <DialogDescription>Pour {user?.name} le {format(parseISO(editingEntry.date), 'PPP', { locale: dateFnsLocale })}.</DialogDescription>}
           </DialogHeader>
-          <Form {...form}>
+            <Form {...form}>
             <form onSubmit={form.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
               <FormField
                 control={form.control}
-                name="endTime"
+                name="date"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Heure de fin de service</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? format(field.value, "PPP", { locale: dateFnsLocale }) : <span>Choisir une date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date > new Date() || date < new Date("2020-01-01")}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Heure de début</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Heure de fin</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <DialogFooter>
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Annuler</Button>
