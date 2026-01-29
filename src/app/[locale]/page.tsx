@@ -52,6 +52,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Link } from '@/navigation';
+import { useAd } from '@/context/AdContext';
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
 const PAUSE_TOLERANCE_MINUTES = 40;
@@ -79,6 +80,7 @@ export default function TimeTrackingPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { isShiftActive, setIsShiftActive } = useShift();
+  const { tryShowAd } = useAd();
 
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   const [activeTimer, setActiveTimer] = useState<NodeJS.Timeout | null>(null);
@@ -277,12 +279,13 @@ export default function TimeTrackingPage() {
         const docRef = await addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'timeEntries'), newEntry);
         startTimer(docRef.id, now, shift.id);
         toast({ title: t('timerStartedTitle'), description: locationString ? t('timerStartedLocationDescription', {location: locationString}) : t('timerStartedDescription') });
+        tryShowAd();
         return docRef.id;
     } catch (error) {
         console.error("Failed to start shift:", error);
         return null;
     }
-  }, [user, firestore, profile, t, toast, tShared]);
+  }, [user, firestore, profile, t, toast, tShared, tryShowAd]);
 
 
   const handleEndShift = useCallback((manualEndTime?: Date, exceptionalOvertime: boolean = false, initialUnpaidMinutes: number = 0) => {
@@ -352,8 +355,9 @@ export default function TimeTrackingPage() {
         });
     }
 
+    tryShowAd();
     stopTimer();
-  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, exitInfo, unpaidBreakMinutes]);
+  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, exitInfo, unpaidBreakMinutes, tryShowAd]);
 
 
   const handleGeofenceEnter = useCallback(async () => {
@@ -447,7 +451,7 @@ export default function TimeTrackingPage() {
 
   useEffect(() => {
     // This effect handles geofencing for both auto-start and active shift monitoring.
-    if (!profile?.workplace) return;
+    if (!profile?.workplace || !profile.profession || profile.profession === 'other') return;
 
     const monitorLocation = () => {
         navigator.geolocation.getCurrentPosition(
@@ -523,10 +527,8 @@ export default function TimeTrackingPage() {
         );
     };
 
-    if (profile && profile.profession && profile.profession !== 'other') {
-      const intervalId = setInterval(monitorLocation, 60000);
-      return () => clearInterval(intervalId);
-    }
+    const intervalId = setInterval(monitorLocation, 60000);
+    return () => clearInterval(intervalId);
   }, [profile, isShiftActive, isInWorkZone, activeTimeEntryId, timeEntries, exitInfo, unpaidBreakMinutes, isPauseLimitExceeded, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t]);
   
   

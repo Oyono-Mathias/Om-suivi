@@ -5,6 +5,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { ShiftProvider } from '@/context/ShiftContext';
+import { AdProvider } from '@/context/AdContext';
 import { ReactNode } from 'react';
 
 export const metadata: Metadata = {
@@ -24,9 +25,11 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <FirebaseClientProvider>
-        <ShiftProvider>
-          <AppShell>{children}</AppShell>
-        </ShiftProvider>
+        <AdProvider>
+          <ShiftProvider>
+            <AppShell>{children}</AppShell>
+          </ShiftProvider>
+        </AdProvider>
         <Toaster />
       </FirebaseClientProvider>
     </NextIntlClientProvider>

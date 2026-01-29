@@ -51,6 +51,7 @@ import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
 import { useShift } from "@/context/ShiftContext";
 import { format } from "date-fns";
+import { useAd } from "@/context/AdContext";
 
 export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
@@ -60,6 +61,7 @@ export default function ProfilePage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { isShiftActive } = useShift();
+  const { tryShowAd } = useAd();
 
   const [location, setLocation] = useState<{latitude: number, longitude: number, address?: string} | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -195,6 +197,8 @@ export default function ProfilePage() {
       title: t('settingsUpdatedTitle'),
       description: t('settingsUpdatedDescription'),
     });
+    
+    tryShowAd();
   }
 
   const handleSetWorkplace = () => {
@@ -503,5 +507,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
