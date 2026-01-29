@@ -155,9 +155,7 @@
     },
     "saveButton": "Save Changes",
     "settingsUpdatedTitle": "Settings updated",
-    "settingsUpdatedDescription": "Your information has been saved successfully.",
-    "locationErrorTitle": "Location Error",
-    "locationErrorDescription": "Could not get your position. Please check browser permissions."
+    "settingsUpdatedDescription": "Your information has been saved successfully."
   },
   "ReportsPage": {
     "title": "Dashboard",

@@ -155,9 +155,7 @@
     },
     "saveButton": "Enregistrer les modifications",
     "settingsUpdatedTitle": "Paramètres mis à jour",
-    "settingsUpdatedDescription": "Vos informations ont été enregistrées avec succès.",
-    "locationErrorTitle": "Erreur de localisation",
-    "locationErrorDescription": "Impossible d'obtenir votre position. Veuillez vérifier les autorisations du navigateur."
+    "settingsUpdatedDescription": "Vos informations ont été enregistrées avec succès."
   },
   "ReportsPage": {
     "title": "Tableau de Bord",
