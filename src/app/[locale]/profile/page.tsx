@@ -28,27 +28,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection, serverTimestamp, setDoc } from "firebase/firestore";
-import { Loader2, MapPin } from "lucide-react";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { Loader2 } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations } from "next-intl";
-import { useShift } from "@/context/ShiftContext";
 import { format } from "date-fns";
 import { useAd } from "@/context/AdContext";
 
@@ -59,13 +47,8 @@ export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { isShiftActive } = useShift();
   const { tryShowAd } = useAd();
 
-  const [location, setLocation] = useState<{latitude: number, longitude: number, address?: string} | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
-  const [showLocationConfirm, setShowLocationConfirm] = useState(false);
-  const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [isSaving, setIsSaving] = useState(false);
   
   const profileSchema = z.object({
@@ -113,17 +96,6 @@ export default function ProfilePage() {
       });
     }
   }, [profile, user, form]);
-
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.permissions.query({ name: 'geolocation' }).then((status) => {
-        setPermissionState(status.state);
-        status.onchange = () => {
-          setPermissionState(status.state);
-        };
-      });
-    }
-  }, []);
 
   // Effect for user-configurable reminders
   useEffect(() => {
@@ -210,72 +182,6 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSetWorkplace = () => {
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
-          if (!response.ok) throw new Error('Failed to fetch address');
-          const data = await response.json();
-          
-          setLocation({
-            latitude: latitude,
-            longitude: longitude,
-            address: data.display_name
-          });
-        } catch (error) {
-            console.error("Reverse geocoding failed:", error);
-            setLocation({
-                latitude: latitude,
-                longitude: longitude,
-            });
-        } finally {
-            setIsLocating(false);
-            setShowLocationConfirm(true);
-        }
-      },
-      () => {
-        toast({
-          variant: 'destructive',
-          title: t('locationErrorTitle'),
-          description: t('locationErrorDescription'),
-        });
-        setIsLocating(false);
-      }
-    );
-  };
-
-  const handleConfirmWorkplace = () => {
-    if (!location || !userProfileRef || !user || !firestore) return;
-
-    const newWorkplace = {
-      latitude: location.latitude,
-      longitude: location.longitude,
-      radius: 50, // 50m radius
-      address: location.address,
-    };
-    
-    const workplaceUpdateLogCollectionRef = collection(firestore, 'users', user.uid, 'workplaceUpdateLogs');
-    addDocumentNonBlocking(workplaceUpdateLogCollectionRef, {
-      userProfileId: user.uid,
-      timestamp: serverTimestamp(),
-      previousWorkplace: profile?.workplace || null,
-      newWorkplace: newWorkplace,
-    });
-    
-    setDoc(userProfileRef, { workplace: newWorkplace }, { merge: true });
-    
-    toast({
-      title: t('workplaceSetTitle'),
-      description: t('workplaceSetDescription'),
-    });
-    
-    setShowLocationConfirm(false);
-    setLocation(null);
-  };
-  
   if (isUserLoading || isLoadingProfile) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -294,21 +200,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-  
-  const locationDetails = location?.address
-    ? location.address
-    : `Lat: ${location?.latitude.toFixed(4)}, Lon: ${location?.longitude.toFixed(4)}`;
-
-  const workZoneButton = (
-    <Button 
-        className="w-full"
-        onClick={handleSetWorkplace} 
-        disabled={isShiftActive || isLocating || permissionState === 'denied'}
-    >
-        {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2" />}
-        {profile?.workplace ? t('updateWorkZoneButton') : t('setWorkZoneButton')}
-    </Button>
-  );
 
   const professions: { value: Profession, label: string }[] = [
     { value: 'machinist', label: t('professions.machinist') },
@@ -404,55 +295,6 @@ export default function ProfilePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('workplaceTitle')}</CardTitle>
-              <CardDescription>
-                {t('workplaceDescription')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {profile?.workplace && (
-                <div className="rounded-lg border bg-muted p-4 text-center">
-                    <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-                    <p className="mt-2 font-semibold">{profile.workplace.address || t('workplaceSet')}</p>
-                    <p className="text-xs text-muted-foreground">
-                        {t('workplaceLat')}: {profile.workplace.latitude.toFixed(4)}, {t('workplaceLon')}: {profile.workplace.longitude.toFixed(4)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                        {t('workplaceRadius')}: {profile.workplace.radius}m
-                    </p>
-                </div>
-              )}
-              
-              {isShiftActive ? (
-                  <TooltipProvider>
-                      <Tooltip>
-                          <TooltipTrigger asChild>
-                              <span tabIndex={0} className="inline-block w-full">{workZoneButton}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                              <p>{t('updateDisabledTooltip')}</p>
-                          </TooltipContent>
-                      </Tooltip>
-                  </TooltipProvider>
-              ) : (
-                  workZoneButton
-              )}
-
-              {permissionState === 'denied' && (
-                  <p className="mt-2 text-center text-sm text-destructive">
-                      {t('locationDeniedError')}
-                  </p>
-              )}
-              {permissionState === 'prompt' && !profile?.workplace && (
-                  <p className="mt-2 text-center text-sm text-muted-foreground">
-                      {t('locationPrompt')}
-                  </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle>{t('remindersTitle')}</CardTitle>
               <CardDescription>
                 {t('remindersDescription')}
@@ -501,21 +343,6 @@ export default function ProfilePage() {
           </Button>
         </form>
       </Form>
-
-      <AlertDialog open={showLocationConfirm} onOpenChange={setShowLocationConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('confirmWorkplaceTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('confirmWorkplaceDescription', {locationDetails})}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancelButton')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmWorkplace}>{t('confirmButton')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

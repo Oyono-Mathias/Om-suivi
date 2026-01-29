@@ -144,6 +144,40 @@
         "id",
         "name"
       ]
+    },
+    "GlobalSettings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GlobalSettings",
+      "type": "object",
+      "description": "Stores global configuration settings for the application.",
+      "properties": {
+        "factoryLatitude": {
+          "type": "number",
+          "description": "The latitude of the company's central location."
+        },
+        "factoryLongitude": {
+          "type": "number",
+          "description": "The longitude of the company's central location."
+        },
+        "factoryRadius": {
+          "type": "number",
+          "description": "The radius in meters for the geofence around the factory."
+        },
+        "autoClockInEnabled": {
+          "type": "boolean",
+          "description": "A global switch to enable or disable automatic clock-in."
+        },
+        "breakDuration": {
+          "type": "number",
+          "description": "The allowed break duration in minutes."
+        }
+      },
+      "required": [
+        "factoryLatitude",
+        "factoryLongitude",
+        "factoryRadius",
+        "autoClockInEnabled"
+      ]
     }
   },
   "auth": {
@@ -201,6 +235,22 @@
             {
               "name": "teamId",
               "description": "The unique identifier for the team."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/settings/{settingId}",
+        "definition": {
+          "entityName": "GlobalSettings",
+          "schema": {
+            "$ref": "#/backend/entities/GlobalSettings"
+          },
+          "description": "Stores global application settings. There should only be one document with the ID 'global'.",
+          "params": [
+            {
+              "name": "settingId",
+              "description": "The unique identifier for the settings document, should be 'global'."
             }
           ]
         }

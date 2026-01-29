@@ -37,7 +37,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
-import type { TimeEntry, Profile, Shift } from '@/lib/types';
+import type { TimeEntry, Profile, Shift, GlobalSettings } from '@/lib/types';
 import { shifts } from '@/lib/shifts';
 import { format, parseISO, differenceInMinutes, addHours, differenceInHours } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
@@ -92,6 +92,9 @@ export default function TimeTrackingPage() {
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
+  const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
+  const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
+
   const timeEntriesQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.uid, 'timeEntries'), orderBy('date', 'desc'), limit(5)) : null,
     [firestore, user]
@@ -130,7 +133,6 @@ export default function TimeTrackingPage() {
     const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
 
     setActiveTimeEntryId(recoveryData.activeTimeEntryId);
-    setElapsedTime(elapsedSeconds);
     setStatus('in_progress');
     setIsShiftActive(true);
     const timer = setInterval(() => {
@@ -213,12 +215,12 @@ export default function TimeTrackingPage() {
   }, [activeTimer]);
   
   useEffect(() => {
-    if (isShiftActive && profile?.workplace) {
+    if (isShiftActive && globalSettings) {
       if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         Notification.requestPermission();
       }
     }
-  }, [isShiftActive, profile?.workplace]);
+  }, [isShiftActive, globalSettings]);
 
   const startShift = useCallback(async (shift: Shift, locationString?: string) => {
     if (!user || !firestore || !profile) return null;
@@ -327,7 +329,8 @@ export default function TimeTrackingPage() {
 
 
   const handleGeofenceEnter = useCallback(async () => {
-    // Auto-Clock In Logic
+    if (!globalSettings?.autoClockInEnabled) return;
+
     if (!isShiftActive && firestore && user && profile && profile.profession && profile.profession !== 'other') {
       const lastNightShiftEnd = localStorage.getItem('nightShiftJustEnded');
       if (lastNightShiftEnd) {
@@ -360,7 +363,7 @@ export default function TimeTrackingPage() {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) return;
 
-      const newEntryId = await startShift(shiftToStart, profile?.workplace?.address || 'Workplace');
+      const newEntryId = await startShift(shiftToStart, 'Usine');
       if (newEntryId && Notification.permission === 'granted' && navigator.serviceWorker) {
           navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification('OM Suivi: Pointage Automatique', {
@@ -370,7 +373,7 @@ export default function TimeTrackingPage() {
           });
       }
     }
-  }, [isShiftActive, firestore, user, profile, startShift]);
+  }, [isShiftActive, firestore, user, profile, startShift, globalSettings]);
 
 
   const handleGeofenceExit = useCallback(() => {
@@ -404,20 +407,20 @@ export default function TimeTrackingPage() {
 
 
   useEffect(() => {
-    if (!profile?.workplace || !profile.profession || profile.profession === 'other') return;
+    if (!globalSettings || !profile?.profession || profile.profession === 'other') return;
 
     const monitorLocation = () => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (!profile.workplace) return;
+                if (!globalSettings) return;
 
                 const distance = getDistanceFromLatLonInKm(
                     position.coords.latitude,
                     position.coords.longitude,
-                    profile.workplace.latitude,
-                    profile.workplace.longitude
+                    globalSettings.factoryLatitude,
+                    globalSettings.factoryLongitude,
                 );
-                const currentlyInZone = distance * 1000 <= profile.workplace.radius;
+                const currentlyInZone = distance * 1000 <= globalSettings.factoryRadius;
 
                 // --- Geofence Transition Logic ---
                 if (isInWorkZone !== null && isInWorkZone !== currentlyInZone) {
@@ -449,7 +452,7 @@ export default function TimeTrackingPage() {
     monitorLocation();
 
     return () => clearInterval(intervalId);
-  }, [profile, isShiftActive, isInWorkZone, activeTimeEntryId, handleGeofenceEnter, handleGeofenceExit]);
+  }, [profile, globalSettings, isShiftActive, isInWorkZone, activeTimeEntryId, handleGeofenceEnter, handleGeofenceExit]);
   
   
   const handleManualStart = async () => {
@@ -521,7 +524,7 @@ export default function TimeTrackingPage() {
     }
   }, [status, t]);
 
-  const isLoading = isUserLoading || isLoadingProfile;
+  const isLoading = isUserLoading || isLoadingProfile || isLoadingSettings;
   if (isLoading) {
       return (
           <div className="space-y-6">

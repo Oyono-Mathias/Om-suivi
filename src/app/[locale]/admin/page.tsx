@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, orderBy, setDoc } from 'firebase/firestore';
+import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, MapPin } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, TimeEntry } from '@/lib/types';
+import type { Profile, TimeEntry, GlobalSettings } from '@/lib/types';
 import { useTranslations, useLocale } from 'next-intl';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,9 @@ import { fr, enUS } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+
 
 function AccessDenied() {
   const t = useTranslations('Shared');
@@ -280,6 +283,157 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
   );
 }
 
+function GlobalSettingsForm() {
+    const t = useTranslations('AdminPage');
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
+    const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
+    
+    const settingsSchema = z.object({
+        factoryLatitude: z.number(),
+        factoryLongitude: z.number(),
+        factoryRadius: z.coerce.number().min(10, "Le rayon doit être d'au moins 10 mètres."),
+        autoClockInEnabled: z.boolean(),
+        breakDuration: z.coerce.number().min(0)
+    });
+
+    const form = useForm<z.infer<typeof settingsSchema>>({
+        resolver: zodResolver(settingsSchema),
+        defaultValues: {
+            factoryLatitude: 0,
+            factoryLongitude: 0,
+            factoryRadius: 50,
+            autoClockInEnabled: true,
+            breakDuration: 40,
+        }
+    });
+    
+    useEffect(() => {
+        if (globalSettings) {
+            form.reset(globalSettings);
+        }
+    }, [globalSettings, form]);
+    
+    const [isLocating, setIsLocating] = useState(false);
+    
+    const handleSetFactoryCenter = () => {
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                form.setValue('factoryLatitude', latitude);
+                form.setValue('factoryLongitude', longitude);
+                setIsLocating(false);
+                toast({ title: "Centre de l'usine mis à jour", description: "Les coordonnées ont été capturées. N'oubliez pas d'enregistrer."})
+            },
+            () => {
+                toast({ variant: 'destructive', title: t('locationErrorTitle'), description: t('locationErrorDescription') });
+                setIsLocating(false);
+            }
+        )
+    };
+
+    const onSubmit = async (values: z.infer<typeof settingsSchema>) => {
+        await setDoc(settingsRef, values, { merge: true });
+        toast({ title: t('configUpdatedTitle'), description: t('configUpdatedDescription') });
+    };
+
+    if (isLoadingSettings) {
+      return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    }
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('geofenceTitle')}</CardTitle>
+                        <CardDescription>{t('geofenceDescription')}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="factoryRadius"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('radiusLabel')}</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} />
+                                    </FormControl>
+                                    <FormDescription>{t('radiusDescription')}</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormItem>
+                            <FormLabel>{t('factoryCenterLabel')}</FormLabel>
+                             <div className="flex items-center gap-4 rounded-md border p-3">
+                                <MapPin className="h-6 w-6 text-muted-foreground" />
+                                <div className="flex-1 text-sm">
+                                    <p>Lat: {form.watch('factoryLatitude').toFixed(6)}</p>
+                                    <p>Lon: {form.watch('factoryLongitude').toFixed(6)}</p>
+                                </div>
+                                <Button type="button" variant="outline" onClick={handleSetFactoryCenter} disabled={isLocating}>
+                                    {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    {t('setFactoryCenterButton')}
+                                </Button>
+                             </div>
+                            <FormDescription>{t('factoryCenterDescription')}</FormDescription>
+                        </FormItem>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('rulesTitle')}</CardTitle>
+                        <CardDescription>{t('rulesDescription')}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="autoClockInEnabled"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel className="text-base">{t('autoClockInLabel')}</FormLabel>
+                                        <FormDescription>{t('autoClockInDescription')}</FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="breakDuration"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('breakDurationLabel')}</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} />
+                                    </FormControl>
+                                    <FormDescription>{t('breakDurationDescription')}</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('saveConfigButton')}
+                </Button>
+            </form>
+        </Form>
+    );
+}
+
 export default function AdminPage() {
   const t = useTranslations('AdminPage');
   const tShared = useTranslations('Shared');
@@ -338,63 +492,75 @@ export default function AdminPage() {
       <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
       <p className="text-muted-foreground">{t('description')}</p>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('usersTitle')}</CardTitle>
-          <CardDescription>{t('usersDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="sticky top-14 md:top-0 z-10 bg-background/95 backdrop-blur-sm py-2 mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input 
-                placeholder="Rechercher par nom ou email..."
-                className="pl-10 h-12"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          {isLoadingAllProfiles ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredProfiles && filteredProfiles.length > 0 ? (
-                filteredProfiles.map((p) => (
-                  <Card key={p.id} onClick={() => setViewingUser(p)} className="flex flex-col sm:flex-row items-start p-4 gap-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-4 flex-1">
-                        <Avatar className="h-12 w-12">
-                            <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                            <p className="font-medium">{p.name}</p>
-                            <p className="text-sm text-muted-foreground">{p.email}</p>
-                        </div>
+      <Tabs defaultValue="users">
+          <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="users">{t('usersTab')}</TabsTrigger>
+              <TabsTrigger value="config">{t('configTab')}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="users" className="mt-6">
+            <Card>
+                <CardHeader>
+                <CardTitle>{t('usersTitle')}</CardTitle>
+                <CardDescription>{t('usersDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                <div className="sticky top-14 md:top-0 z-10 bg-background/95 backdrop-blur-sm py-2 mb-4">
+                    <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input 
+                        placeholder="Rechercher par nom ou email..."
+                        className="pl-10 h-12"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                     </div>
-                    <div className="flex flex-col items-start sm:items-end gap-1 text-sm w-full sm:w-auto pt-1">
-                        <div className="font-semibold">
-                            <span>{p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')}` : 'N/A'}</span>
-                            <span className="text-muted-foreground"> {p.currency}</span>
-                        </div>
-                        <div className="text-muted-foreground">{p.profession ? tProfile(`professions.${p.profession}`) : ''}</div>
-                        <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs mt-1">
-                            {p.role === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-                            {p.role}
-                        </Badge>
-                    </div>
-                  </Card>
-                ))
-              ) : (
-                <div className="text-center h-24 flex items-center justify-center">
-                  {t('noUsers')}
                 </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                {isLoadingAllProfiles ? (
+                    <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                    {filteredProfiles && filteredProfiles.length > 0 ? (
+                        filteredProfiles.map((p) => (
+                        <Card key={p.id} onClick={() => setViewingUser(p)} className="flex flex-col sm:flex-row items-start p-4 gap-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-4 flex-1">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                    <p className="font-medium">{p.name}</p>
+                                    <p className="text-sm text-muted-foreground">{p.email}</p>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-start sm:items-end gap-1 text-sm w-full sm:w-auto pt-1">
+                                <div className="font-semibold">
+                                    <span>{p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')}` : 'N/A'}</span>
+                                    <span className="text-muted-foreground"> {p.currency}</span>
+                                </div>
+                                <div className="text-muted-foreground">{p.profession ? tProfile(`professions.${p.profession}`) : ''}</div>
+                                <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs mt-1">
+                                    {p.role === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                                    {p.role}
+                                </Badge>
+                            </div>
+                        </Card>
+                        ))
+                    ) : (
+                        <div className="text-center h-24 flex items-center justify-center">
+                        {t('noUsers')}
+                        </div>
+                    )}
+                    </div>
+                )}
+                </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="config" className="mt-6">
+            <GlobalSettingsForm />
+          </TabsContent>
+      </Tabs>
+
 
       <UserTimeEntriesSheet user={viewingUser} onOpenChange={(open) => !open && setViewingUser(null)} />
     </div>

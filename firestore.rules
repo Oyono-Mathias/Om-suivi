@@ -71,7 +71,14 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
+    
+    // --------------------------------------------------------------------
+    // Settings Collection
+    // --------------------------------------------------------------------
+    
+    match /settings/{settingId} {
+        allow get: if isSignedIn();
+        allow write: if isAdmin();
+    }
   }
 }
-
-    

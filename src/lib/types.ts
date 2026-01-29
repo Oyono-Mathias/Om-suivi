@@ -24,13 +24,6 @@ export interface TimeEntry {
   modification_reason?: 'admin_edit';
 }
 
-export interface Workplace {
-  latitude: number;
-  longitude: number;
-  radius: number;
-  address?: string;
-}
-
 export interface Profile {
   id: string;
   email: string;
@@ -44,15 +37,6 @@ export interface Profile {
     enabled: boolean;
     time: string; // e.g., "17:00"
   };
-  workplace?: Workplace;
-}
-
-export interface WorkplaceUpdateLog {
-  id: string;
-  userProfileId: string;
-  timestamp: any; // serverTimestamp
-  previousWorkplace?: Workplace | null;
-  newWorkplace: Workplace;
 }
 
 export interface TeamMember {
@@ -62,4 +46,13 @@ export interface TeamMember {
   avatarHint: string;
   totalHours: number;
   overtimeHours: number;
+}
+
+export interface GlobalSettings {
+    id: string;
+    factoryLatitude: number;
+    factoryLongitude: number;
+    factoryRadius: number;
+    autoClockInEnabled: boolean;
+    breakDuration?: number;
 }
