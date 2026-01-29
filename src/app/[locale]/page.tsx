@@ -448,7 +448,7 @@ export default function TimeTrackingPage() {
         );
     };
 
-    const intervalId = setInterval(monitorLocation, 60000);
+    const intervalId = setInterval(monitorLocation, 10000);
     monitorLocation();
 
     return () => clearInterval(intervalId);
