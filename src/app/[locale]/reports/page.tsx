@@ -28,6 +28,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
   eachDayOfInterval,
   format,
+  parse,
   parseISO,
   startOfWeek,
   endOfWeek,
