@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogClose, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { X } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -36,6 +36,10 @@ export default function AdOverlay({ isOpen, onClose }: AdOverlayProps) {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="p-0 border-0 w-full h-full max-w-none sm:rounded-none flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Advertisement</DialogTitle>
+          <DialogDescription>An advertisement is being displayed. You can close it after the countdown.</DialogDescription>
+        </DialogHeader>
         <div className="absolute top-4 right-4 z-50">
           <DialogClose asChild>
              <Button
