@@ -469,7 +469,7 @@ export default function TimeTrackingPage() {
                     }
                 }
             },
-            (error) => { console.error("Periodic location check failed:", error); },
+            (error) => { console.warn("Periodic location check failed. This can happen temporarily and is often not a critical issue.", error); },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     };
