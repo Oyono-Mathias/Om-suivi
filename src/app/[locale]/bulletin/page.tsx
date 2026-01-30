@@ -339,12 +339,10 @@ export default function BulletinPage() {
     const formatCurrency = (amount: number) => Math.round(amount).toLocaleString('fr-FR');
     
     return (
-        <div className="space-y-6 pb-28">
+        <div className="space-y-6 pb-28 print:p-0">
              <style jsx global>{`
                 @media print {
                     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    .no-print { display: none !important; }
-                    main { padding: 0 !important; }
                     .print-container {
                         padding: 0 !important;
                         border: none !important;
@@ -368,7 +366,7 @@ export default function BulletinPage() {
             
             <div className="space-y-6">
                 {/* Mobile View */}
-                <div className="space-y-4 md:hidden">
+                <div className="space-y-4 md:hidden no-print">
                     <Card>
                         <CardHeader><CardTitle>{t('gainsSectionTitle')}</CardTitle></CardHeader>
                         <CardContent className="space-y-2">
@@ -416,8 +414,8 @@ export default function BulletinPage() {
                 </div>
 
                 {/* Print & Desktop View */}
-                 <Card className="hidden md:block print-container print:shadow-none print:border-none">
-                    <CardContent className="p-6">
+                 <Card className="hidden md:block print-container">
+                    <CardContent className="p-6 print:p-4">
                          <header className="flex justify-between items-start mb-8 border-b pb-6">
                             <div className="flex items-center gap-4">
                                 <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />

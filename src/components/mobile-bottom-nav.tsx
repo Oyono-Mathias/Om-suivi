@@ -26,7 +26,7 @@ export default function MobileBottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-5 inset-x-4 z-40 flex h-[70px] items-stretch justify-around px-2 border border-white/10 bg-black/80 backdrop-blur-lg rounded-[20px] shadow-2xl md:hidden">
+    <nav className="fixed bottom-5 inset-x-4 z-40 flex h-[70px] items-stretch justify-around px-2 border border-white/10 bg-black/80 backdrop-blur-lg rounded-[20px] shadow-2xl md:hidden no-print">
       {navItems.map((item) => (
         <NavLink key={item.href} {...item} isActive={pathname === item.href} />
       ))}

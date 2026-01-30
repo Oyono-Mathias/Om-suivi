@@ -71,7 +71,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const adminNavItems = [{ href: "/admin", label: t('administration'), icon: Shield }];
 
   // Pages without the main shell
-  if (pathname.includes('/login') || pathname.includes('/reports/export')) {
+  if (pathname.includes('/login') || pathname.includes('/reports/export') || pathname.includes('/leave')) {
     return <>{children}</>;
   }
 
@@ -194,7 +194,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarTrigger />
           <h1 className="text-lg font-semibold">{t('appName')}</h1>
         </header>
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 print:p-0">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
