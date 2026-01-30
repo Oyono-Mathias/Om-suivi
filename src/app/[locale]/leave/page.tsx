@@ -5,18 +5,16 @@ import React, { useState, useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useTranslations, useLocale } from 'next-intl';
-import { differenceInCalendarMonths, differenceInYears, format, parseISO, getDay } from 'date-fns';
+import { differenceInYears, format, parseISO, getDay, parse } from 'date-fns';
 import { fr, enUS } from "date-fns/locale";
 import type { Profile } from '@/lib/types';
 import { Link } from '@/navigation';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 const addWorkingDays = (startDate: Date, daysToAdd: number): Date => {
@@ -46,12 +44,11 @@ export default function LeaveRequestPage() {
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
-    const [startDate, setStartDate] = useState<Date | undefined>();
+    const [startDate, setStartDate] = useState<string | undefined>();
 
     const leaveData = useMemo(() => {
         if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0 };
         try {
-            const cycleStartDate = parseISO(profile.leaveStartDate);
             const hireDate = parseISO(profile.hireDate);
             const now = new Date();
 
@@ -77,7 +74,7 @@ export default function LeaveRequestPage() {
 
     const resumeDate = useMemo(() => {
         if (!startDate || !leaveData) return null;
-        return addWorkingDays(startDate, leaveData.totalDays);
+        return addWorkingDays(parse(startDate, 'yyyy-MM-dd', new Date()), leaveData.totalDays);
     }, [startDate, leaveData]);
     
     const handlePrint = () => {
@@ -154,32 +151,15 @@ export default function LeaveRequestPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
                         <div className="no-print">
                             <label className="text-sm font-medium">{t('leaveStartDateLabel')}</label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant={"outline"}
-                                        className={cn("w-full justify-start text-left font-normal mt-1", !startDate && "text-muted-foreground")}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {startDate ? format(startDate, "PPP", { locale: dateFnsLocale }) : <span>{t('pickStartDate')}</span>}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={startDate}
-                                        onSelect={setStartDate}
-                                        defaultMonth={startDate || new Date()}
-                                        initialFocus
-                                        captionLayout="dropdown-buttons"
-                                        fromYear={new Date().getFullYear() - 1}
-                                        toYear={new Date().getFullYear() + 5}
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                            <Input
+                                type="date"
+                                value={startDate ?? ''}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="mt-1 w-full"
+                            />
                         </div>
                         <div className="print-only-date text-sm">
-                             <strong>{t('leaveStartDateLabel')}:</strong> {startDate ? format(startDate, "PPP", { locale: dateFnsLocale }) : '____ / ____ / ________'}
+                             <strong>{t('leaveStartDateLabel')}:</strong> {startDate ? format(parse(startDate, 'yyyy-MM-dd', new Date()), "PPP", { locale: dateFnsLocale }) : '____ / ____ / ________'}
                         </div>
                         <div>
                              <p className="text-sm font-medium">{t('leaveResumeDateLabel')}</p>
@@ -231,3 +211,5 @@ export default function LeaveRequestPage() {
         </div>
     );
 }
+
+    

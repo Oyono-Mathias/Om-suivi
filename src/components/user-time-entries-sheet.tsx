@@ -36,24 +36,24 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
     const [isSaving, setIsSaving] = useState(false);
 
     const backfillSchema = z.object({
-        dateRange: z.object({
-            from: z.date(),
-            to: z.date(),
-        }),
+        dateFrom: z.string().min(1, "Date de début requise"),
+        dateTo: z.string().min(1, "Date de fin requise"),
         status: z.enum(['present', 'paid_leave']),
     });
 
     const form = useForm<z.infer<typeof backfillSchema>>({
         resolver: zodResolver(backfillSchema),
         defaultValues: {
+            dateFrom: '',
+            dateTo: '',
             status: 'present',
         },
     });
 
     const handleBackfillSubmit = async (values: z.infer<typeof backfillSchema>) => {
         setIsSaving(true);
-        const { dateRange, status } = values;
-        const daysToProcess = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+        const { dateFrom, dateTo, status } = values;
+        const daysToProcess = eachDayOfInterval({ start: parse(dateFrom, 'yyyy-MM-dd', new Date()), end: parse(dateTo, 'yyyy-MM-dd', new Date()) });
 
         const timeEntriesRef = collection(firestore, 'users', user.id, 'timeEntries');
         const overridesRef = collection(firestore, 'users', user.id, 'attendanceOverrides');
@@ -113,51 +113,34 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleBackfillSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="dateRange"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel>{t('backfillDateRangeLabel')}</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant={"outline"}
-                                                className={cn("justify-start text-left font-normal", !field.value?.from && "text-muted-foreground")}
-                                            >
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {field.value?.from ? (
-                                                    field.value.to ? (
-                                                        <>
-                                                            {format(field.value.from, "LLL dd, y")} -{" "}
-                                                            {format(field.value.to, "LLL dd, y")}
-                                                        </>
-                                                    ) : (
-                                                        format(field.value.from, "LLL dd, y")
-                                                    )
-                                                ) : (
-                                                    <span>Choisir une période</span>
-                                                )}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                initialFocus
-                                                mode="range"
-                                                defaultMonth={field.value?.from}
-                                                selected={field.value}
-                                                onSelect={field.onChange}
-                                                numberOfMonths={2}
-                                                captionLayout="dropdown-buttons"
-                                                fromYear={new Date().getFullYear() - 5}
-                                                toYear={new Date().getFullYear()}
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="dateFrom"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Du</FormLabel>
+                                        <FormControl>
+                                            <Input type="date" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="dateTo"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Au</FormLabel>
+                                        <FormControl>
+                                            <Input type="date" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                         <FormField
                             control={form.control}
                             name="status"
@@ -227,7 +210,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
   }, [user, cycleStart, cycleEnd]);
 
   const editFormSchema = z.object({
-      date: z.date(),
+      date: z.string().min(1),
       startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
       endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
     }).refine(data => {
@@ -246,7 +229,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
   const form = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
       defaultValues: {
-      date: new Date(),
+      date: '',
       startTime: '00:00',
       endTime: '00:00',
     }
@@ -255,7 +238,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
   React.useEffect(() => {
     if (editingEntry) {
       form.reset({
-        date: parseISO(editingEntry.date),
+        date: editingEntry.date,
         startTime: editingEntry.startTime,
         endTime: editingEntry.endTime,
       });
@@ -271,7 +254,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
         return;
     }
 
-    const dateStr = format(values.date, 'yyyy-MM-dd');
+    const dateStr = values.date;
     const startDateTime = parse(`${dateStr} ${values.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
     let endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
@@ -467,35 +450,9 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? format(field.value, "PPP", { locale: dateFnsLocale }) : <span>Choisir une date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date > new Date() || date < new Date("2020-01-01")}
-                          defaultMonth={field.value || new Date()}
-                          initialFocus
-                          captionLayout="dropdown-buttons"
-                          fromYear={2020}
-                          toYear={new Date().getFullYear()}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -556,3 +513,5 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
     </>
   );
 }
+
+    

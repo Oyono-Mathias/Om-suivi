@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -32,16 +32,12 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { shifts } from '@/lib/shifts';
 import type { TimeEntry, Profile } from '@/lib/types';
 import { format, parse, differenceInMinutes, parseISO } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
 interface ManualEntryDialogProps {
@@ -52,13 +48,13 @@ interface ManualEntryDialogProps {
 
 export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: ManualEntryDialogProps) {
   const t = useTranslations('ManualEntryDialog');
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const formSchema = z.object({
     shiftId: z.string().min(1, { message: t('shiftRequiredAlert') }),
-    date: z.date(),
+    date: z.string().min(1, 'Date is required'),
     startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
     endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
     isPublicHoliday: z.boolean(),
@@ -74,7 +70,7 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: new Date(),
+      date: format(new Date(), 'yyyy-MM-dd'),
       startTime: '08:00',
       endTime: '16:15',
       isPublicHoliday: false,
@@ -87,7 +83,7 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
     const shift = shifts.find(s => s.id === values.shiftId);
     if (!shift) return;
 
-    const dateStr = format(values.date, 'yyyy-MM-dd');
+    const dateStr = values.date;
     const startDateTime = parse(`${dateStr} ${values.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
     const endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
@@ -158,35 +154,9 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>{t('dateLabel')}</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date > new Date() || date < new Date("1980-01-01")}
-                        defaultMonth={field.value || new Date()}
-                        initialFocus
-                        captionLayout="dropdown-buttons"
-                        fromYear={1980}
-                        toYear={new Date().getFullYear()}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -248,3 +218,5 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
     </Dialog>
   );
 }
+
+    
