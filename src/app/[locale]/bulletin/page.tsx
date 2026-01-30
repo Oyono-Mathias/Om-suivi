@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -275,24 +276,35 @@ export default function BulletinPage() {
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
 
     const leaveData = useMemo(() => {
-        if (!profile?.leaveStartDate || !payrollData) {
-            return { accruedDays: 0, leavePayAllocation: 0 };
+        if (!profile?.leaveStartDate || !profile?.hireDate || !payrollData) {
+            return { accruedDays: 0, leavePayAllocation: 0, baseDays: 0, senioritySurplus: 0 };
         }
         try {
-            const startDate = parseISO(profile.leaveStartDate);
-            const months = differenceInCalendarMonths(new Date(), startDate);
-            const accruedDays = months > 0 ? (months * 1.5) : 0;
+            const cycleStartDate = parseISO(profile.leaveStartDate);
+            const hireDate = parseISO(profile.hireDate);
+            const now = new Date();
+
+            const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
+            const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
+
+            const seniorityYears = differenceInYears(now, hireDate);
+            let senioritySurplus = 0;
+            if (seniorityYears >= 5) {
+                senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2) * 2;
+            }
+            
+            const accruedDays = baseDays + senioritySurplus;
             
             const taxableGross = payrollData.grossSalary;
             const leavePayAllocation = (taxableGross / 30) * accruedDays;
 
-            return { accruedDays, leavePayAllocation };
+            return { accruedDays, leavePayAllocation, baseDays, senioritySurplus };
 
         } catch (e) {
-            console.error("Could not parse leaveStartDate", profile.leaveStartDate);
-            return { accruedDays: 0, leavePayAllocation: 0 };
+            console.error("Could not parse date for leave calculation", e);
+            return { accruedDays: 0, leavePayAllocation: 0, baseDays: 0, senioritySurplus: 0 };
         }
-    }, [profile?.leaveStartDate, payrollData]);
+    }, [profile?.leaveStartDate, profile?.hireDate, payrollData]);
     
     const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
 
@@ -397,6 +409,7 @@ export default function BulletinPage() {
                         <CardHeader><CardTitle>{t('acquiredRightsTitle')}</CardTitle></CardHeader>
                         <CardContent className="space-y-2">
                              <PaystubRow label={t('accruedLeaveDaysLabel')} value={`${leaveData.accruedDays.toFixed(1)} ${t('leaveDaysUnit')}`} />
+                             <p className="text-xs text-muted-foreground pl-1">Base ({leaveData.baseDays.toFixed(1)}j) + Surplus ({leaveData.senioritySurplus}j)</p>
                              <PaystubRow label={t('estimatedLeavePayLabel')} value={`${formatCurrency(leaveData.leavePayAllocation)}`} />
                         </CardContent>
                     </Card>
@@ -457,8 +470,9 @@ export default function BulletinPage() {
 
                          <div className="mt-8 pt-4 border-t print:border-gray-300">
                              <h3 className="font-bold mb-2 text-lg">{t('acquiredRightsTitle')}</h3>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                             <div className="space-y-1 text-sm">
                                  <PaystubRow label={t('accruedLeaveDaysLabel')} value={`${leaveData.accruedDays.toFixed(1)} ${t('leaveDaysUnit')}`} />
+                                 <p className="text-xs text-muted-foreground pl-2">Détail: Congé de base ({leaveData.baseDays.toFixed(1)}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)</p>
                                  <PaystubRow label={t('estimatedLeavePayLabel')} value={`${formatCurrency(leaveData.leavePayAllocation)}`} />
                              </div>
                          </div>

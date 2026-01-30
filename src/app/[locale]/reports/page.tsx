@@ -43,7 +43,9 @@ import {
   addMinutes,
   differenceInMinutes,
   max,
-  min
+  min,
+  differenceInCalendarMonths,
+  differenceInYears,
 } from "date-fns";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -309,6 +311,35 @@ export default function ReportsPage() {
     });
   }, [timeEntries]);
 
+  const leaveData = useMemo(() => {
+    if (!profile?.leaveStartDate || !profile.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
+    try {
+        const cycleStartDate = parseISO(profile.leaveStartDate);
+        const hireDate = parseISO(profile.hireDate);
+        const now = new Date();
+
+        const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
+        const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
+        
+        const seniorityYears = differenceInYears(now, hireDate);
+        let senioritySurplus = 0;
+        if (seniorityYears >= 5) {
+            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2) * 2;
+        }
+
+        const totalDays = baseDays + senioritySurplus;
+
+        return {
+            baseDays,
+            senioritySurplus,
+            totalDays
+        };
+    } catch (e) {
+        console.error("Could not parse date for leave calculation", e);
+        return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
+    }
+  }, [profile?.leaveStartDate, profile?.hireDate]);
+
 
   const chartConfig = {
     regular: {
@@ -430,6 +461,19 @@ export default function ReportsPage() {
                       <span className="text-2xl font-medium"> {profile.currency}</span>
                     </CardTitle>
                 </Card>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>{tBulletin('acquiredRightsTitle')}</CardTitle>
+                <CardDescription>{tProfile('leaveBalanceDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-4xl font-bold">{leaveData.totalDays.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">{tProfile('leaveBalanceDays')}</span></p>
+                <p className="text-sm text-muted-foreground mt-2">
+                    Congé de base ({leaveData.baseDays.toFixed(1)}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)
+                </p>
             </CardContent>
         </Card>
 

@@ -38,7 +38,7 @@ import { Loader2, MapPin, CalendarIcon } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { format, parseISO, differenceInCalendarMonths } from "date-fns";
+import { format, parseISO, differenceInCalendarMonths, differenceInYears } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAd } from "@/context/AdContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -239,17 +239,35 @@ export default function ProfilePage() {
     }
   }
 
-  const leaveBalance = useMemo(() => {
-    if (!profile?.leaveStartDate) return 0;
+  const leaveData = useMemo(() => {
+    if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: '0.0', senioritySurplus: 0, totalDays: '0.0' };
     try {
-        const startDate = parseISO(profile.leaveStartDate);
-        const months = differenceInCalendarMonths(new Date(), startDate);
-        return months > 0 ? (months * 1.5).toFixed(1) : '0.0';
+        const cycleStartDate = parseISO(profile.leaveStartDate);
+        const hireDate = parseISO(profile.hireDate);
+        const now = new Date();
+
+        const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
+        const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
+        
+        const seniorityYears = differenceInYears(now, hireDate);
+        let senioritySurplus = 0;
+        if (seniorityYears >= 5) {
+            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2) * 2;
+        }
+
+        const totalDays = baseDays + senioritySurplus;
+
+        return {
+            baseDays: baseDays.toFixed(1),
+            senioritySurplus,
+            totalDays: totalDays.toFixed(1)
+        };
     } catch (e) {
-        console.error("Could not parse leaveStartDate", profile.leaveStartDate);
-        return 0;
+        console.error("Could not parse date for leave calculation", e);
+        return { baseDays: '0.0', senioritySurplus: 0, totalDays: '0.0' };
     }
-  }, [profile?.leaveStartDate]);
+  }, [profile?.leaveStartDate, profile?.hireDate]);
+
 
   if (isUserLoading || isLoadingProfile) {
     return (
@@ -440,7 +458,10 @@ export default function ProfilePage() {
               <CardDescription>{t('leaveBalanceDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
-                <p className="text-4xl font-bold">{leaveBalance} <span className="text-xl font-medium text-muted-foreground">{t('leaveBalanceDays')}</span></p>
+                <p className="text-4xl font-bold">{leaveData.totalDays} <span className="text-xl font-medium text-muted-foreground">{t('leaveBalanceDays')}</span></p>
+                <p className="text-sm text-muted-foreground mt-2">
+                    Congé de base ({leaveData.baseDays}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)
+                </p>
             </CardContent>
           </Card>
           
