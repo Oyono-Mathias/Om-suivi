@@ -1,11 +1,11 @@
 {
   "name": "OM Suivi",
   "short_name": "OM Suivi",
-  "description": "Application de suivi du temps et des heures supplémentaires pour les employés.",
+  "description": "Une application pour le suivi des heures supplémentaires et la gestion de la paie.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#1DB954",
+  "background_color": "#0d1117",
+  "theme_color": "#00D68F",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
