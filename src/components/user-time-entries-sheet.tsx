@@ -147,6 +147,9 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
                                                 selected={field.value}
                                                 onSelect={field.onChange}
                                                 numberOfMonths={2}
+                                                captionLayout="dropdown-buttons"
+                                                fromYear={new Date().getFullYear() - 5}
+                                                toYear={new Date().getFullYear()}
                                             />
                                         </PopoverContent>
                                     </Popover>
@@ -485,6 +488,9 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                           onSelect={field.onChange}
                           disabled={(date) => date > new Date() || date < new Date("2020-01-01")}
                           initialFocus
+                          captionLayout="dropdown-buttons"
+                          fromYear={2020}
+                          toYear={new Date().getFullYear()}
                         />
                       </PopoverContent>
                     </Popover>

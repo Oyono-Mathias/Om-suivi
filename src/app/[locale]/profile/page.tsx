@@ -407,6 +407,9 @@ export default function ProfilePage() {
                               onSelect={field.onChange}
                               disabled={(date) => date > new Date() || date < new Date("1980-01-01")}
                               initialFocus
+                              captionLayout="dropdown-buttons"
+                              fromYear={1980}
+                              toYear={new Date().getFullYear()}
                             />
                           </PopoverContent>
                         </Popover>
@@ -442,6 +445,9 @@ export default function ProfilePage() {
                               onSelect={field.onChange}
                               disabled={(date) => date > new Date()}
                               initialFocus
+                              captionLayout="dropdown-buttons"
+                              fromYear={new Date().getFullYear() - 5}
+                              toYear={new Date().getFullYear() + 1}
                             />
                           </PopoverContent>
                         </Popover>

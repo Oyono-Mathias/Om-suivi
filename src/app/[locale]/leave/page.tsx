@@ -164,7 +164,15 @@ export default function LeaveRequestPage() {
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                                    <Calendar
+                                        mode="single"
+                                        selected={startDate}
+                                        onSelect={setStartDate}
+                                        initialFocus
+                                        captionLayout="dropdown-buttons"
+                                        fromYear={new Date().getFullYear() - 1}
+                                        toYear={new Date().getFullYear() + 5}
+                                    />
                                 </PopoverContent>
                             </Popover>
                         </div>

@@ -178,8 +178,11 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                        disabled={(date) => date > new Date() || date < new Date("1980-01-01")}
                         initialFocus
+                        captionLayout="dropdown-buttons"
+                        fromYear={1980}
+                        toYear={new Date().getFullYear()}
                       />
                     </PopoverContent>
                   </Popover>
