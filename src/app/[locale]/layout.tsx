@@ -1,10 +1,9 @@
-
 import type { Metadata } from 'next';
 import AppShell from '@/components/app-shell';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getLocale, getMessages } from 'next-intl/server';
 import { ShiftProvider } from '@/context/ShiftContext';
 import { AdProvider } from '@/context/AdContext';
 import { ReactNode } from 'react';
@@ -23,14 +22,13 @@ export const metadata: Metadata = {
 };
 
 type Props = {
-  children: React.ReactNode;
-  params: {locale: string};
+  children: ReactNode;
 };
 
 export default async function LocaleLayout({
   children,
-  params: {locale}
 }: Props) {
+  const locale = await getLocale();
   const messages = await getMessages();
 
   return (
