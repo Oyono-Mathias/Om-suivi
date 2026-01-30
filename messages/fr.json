@@ -2,7 +2,7 @@
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
-    "description": "Connectez-vous ou créez un compte pour commencer le suivi de votre temps.",
+    "description": "Connectez-vous pour accéder à votre espace employé Prima Dee-Lite.",
     "loginTab": "Se connecter",
     "registerTab": "S'inscrire",
     "emailLabel": "Email",
@@ -213,7 +213,8 @@
     "sickLeaveAlertDescription": "Vous avez {count, plural, one {# jour de congé maladie payé} other {# jours de congé maladie payés}} ce mois-ci.",
     "leaveTableBase": "Congé de base",
     "leaveTableSeniority": "Surplus Ancienneté",
-    "leaveRequestButton": "Générer une demande de congé"
+    "leaveRequestButton": "Générer une demande de congé",
+    "leaveAccrualTooltip": "Le saviez-vous ? Vous gagnez 1,5 jour de congé par mois. Après 5 ans, vous avez droit à des jours de surplus."
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -422,6 +423,11 @@
     "title": "Bonnes vacances, {name} !",
     "description": "Profitez bien de vos {days} jours de repos bien mérités. On se revoit le {resumeDate} !",
     "closeButton": "Compris"
+  },
+  "WelcomeDialog": {
+    "title": "Bienvenue sur OM-Suivi",
+    "description": "Votre outil pour une paie transparente et une gestion juste de vos droits à Prima Dee-Lite.",
+    "startButton": "Commencer"
   },
   "DetailsCalculPage": {
     "title": "Détails du Calcul",

@@ -2,7 +2,7 @@
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
-    "description": "Log in or create an account to start tracking your work time.",
+    "description": "Log in to access your Prima Dee-Lite employee dashboard.",
     "loginTab": "Log In",
     "registerTab": "Sign Up",
     "emailLabel": "Email",
@@ -213,7 +213,8 @@
     "sickLeaveAlertDescription": "You have {count, plural, one {# paid sick leave day} other {# paid sick leave days}} this month.",
     "leaveTableBase": "Base Leave",
     "leaveTableSeniority": "Seniority Surplus",
-    "leaveRequestButton": "Generate Leave Request"
+    "leaveRequestButton": "Generate Leave Request",
+    "leaveAccrualTooltip": "Did you know? You earn 1.5 leave days per month. After 5 years, you are entitled to surplus days."
   },
   "ExportReportPage": {
     "title": "Export Report",
@@ -422,6 +423,11 @@
     "title": "Happy Holidays, {name}!",
     "description": "Enjoy your {days} well-deserved days off. See you on {resumeDate}!",
     "closeButton": "Got it"
+  },
+  "WelcomeDialog": {
+    "title": "Welcome to OM-Suivi",
+    "description": "Your tool for transparent payroll and fair management of your rights at Prima Dee-Lite.",
+    "startButton": "Get Started"
   },
   "DetailsCalculPage": {
     "title": "Calculation Details",

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -52,6 +53,7 @@ import { Link } from '@/navigation';
 import { useAd } from '@/context/AdContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import LeaveWelcomeDialog from '@/components/leave-welcome-dialog';
+import WelcomeDialog from '@/components/welcome-dialog';
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
 
@@ -91,6 +93,7 @@ export default function TimeTrackingPage() {
   const [recoveryData, setRecoveryData] = useState<ActiveShiftState | null>(null);
   const [showLeaveWelcome, setShowLeaveWelcome] = useState(false);
   const [leaveWelcomeData, setLeaveWelcomeData] = useState<{ days: number; resumeDate: string; } | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
 
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -162,6 +165,15 @@ export default function TimeTrackingPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoreShift]);
+
+  useEffect(() => {
+    // Welcome message on first visit after login
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeMessage');
+    if (!hasSeenWelcome && user) {
+      setShowWelcome(true);
+      localStorage.setItem('hasSeenWelcomeMessage', 'true');
+    }
+  }, [user]);
 
   const handleRecoveryEndShift = () => {
     if (!recoveryData) return;
@@ -855,6 +867,8 @@ export default function TimeTrackingPage() {
           resumeDate={leaveWelcomeData.resumeDate}
         />
       )}
+
+      <WelcomeDialog isOpen={showWelcome} onClose={() => setShowWelcome(false)} />
     </div>
   );
 }

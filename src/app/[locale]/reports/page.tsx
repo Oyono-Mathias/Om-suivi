@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
@@ -44,7 +45,8 @@ import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/l
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useStorage } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Loader2, ShieldAlert, HeartPulse, Paperclip } from "lucide-react";
+import { Loader2, ShieldAlert, HeartPulse, Paperclip, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
 import { getPayrollCycle } from "@/lib/utils";
@@ -500,8 +502,20 @@ export default function ReportsPage() {
         
         <Card>
             <CardHeader>
-                <CardTitle>{tBulletin('acquiredRightsTitle')}</CardTitle>
-                <CardDescription>{tProfile('leaveBalanceDescription')}</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <CardTitle>{tBulletin('acquiredRightsTitle')}</CardTitle>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" /></TooltipTrigger>
+                                    <TooltipContent><p>{t('leaveAccrualTooltip')}</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                        <CardDescription>{tProfile('leaveBalanceDescription')}</CardDescription>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
                 <p className="text-4xl font-bold">{leaveData.totalDays.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">{tProfile('leaveBalanceDays')}</span></p>
