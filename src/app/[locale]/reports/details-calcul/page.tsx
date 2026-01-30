@@ -172,6 +172,8 @@ export default function DetailsCalculPage() {
         let performanceBonus = 4000;
         
         const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
+        const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
+
         const workedDays = new Set(timeEntries.map(e => e.date));
         const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave').map(o => o.id));
 
@@ -186,9 +188,8 @@ export default function DetailsCalculPage() {
             }
         }
         
-        const totalWorkableDaysInCycle = cycleWorkDays.length;
         const totalDaysWorked = workedDays.size + sickLeaveDays.size;
-        const proratedBaseSalary = (baseSalary / totalWorkableDaysInCycle) * totalDaysWorked;
+        const proratedBaseSalary = (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked;
         
         if (unjustifiedAbsenceCount > 0) {
             attendanceBonus = 0;
