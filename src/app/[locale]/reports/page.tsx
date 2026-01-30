@@ -45,10 +45,10 @@ import {
   max,
   min
 } from "date-fns";
-import type { TimeEntry, Profile, GlobalSettings } from "@/lib/types";
+import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
-import { Loader2, HelpCircle, AlertTriangle } from "lucide-react";
+import { Loader2, HelpCircle, ShieldAlert, HeartPulse } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
 import { getPayrollCycle } from "@/lib/utils";
@@ -86,45 +86,63 @@ export default function ReportsPage() {
     
     const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
+    
+    const overridesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, 'users', user.uid, 'attendanceOverrides');
+    }, [firestore, user]);
+    const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
 
     const scrollToDetails = () => {
         detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
     const absencePenalty = useMemo(() => {
-        if (!timeEntries || !profile || !profile.hireDate) {
-            return { count: 0, totalPenalty: 0 };
+        if (!timeEntries || !profile || !profile.hireDate || !attendanceOverrides) {
+            return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount: 0 };
         }
 
         const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
-
         const absenceCheckStart = max([cycleStart, parseISO(profile.hireDate)]);
         const absenceCheckEnd = min([cycleEnd, new Date()]);
 
-        let absenceCount = 0;
+        let unjustifiedAbsenceCount = 0;
+        let sickLeaveCount = 0;
 
         if (absenceCheckStart < absenceCheckEnd) {
             const daysInCycleToCheck = eachDayOfInterval({ start: absenceCheckStart, end: absenceCheckEnd });
             const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); // Mon-Sat
             const workedDays = new Set(timeEntries.map(e => e.date));
-            absenceCount = workDays.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
+            const overridesMap = new Map(attendanceOverrides.map(o => [o.id, o.status]));
+            
+            for (const day of workDays) {
+                const dayString = format(day, 'yyyy-MM-dd');
+                if (!workedDays.has(dayString)) {
+                    const status = overridesMap.get(dayString);
+                    if (status === 'sick_leave') {
+                        sickLeaveCount++;
+                    } else {
+                        unjustifiedAbsenceCount++;
+                    }
+                }
+            }
         }
         
-        if (absenceCount === 0) {
-            return { count: 0, totalPenalty: 0 };
+        if (unjustifiedAbsenceCount === 0) {
+            return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount };
         }
 
-        const salaryDeduction = absenceCount * 3360;
-        const transportDeduction = absenceCount * 705;
-        const primesLost = 7000; // Assiduité (3000) + Rendement (4000) are lost if absenceCount > 0
+        const salaryDeduction = unjustifiedAbsenceCount * 3360;
+        const transportDeduction = unjustifiedAbsenceCount * 705;
+        const primesLost = 7000;
         const totalPenalty = salaryDeduction + transportDeduction + primesLost;
         
-        return { count: absenceCount, totalPenalty };
+        return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount };
 
-    }, [timeEntries, profile]);
+    }, [timeEntries, profile, attendanceOverrides]);
 
     const reportSummary = useMemo(() => {
-        if (!timeEntries || !profile) {
+        if (!timeEntries || !profile || !attendanceOverrides) {
             return {
                 regularHours: '0.00',
                 totalOvertimeHours: '0.00',
@@ -259,7 +277,7 @@ export default function ReportsPage() {
             overtimeBreakdown: breakdown,
             rates,
         };
-    }, [timeEntries, profile, globalSettings]);
+    }, [timeEntries, profile, globalSettings, attendanceOverrides]);
 
 
   const weeklyChartData = useMemo(() => {
@@ -296,7 +314,9 @@ export default function ReportsPage() {
     },
   } satisfies ChartConfig;
 
-  if (isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings) {
+  const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
+
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin" />
@@ -329,7 +349,7 @@ export default function ReportsPage() {
   const professionLabel = profile.profession ? tProfile(`professions.${profile.profession}`) : 'N/A';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
@@ -342,14 +362,25 @@ export default function ReportsPage() {
         </Link>
       </div>
 
-      {absencePenalty.count > 0 && (
+      {absencePenalty.unjustifiedCount > 0 && (
         <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
+            <ShieldAlert className="h-4 w-4" />
             <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
             <AlertDescription>
                 {t('absenceAlertDescription', {
-                    count: absencePenalty.count,
+                    count: absencePenalty.unjustifiedCount,
                     penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
+                })}
+            </AlertDescription>
+        </Alert>
+      )}
+      {absencePenalty.sickLeaveCount > 0 && (
+        <Alert variant="default" className="bg-blue-950/50 border-blue-500/50 text-blue-300">
+            <HeartPulse className="h-4 w-4 text-blue-500" />
+            <AlertTitle>{t('sickLeaveAlertTitle')}</AlertTitle>
+            <AlertDescription>
+                {t('sickLeaveAlertDescription', {
+                    count: absencePenalty.sickLeaveCount
                 })}
             </AlertDescription>
         </Alert>
@@ -489,9 +520,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-    
-
-    
-
-
-

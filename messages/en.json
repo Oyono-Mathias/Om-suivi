@@ -207,7 +207,9 @@
     "cnpsDeductionLabel": "CNPS (4.2%)",
     "estimatedNetPayout": "Estimated Net Payout",
     "absenceAlertTitle": "Absence Detected",
-    "absenceAlertDescription": "You have {count, plural, one {# absence} other {# absences}} this month. This represents an estimated penalty of -{penalty} FCFA on your pay."
+    "absenceAlertDescription": "You have {count, plural, one {# absence} other {# absences}} this month. This represents an estimated penalty of -{penalty} FCFA on your pay.",
+    "sickLeaveAlertTitle": "Justified Absences",
+    "sickLeaveAlertDescription": "You have {count, plural, one {# paid sick leave day} other {# paid sick leave days}} this month."
   },
   "ExportReportPage": {
     "title": "Export Report",
@@ -293,7 +295,15 @@
     "nightRateLabel": "Night Rate (22h-06h)",
     "sundayRateLabel": "Sunday Rate",
     "holidayRateLabel": "Public Holiday Rate",
-    "rateMustBePositive": "Rate must be a positive number greater than or equal to 1."
+    "rateMustBePositive": "Rate must be a positive number greater than or equal to 1.",
+    "attendanceStatusTitle": "Attendance Status",
+    "unjustifiedAbsenceStatus": "Unjustified Absence",
+    "sickLeaveStatus": "Sick Leave / Justified",
+    "statusUpdated": "Status Updated",
+    "dayHeader": "Day",
+    "statusHeader": "Status",
+    "actionHeader": "Action",
+    "absentLabel": "Absent"
   },
   "Shared": {
     "loading": "Loading...",
@@ -352,6 +362,7 @@
     "redevanceCRTVLabel": "CRTV Fee",
     "cotisationSyndicaleLabel": "Union Dues",
     "cacSurIRPPLabel": "CAC on IRPP",
-    "netToPayLabel": "NET PAY"
+    "netToPayLabel": "NET PAY",
+    "paidSickLeaveLabel": "Paid Sick Leave"
   }
 }

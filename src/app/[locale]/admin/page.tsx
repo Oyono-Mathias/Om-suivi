@@ -1,16 +1,17 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy, setDoc, deleteDoc } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon } from 'lucide-react';
+import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, HeartPulse } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, TimeEntry, GlobalSettings, OvertimeRates } from '@/lib/types';
+import type { Profile, TimeEntry, GlobalSettings, OvertimeRates, AttendanceOverride } from '@/lib/types';
 import { useTranslations, useLocale } from 'next-intl';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,13 +23,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { shifts } from '@/lib/shifts';
-import { format, parse, differenceInMinutes, parseISO, addDays } from 'date-fns';
+import { format, parse, differenceInMinutes, parseISO, addDays, eachDayOfInterval, getDay } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, getPayrollCycle } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 function AccessDenied() {
@@ -55,34 +57,46 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<TimeEntry | null>(null);
 
+  const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
+
   const timeEntriesQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.id, 'timeEntries'), orderBy('date', 'desc')) : null,
     [firestore, user]
   );
   const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
-    const editFormSchema = z.object({
-        date: z.date(),
-        startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-        endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-      }).refine(data => {
-        const start = parse(data.startTime, 'HH:mm', new Date());
-        const end = parse(data.endTime, 'HH:mm', new Date());
-        if (start.getTime() >= end.getTime()) {
-           const associatedShift = editingEntry ? shifts.find(s => s.id === editingEntry.shiftId) : null;
-           // Allow end time to be before start time only for night shift
-           return associatedShift?.id === 'night';
-        }
-        return true;
-      }, {
-        message: "L'heure de fin doit être après l'heure de début (sauf pour le poste de nuit).",
-        path: ['endTime'],
-      });
+  const attendanceOverridesQuery = useMemoFirebase(
+    () => user ? collection(firestore, 'users', user.id, 'attendanceOverrides') : null,
+    [firestore, user]
+  );
+  const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(attendanceOverridesQuery);
 
+  const daysInCycle = useMemo(() => {
+    if (!user) return [];
+    return eachDayOfInterval({ start: cycleStart, end: cycleEnd });
+  }, [user, cycleStart, cycleEnd]);
+
+  const editFormSchema = z.object({
+      date: z.date(),
+      startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+      endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    }).refine(data => {
+      const start = parse(data.startTime, 'HH:mm', new Date());
+      const end = parse(data.endTime, 'HH:mm', new Date());
+      if (start.getTime() >= end.getTime()) {
+          const associatedShift = editingEntry ? shifts.find(s => s.id === editingEntry.shiftId) : null;
+          // Allow end time to be before start time only for night shift
+          return associatedShift?.id === 'night';
+      }
+      return true;
+    }, {
+      message: "L'heure de fin doit être après l'heure de début (sauf pour le poste de nuit).",
+      path: ['endTime'],
+    });
 
   const form = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
-     defaultValues: {
+      defaultValues: {
       date: new Date(),
       startTime: '00:00',
       endTime: '00:00',
@@ -112,7 +126,6 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
     const startDateTime = parse(`${dateStr} ${values.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
     let endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
-    // If end time is on the next day (typical for night shifts)
     if (endDateTime <= startDateTime) {
         endDateTime = addDays(endDateTime, 1);
     }
@@ -142,33 +155,40 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
       modification_reason: 'admin_edit',
     }, { merge: true });
 
-
     toast({ title: "Pointage mis à jour", description: "L'entrée de temps a été modifiée avec succès." });
     setEditingEntry(null);
   }
 
   const handleDeleteEntry = async () => {
     if (!deletingEntry || !user) return;
-
     const entryRef = doc(firestore, 'users', user.id, 'timeEntries', deletingEntry.id);
     await deleteDoc(entryRef);
-
     toast({ title: t('deleteSuccessTitle'), description: t('deleteSuccessDescription') });
     setDeletingEntry(null);
   };
+  
+  const handleStatusChange = async (date: Date, status: 'unjustified_absence' | 'sick_leave') => {
+    if (!user) return;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const overrideRef = doc(firestore, 'users', user.id, 'attendanceOverrides', dateStr);
+    await setDoc(overrideRef, { status });
+    toast({ title: t('statusUpdated') });
+  };
+
+  const isLoading = isLoadingEntries || isLoadingOverrides;
 
   return (
     <>
       <Sheet open={!!user} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-2xl p-0">
+        <SheetContent className="w-full sm:max-w-3xl p-0">
             {user && (
-                 <SheetHeader className="p-6 border-b">
-                    <SheetTitle>Pointages de {user.name}</SheetTitle>
+                  <SheetHeader className="p-6 border-b">
+                    <SheetTitle>{t('attendanceStatusTitle')} - {user.name}</SheetTitle>
                     <SheetDescription>{user.email}</SheetDescription>
                 </SheetHeader>
             )}
             <div className="p-6 overflow-y-auto h-[calc(100vh-80px)]">
-                {isLoadingEntries ? (
+                {isLoading ? (
                     <div className="flex justify-center items-center h-40">
                         <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
@@ -176,39 +196,74 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Heures</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                <TableHead>{t('dayHeader')}</TableHead>
+                                <TableHead>{t('statusHeader')}</TableHead>
+                                <TableHead className="text-right">{t('actionHeader')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {timeEntries && timeEntries.length > 0 ? (
-                                timeEntries.map(entry => (
-                                    <TableRow key={entry.id}>
-                                        <TableCell>
-                                            <div className="font-medium">{format(parseISO(entry.date), 'PPP', { locale: dateFnsLocale })}</div>
-                                            <div className="text-xs text-muted-foreground">{shifts.find(s => s.id === entry.shiftId)?.name}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {entry.startTime} - {entry.endTime}
-                                            {entry.modified_manually && (
-                                                <Badge variant="destructive" className="ml-2 gap-1 rounded-full">
-                                                  <AlertTriangle className="h-3 w-3" />
-                                                  {t('manualModificationLabel')}
+                            {daysInCycle.map(day => {
+                                const dayString = format(day, 'yyyy-MM-dd');
+                                const entryForDay = timeEntries?.find(e => e.date === dayString);
+                                const isWorkDay = getDay(day) !== 0; // 0 is Sunday
+                                const override = attendanceOverrides?.find(o => o.id === dayString);
+
+                                if (entryForDay) {
+                                    return (
+                                        <TableRow key={dayString}>
+                                            <TableCell>
+                                                <div className="font-medium">{format(day, 'PPP', { locale: dateFnsLocale })}</div>
+                                                <div className="text-xs text-muted-foreground">{shifts.find(s => s.id === entryForDay.shiftId)?.name}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {entryForDay.startTime} - {entryForDay.endTime}
+                                                {entryForDay.modified_manually && (
+                                                    <Badge variant="destructive" className="ml-2 gap-1 rounded-full">
+                                                        <AlertTriangle className="h-3 w-3" />
+                                                        {t('manualModificationLabel')}
+                                                    </Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button variant="outline" size="sm" onClick={() => setEditingEntry(entryForDay)}>Modifier</Button>
+                                                <Button variant="destructive" size="sm" onClick={() => setDeletingEntry(entryForDay)}>Supprimer</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                } else if (isWorkDay) {
+                                    return (
+                                        <TableRow key={dayString} className="bg-muted/30">
+                                            <TableCell>
+                                                <div className="font-medium">{format(day, 'PPP', { locale: dateFnsLocale })}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                 <Badge variant={override?.status === 'sick_leave' ? 'default' : 'destructive'} className={override?.status === 'sick_leave' ? "bg-blue-500 hover:bg-blue-600" : ""}>
+                                                    {override?.status === 'sick_leave' ? (
+                                                        <>
+                                                            <HeartPulse className="h-3 w-3 mr-1" />
+                                                            {t('sickLeaveStatus')}
+                                                        </>
+                                                    ) : (
+                                                         t('absentLabel')
+                                                    )}
                                                 </Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button variant="outline" size="sm" onClick={() => setEditingEntry(entry)}>Modifier</Button>
-                                            <Button variant="destructive" size="sm" onClick={() => setDeletingEntry(entry)}>Supprimer</Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">Aucune entrée de temps.</TableCell>
-                                </TableRow>
-                            )}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                 <Select onValueChange={(value: 'unjustified_absence' | 'sick_leave') => handleStatusChange(day, value)} defaultValue={override?.status || 'unjustified_absence'}>
+                                                    <SelectTrigger className="w-[200px] ml-auto">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="unjustified_absence">{t('unjustifiedAbsenceStatus')}</SelectItem>
+                                                        <SelectItem value="sick_leave">{t('sickLeaveStatus')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                }
+                                return null;
+                            })}
                         </TableBody>
                     </Table>
                 )}
@@ -613,7 +668,6 @@ export default function AdminPage() {
             <GlobalSettingsForm />
           </TabsContent>
       </Tabs>
-
 
       <UserTimeEntriesSheet user={viewingUser} onOpenChange={(open) => !open && setViewingUser(null)} />
     </div>

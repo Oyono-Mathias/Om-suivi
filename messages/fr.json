@@ -207,7 +207,9 @@
     "cnpsDeductionLabel": "CNPS (4.2%)",
     "estimatedNetPayout": "Net à Percevoir Estimé",
     "absenceAlertTitle": "Absence Détectée",
-    "absenceAlertDescription": "Vous avez {count, plural, one {# absence} other {# absences}} ce mois-ci. Cela représente une pénalité estimée de -{penalty} FCFA sur votre paie."
+    "absenceAlertDescription": "Vous avez {count, plural, one {# absence} other {# absences}} ce mois-ci. Cela représente une pénalité estimée de -{penalty} FCFA sur votre paie.",
+    "sickLeaveAlertTitle": "Absences Justifiées",
+    "sickLeaveAlertDescription": "Vous avez {count, plural, one {# jour de congé maladie payé} other {# jours de congé maladie payés}} ce mois-ci."
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -293,7 +295,15 @@
     "nightRateLabel": "Taux de Nuit (22h-06h)",
     "sundayRateLabel": "Taux du Dimanche",
     "holidayRateLabel": "Taux Jours Fériés",
-    "rateMustBePositive": "Le taux doit être un nombre positif supérieur ou égal à 1."
+    "rateMustBePositive": "Le taux doit être un nombre positif supérieur ou égal à 1.",
+    "attendanceStatusTitle": "Statut de Présence",
+    "unjustifiedAbsenceStatus": "Absence Injustifiée",
+    "sickLeaveStatus": "Maladie / Justifié",
+    "statusUpdated": "Statut mis à jour",
+    "dayHeader": "Jour",
+    "statusHeader": "Statut",
+    "actionHeader": "Action",
+    "absentLabel": "Absent"
   },
   "Shared": {
     "loading": "Chargement...",
@@ -352,6 +362,7 @@
     "redevanceCRTVLabel": "Redevance CRTV",
     "cotisationSyndicaleLabel": "Cotisation Syndicale",
     "cacSurIRPPLabel": "CAC sur IRPP",
-    "netToPayLabel": "NET A PAYER"
+    "netToPayLabel": "NET A PAYER",
+    "paidSickLeaveLabel": "Congé Maladie Payé"
   }
 }

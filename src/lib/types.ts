@@ -68,3 +68,8 @@ export interface GlobalSettings {
     breakDuration?: number;
     overtimeRates?: OvertimeRates;
 }
+
+export interface AttendanceOverride {
+  id: string; // The date 'YYYY-MM-DD'
+  status: 'unjustified_absence' | 'sick_leave';
+}

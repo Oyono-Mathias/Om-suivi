@@ -1,11 +1,12 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
-import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
+import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
@@ -88,12 +89,21 @@ export default function BulletinPage() {
     const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
+    const overridesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'users', user.uid, 'attendanceOverrides'),
+            where('__name__', '>=', cycleStartString),
+            where('__name__', '<=', cycleEndString)
+        );
+    }, [firestore, user, cycleStartString, cycleEndString]);
+    const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
+
     const handlePrint = () => {
         window.print();
     };
 
     const payrollData = useMemo(() => {
-        if (!timeEntries || !profile || !globalSettings) {
+        if (!timeEntries || !profile || !globalSettings || !attendanceOverrides) {
             return null;
         }
         
@@ -187,43 +197,48 @@ export default function BulletinPage() {
             }
         }
 
-        let attendanceBonus = 0;
-        let performanceBonus = 0;
+        let attendanceBonus = 3000;
+        let performanceBonus = 4000;
         let absenceDeduction = 0;
-        let absenceCount = 0;
+        let unjustifiedAbsenceCount = 0;
+        let sickLeaveCount = 0;
         
         if (profile.hireDate) {
             const absenceCheckStart = max([cycleStart, parseISO(profile.hireDate)]);
             const absenceCheckEnd = min([cycleEnd, new Date()]);
+            const overridesMap = new Map(attendanceOverrides.map(o => [o.id, o.status]));
 
             if (absenceCheckStart < absenceCheckEnd) {
                 const daysInCycleToCheck = eachDayOfInterval({ start: absenceCheckStart, end: absenceCheckEnd });
-                // Work days are Monday (1) to Saturday (6). Sunday is 0.
                 const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); 
                 const workedDays = new Set(timeEntries.map(e => e.date));
-                absenceCount = workDays.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
+                
+                for (const day of workDays) {
+                    const dayString = format(day, 'yyyy-MM-dd');
+                    if (!workedDays.has(dayString)) {
+                        const status = overridesMap.get(dayString);
+                        if (status === 'sick_leave') {
+                            sickLeaveCount++;
+                        } else {
+                            unjustifiedAbsenceCount++;
+                        }
+                    }
+                }
             }
 
-            if (absenceCount > 0) {
+            if (unjustifiedAbsenceCount > 0) {
                 attendanceBonus = 0;
                 performanceBonus = 0;
-                // Rule: Deduct 3360 FCFA from Base Salary and 705 FCFA from Transport Indemnity per absence.
-                const salaryDeduction = absenceCount * 3360;
-                const transportDeduction = absenceCount * 705;
+                const salaryDeduction = unjustifiedAbsenceCount * 3360;
+                const transportDeduction = unjustifiedAbsenceCount * 705;
                 absenceDeduction = salaryDeduction + transportDeduction;
-            } else {
-                 attendanceBonus = 3000;
-                 performanceBonus = 4000;
-                 absenceDeduction = 0;
             }
         }
         
         const transportBonus = 18325;
         const housingBonus = baseSalary * 0.1;
 
-        // totalEarnings is the base for tax calculation
         const totalEarnings = baseSalary + totalOvertimePayout + seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus;
-        // grossSalary is for UI display
         const grossSalary = totalEarnings - absenceDeduction;
         
         const cnpsBase = totalEarnings - transportBonus - housingBonus;
@@ -244,15 +259,15 @@ export default function BulletinPage() {
         return {
             cycleStart, cycleEnd, baseSalary, transportBonus, housingBonus,
             seniorityBonus, attendanceBonus, performanceBonus,
-            absenceDeduction, grossSalary,
+            absenceDeduction, unjustifiedAbsenceCount, sickLeaveCount, grossSalary,
             overtimeBreakdown, totalOvertimePayout,
             cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
             totalDeductions, netPay
         };
 
-    }, [timeEntries, profile, globalSettings, cycleStart, cycleEnd]);
+    }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
     
-    const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings;
+    const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
 
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
@@ -274,7 +289,7 @@ export default function BulletinPage() {
     
     if (!payrollData) {
         return (
-            <div className="space-y-6">
+            <div className="space-y-6 pb-28">
                 <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
                 <p className="text-muted-foreground">{t('noData')}</p>
             </div>
@@ -300,7 +315,7 @@ export default function BulletinPage() {
                 }
             `}</style>
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 no-print">
                 <div>
                     <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
                     <p className="text-muted-foreground">{t('description', {
@@ -308,58 +323,104 @@ export default function BulletinPage() {
                         endDate: format(payrollData.cycleEnd, 'd MMMM yyyy', { locale: dateFnsLocale })
                     })}</p>
                 </div>
-                <Button onClick={handlePrint} className="h-12 no-print">{t('printButton')}</Button>
+                <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
             
             <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-xl">{t('gainsSectionTitle')}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <PaystubRow label={t('baseSalaryLabel')} value={formatCurrency(payrollData.baseSalary)} />
-                        {payrollData.seniorityBonus > 0 && <PaystubRow label={t('seniorityBonusLabel')} value={formatCurrency(payrollData.seniorityBonus)} />}
-                        {payrollData.attendanceBonus > 0 && <PaystubRow label={t('attendanceBonusLabel')} value={formatCurrency(payrollData.attendanceBonus)} />}
-                        {payrollData.performanceBonus > 0 && <PaystubRow label={t('performanceBonusLabel')} value={formatCurrency(payrollData.performanceBonus)} />}
+                {/* Mobile View */}
+                <div className="space-y-4 md:hidden">
+                    <Card>
+                        <CardHeader><CardTitle>{t('gainsSectionTitle')}</CardTitle></CardHeader>
+                        <CardContent className="space-y-2">
+                             <PaystubRow label={t('baseSalaryLabel')} value={formatCurrency(payrollData.baseSalary)} />
+                            {payrollData.seniorityBonus > 0 && <PaystubRow label={t('seniorityBonusLabel')} value={formatCurrency(payrollData.seniorityBonus)} />}
+                            {payrollData.attendanceBonus > 0 && <PaystubRow label={t('attendanceBonusLabel')} value={formatCurrency(payrollData.attendanceBonus)} />}
+                            {payrollData.performanceBonus > 0 && <PaystubRow label={t('performanceBonusLabel')} value={formatCurrency(payrollData.performanceBonus)} />}
+                            {payrollData.totalOvertimePayout > 0 && <PaystubRow label={t('overtimeLabel')} value={formatCurrency(payrollData.totalOvertimePayout)} />}
+                            <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />
+                            <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />
+                            <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary + payrollData.absenceDeduction)} isTotal />
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader><CardTitle>{t('deductionsSectionTitle')}</CardTitle></CardHeader>
+                        <CardContent className="space-y-2">
+                            {payrollData.absenceDeduction > 0 && <PaystubRow label={t('absenceDeductionLabel')} value={`-${formatCurrency(payrollData.absenceDeduction)}`} isAbsence />}
+                            <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
+                            <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
+                            <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
+                            {payrollData.cotisationSyndicale > 0 && <PaystubRow label={t('cotisationSyndicaleLabel')} value={formatCurrency(payrollData.cotisationSyndicale)} />}
+                            <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
+                            <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
+                            <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
+                             <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
+                        </CardContent>
+                    </Card>
+                     <Card className="border-primary">
+                        <CardContent className="p-4">
+                             <div className="flex justify-between items-center">
+                                <span className="text-lg font-bold text-primary">{t('netPayableLabel')}</span>
+                                <span className="text-2xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
-                             <PaystubRow key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} value={formatCurrency(tier.payout)} />
-                        ))}
-
-                        <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />
-                        <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />
-
-                        <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary + payrollData.absenceDeduction)} isTotal />
-                    </CardContent>
-                </Card>
-
-                 <Card>
-                    <CardHeader><CardTitle className="text-xl">{t('deductionsSectionTitle')}</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                        {payrollData.absenceDeduction > 0 && (
-                             <PaystubRow label={t('absenceDeductionLabel')} value={`${formatCurrency(payrollData.absenceDeduction)}`} isAbsence />
-                        )}
-                        <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
-                        <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
-                        <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
-                        {payrollData.cotisationSyndicale > 0 && <PaystubRow label={t('cotisationSyndicaleLabel')} value={formatCurrency(payrollData.cotisationSyndicale)} />}
-                        <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
-                        <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
-                        <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
+                {/* Print & Desktop View */}
+                <Card className="hidden md:block print-container print:shadow-none print:border-none">
+                    <CardContent className="p-6">
+                         <header className="flex justify-between items-start mb-8 border-b pb-6">
+                            <div className="flex items-center gap-4">
+                                <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
+                                <div>
+                                    <h2 className="text-2xl font-bold text-primary print-primary">{t('appName')}</h2>
+                                    <p className="text-sm print-muted">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yy')} - {format(payrollData.cycleEnd, 'dd/MM/yy')}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-semibold">{t('employeeLabel')}: {profile.name}</p>
+                                <p className="text-sm text-muted-foreground">{t('jobTitleLabel')}: {profile.profession ? t(`../ProfilePage.professions.${profile.profession}`) : ''}</p>
+                            </div>
+                        </header>
                         
-                        <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
-                    </CardContent>
-                </Card>
-
-                 <Card className="bg-primary/10 border-primary">
-                    <CardContent className="p-4">
-                         <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold text-primary">{t('netPayableLabel')}</span>
-                            <span className="text-2xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
+                        <div className="grid grid-cols-5 gap-4 text-sm">
+                            <div className="col-span-3">
+                                <h3 className="font-bold mb-2 border-b pb-1">{t('gainsSectionTitle')}</h3>
+                                {payrollData.baseSalary > 0 && <PaystubRow label={t('baseSalaryLabel')} value={formatCurrency(payrollData.baseSalary)} />}
+                                {payrollData.seniorityBonus > 0 && <PaystubRow label={t('seniorityBonusLabel')} value={formatCurrency(payrollData.seniorityBonus)} />}
+                                {payrollData.attendanceBonus > 0 && <PaystubRow label={t('attendanceBonusLabel')} value={formatCurrency(payrollData.attendanceBonus)} />}
+                                {payrollData.performanceBonus > 0 && <PaystubRow label={t('performanceBonusLabel')} value={formatCurrency(payrollData.performanceBonus)} />}
+                                {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                                    <PaystubRow key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} value={formatCurrency(tier.payout)} />
+                                ))}
+                                {payrollData.transportBonus > 0 && <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />}
+                                {payrollData.housingBonus > 0 && <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />}
+                                 {payrollData.sickLeaveCount > 0 && <PaystubRow label={t('paidSickLeaveLabel')} value={`${payrollData.sickLeaveCount} jours`} />}
+                                <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary + payrollData.absenceDeduction)} isTotal />
+                            </div>
+                            <div className="col-span-2">
+                                <h3 className="font-bold mb-2 border-b pb-1">{t('deductionsSectionTitle')}</h3>
+                                {payrollData.absenceDeduction > 0 && <PaystubRow label={t('absenceDeductionLabel')} value={`${formatCurrency(payrollData.absenceDeduction)}`} isAbsence />}
+                                <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
+                                <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
+                                <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
+                                {payrollData.cotisationSyndicale > 0 && <PaystubRow label={t('cotisationSyndicaleLabel')} value={formatCurrency(payrollData.cotisationSyndicale)} />}
+                                <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
+                                <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
+                                <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
+                                <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
+                            </div>
                         </div>
+
+                        <div className="mt-8 pt-4 border-t-2 border-primary">
+                            <div className="flex justify-between items-center max-w-sm ml-auto">
+                                <span className="text-xl font-bold text-primary">{t('netToPayLabel')}</span>
+                                <span className="text-3xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
+                            </div>
+                        </div>
+
                     </CardContent>
                 </Card>
-
                 <p className="text-xs text-center text-muted-foreground pt-4 no-print">{t('footerText')}</p>
             </div>
         </div>

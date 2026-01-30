@@ -60,6 +60,11 @@ service cloud.firestore {
         allow create: if isOwner(userId);
         allow read, list, update, delete: if false;
       }
+
+      match /attendanceOverrides/{overrideId} {
+        // Only admins can read or write attendance status.
+        allow read, write: if isAdmin();
+      }
     }
 
     // --------------------------------------------------------------------

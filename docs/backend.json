@@ -185,6 +185,25 @@
       "required": [
         "autoClockInEnabled"
       ]
+    },
+    "AttendanceOverride": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AttendanceOverride",
+      "type": "object",
+      "description": "Stores an override for a user's daily attendance status.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "The overridden status for the day.",
+          "enum": [
+            "unjustified_absence",
+            "sick_leave"
+          ]
+        }
+      },
+      "required": [
+        "status"
+      ]
     }
   },
   "auth": {
@@ -226,6 +245,26 @@
             {
               "name": "timeEntryId",
               "description": "The unique identifier for the time entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/attendanceOverrides/{overrideId}",
+        "definition": {
+          "entityName": "AttendanceOverride",
+          "schema": {
+            "$ref": "#/backend/entities/AttendanceOverride"
+          },
+          "description": "Stores manual attendance status overrides set by an admin. The document ID should be the date in 'YYYY-MM-DD' format.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The user's UID."
+            },
+            {
+              "name": "overrideId",
+              "description": "The date of the override in 'YYYY-MM-DD' format."
             }
           ]
         }
