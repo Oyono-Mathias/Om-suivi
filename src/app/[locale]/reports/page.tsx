@@ -337,41 +337,33 @@ export default function ReportsPage() {
     try {
         const now = new Date();
         const hireDate = parseISO(profile.hireDate);
-
-        // Seniority bonus calculation
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
+        
         if (seniorityYears >= 5) {
-            // 2 days bonus after 5 years, plus 1 day for every 2 additional years.
-            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2);
+            senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2);
         }
-
-        // Base days calculation for the current cycle
+        
         let cycleStartDate;
-        const parsedLeaveStartDate = profile.leaveStartDate ? parseISO(profile.leaveStartDate) : null;
-
-        // A cycle resets on the leave start date.
-        // If not set, or in the future, we look at the hire date anniversary.
-        if (parsedLeaveStartDate && parsedLeaveStartDate < now) {
-            cycleStartDate = parsedLeaveStartDate;
+        const lastAnniversary = new Date(now.getFullYear(), hireDate.getMonth(), hireDate.getDate());
+        if (lastAnniversary > now) {
+            cycleStartDate = new Date(now.getFullYear() - 1, hireDate.getMonth(), hireDate.getDate());
         } else {
-            // Default to the last hire date anniversary.
-            cycleStartDate = new Date(now.getFullYear(), hireDate.getMonth(), hireDate.getDate());
-            if (cycleStartDate > now) {
-                cycleStartDate.setFullYear(cycleStartDate.getFullYear() - 1);
-            }
+            cycleStartDate = lastAnniversary;
         }
 
-        // The number of full months passed since the cycle started.
+        const lastLeaveStartDate = profile.leaveStartDate ? parseISO(profile.leaveStartDate) : null;
+        if (lastLeaveStartDate && lastLeaveStartDate > cycleStartDate) {
+            cycleStartDate = lastLeaveStartDate;
+        }
+
         const monthsWorkedInCycle = differenceInMonths(now, cycleStartDate);
         const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
-        const totalDays = baseDays + senioritySurplus;
-
         return {
-            baseDays,
-            senioritySurplus,
-            totalDays
+            baseDays: baseDays,
+            senioritySurplus: senioritySurplus,
+            totalDays: baseDays + senioritySurplus,
         };
     } catch (e) {
         console.error("Could not parse date for leave calculation", e);
