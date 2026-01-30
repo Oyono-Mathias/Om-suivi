@@ -38,6 +38,7 @@ import type { Profile, AbsenceJustification } from "@/lib/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileBottomNav from "./mobile-bottom-nav";
 import { Skeleton } from "./ui/skeleton";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -53,6 +54,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [firestore, user]);
 
   const { data: profile } = useDoc<Profile>(userProfileRef);
+
+  const userAvatar = PlaceHolderImages.find(p => p.id === 'mathias-oyono');
 
   const pendingJustificationsQuery = useMemoFirebase(() => {
     if (!firestore || profile?.role !== 'admin') return null;
@@ -106,7 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {user && (
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user.photoURL || "https://picsum.photos/seed/101/100/100"} data-ai-hint="person portrait" alt={user.displayName || t('user')} />
+                  <AvatarImage src={user.photoURL || userAvatar?.imageUrl} data-ai-hint={userAvatar?.imageHint || "person portrait"} alt={user.displayName || t('user')} />
                   <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
@@ -166,7 +169,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
              <div className="flex items-center gap-2">
                 <Link href="/profile">
                     <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.photoURL || "https://picsum.photos/seed/101/100/100"} alt={user?.displayName || t('user')} />
+                    <AvatarImage src={user?.photoURL || userAvatar?.imageUrl} data-ai-hint={userAvatar?.imageHint || "person portrait"} alt={user?.displayName || t('user')} />
                     <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                 </Link>
@@ -216,7 +219,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {user && (
                 <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.photoURL || "https://picsum.photos/seed/101/100/100"} data-ai-hint="person portrait" alt={user.displayName || t('user')} />
+                    <AvatarImage src={user.photoURL || userAvatar?.imageUrl} data-ai-hint={userAvatar?.imageHint || "person portrait"} alt={user.displayName || t('user')} />
                     <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                     <span className="font-medium text-sm text-sidebar-foreground truncate">{user.displayName || user.email}</span>

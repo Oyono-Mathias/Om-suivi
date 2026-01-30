@@ -23,6 +23,19 @@ import { fr, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+const avatarPlaceholders = PlaceHolderImages.filter(p => p.description.includes('Avatar'));
+
+const simpleHash = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+};
 
 function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void }) {
   const t = useTranslations('TeamPage');
@@ -56,6 +69,13 @@ function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void
     }
   }, [latestEntries, isLoading, t, dateFnsLocale]);
 
+  const userAvatar = useMemo(() => {
+    if (avatarPlaceholders.length === 0) return null;
+    const hash = simpleHash(user.id);
+    const index = hash % avatarPlaceholders.length;
+    return avatarPlaceholders[index];
+  }, [user.id]);
+
   const professionLabel = user.profession ? tProfile(`professions.${user.profession}`) : '';
 
   if(isLoading) {
@@ -74,7 +94,7 @@ function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void
     <Card onClick={onClick} className={cn("flex items-center p-4 gap-4", onClick && "cursor-pointer hover:bg-muted/50 transition-colors")}>
       <div className="relative">
         <Avatar className="h-12 w-12">
-          <AvatarImage src={`https://picsum.photos/seed/${user.id.substring(0, 5)}/100/100`} alt={user.name} />
+          <AvatarImage src={userAvatar?.imageUrl} data-ai-hint={userAvatar?.imageHint} alt={user.name} />
           <AvatarFallback>{user.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
         </Avatar>
         <span className={cn(
