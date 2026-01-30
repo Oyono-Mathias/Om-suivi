@@ -262,7 +262,8 @@
     "announcementDialogDescription": "Ce message sera affiché sur le tableau de bord de tous les utilisateurs.",
     "messageLabel": "Votre message",
     "sendButton": "Envoyer",
-    "announcementSentSuccess": "Annonce envoyée."
+    "announcementSentSuccess": "Annonce envoyée.",
+    "leaveAnnouncement": "{name} est en congé à partir d'aujourd'hui ! Bon repos à lui/elle !"
   },
   "AdminPage": {
     "title": "Administration",
@@ -409,5 +410,10 @@
     "managerSignature": "Le Responsable Hiérarchique",
     "directorSignature": "La Direction",
     "goToLeaveRequest": "Générer une demande de congé"
+  },
+  "LeaveWelcomeDialog": {
+    "title": "Bonnes vacances, {name} !",
+    "description": "Profitez bien de vos {days} jours de repos bien mérités. On se revoit le {resumeDate} !",
+    "closeButton": "Compris"
   }
 }

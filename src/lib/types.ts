@@ -80,3 +80,11 @@ export interface Announcement {
   authorName: string;
   createdAt: any; // serverTimestamp
 }
+
+export interface LeaveAnnouncement {
+  id: string;
+  userId: string;
+  userName: string;
+  leaveStartDate: string; // YYYY-MM-DD
+  createdAt: any; // serverTimestamp
+}

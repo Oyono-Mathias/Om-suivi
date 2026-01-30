@@ -39,7 +39,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocum
 import { doc, collection, query, orderBy, limit, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import type { TimeEntry, Profile, Shift, GlobalSettings, Announcement } from '@/lib/types';
 import { shifts } from '@/lib/shifts';
-import { format, parseISO, differenceInMinutes, addHours, differenceInHours } from 'date-fns';
+import { format, parseISO, differenceInMinutes, addHours, differenceInHours, isSameDay, startOfDay, getDay, differenceInYears } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { Loader2, Briefcase, Megaphone } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -51,6 +51,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from '@/navigation';
 import { useAd } from '@/context/AdContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import LeaveWelcomeDialog from '@/components/leave-welcome-dialog';
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
 
@@ -88,6 +89,8 @@ export default function TimeTrackingPage() {
   const [isInWorkZone, setIsInWorkZone] = useState<boolean | null>(null);
   
   const [recoveryData, setRecoveryData] = useState<ActiveShiftState | null>(null);
+  const [showLeaveWelcome, setShowLeaveWelcome] = useState(false);
+  const [leaveWelcomeData, setLeaveWelcomeData] = useState<{ days: number; resumeDate: string; } | null>(null);
 
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -198,6 +201,72 @@ export default function TimeTrackingPage() {
         lastSeenISO: new Date().toISOString(),
       });
   }, [setIsShiftActive]);
+
+  const addWorkingDays = useCallback((startDate: Date, daysToAdd: number): Date => {
+    let currentDate = new Date(startDate);
+    let daysAdded = 0;
+    while (daysAdded < Math.floor(daysToAdd)) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        if (getDay(currentDate) !== 0) {
+            daysAdded++;
+        }
+    }
+    return currentDate;
+  }, []);
+
+  // Effect for leave welcome message
+  useEffect(() => {
+    const checkLeaveStart = async () => {
+      if (!profile?.leaveStartDate || !profile.hireDate || !user || !firestore) return;
+
+      try {
+        const leaveStartDate = parseISO(profile.leaveStartDate);
+        const today = startOfDay(new Date());
+
+        if (isSameDay(leaveStartDate, today)) {
+          const leaveAnnouncementsRef = collection(firestore, 'leaveAnnouncements');
+          const q = query(leaveAnnouncementsRef, 
+            where('userId', '==', user.uid), 
+            where('leaveStartDate', '==', format(leaveStartDate, 'yyyy-MM-dd'))
+          );
+          const existingAnnouncement = await getDocs(q);
+
+          if (!existingAnnouncement.empty) {
+            return; // Announcement already made, no need to show popup or create another.
+          }
+
+          // Calculate leave details
+          const hireDate = parseISO(profile.hireDate);
+          const seniorityYears = differenceInYears(today, hireDate);
+          let senioritySurplus = 0;
+          if (seniorityYears >= 5) {
+            senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
+          }
+          const totalDays = 18 + senioritySurplus;
+          const resumeDate = addWorkingDays(leaveStartDate, totalDays);
+
+          setLeaveWelcomeData({
+            days: totalDays,
+            resumeDate: format(resumeDate, 'PPP', { locale: dateFnsLocale }),
+          });
+          setShowLeaveWelcome(true);
+
+          // Post announcement to team
+          await addDocumentNonBlocking(leaveAnnouncementsRef, {
+            userId: user.uid,
+            userName: profile.name,
+            leaveStartDate: format(leaveStartDate, 'yyyy-MM-dd'),
+            createdAt: serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        console.error("Could not process leave start date check:", e);
+      }
+    };
+
+    checkLeaveStart();
+  }, [profile, user, firestore, dateFnsLocale, addWorkingDays]);
+
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -602,7 +671,7 @@ export default function TimeTrackingPage() {
 
   return (
     <div className="space-y-6">
-       {latestAnnouncement && (
+      {latestAnnouncement && (
         <Alert>
           <Megaphone className="h-4 w-4" />
           <AlertTitle>{t('noticeBoardTitle', {authorName: latestAnnouncement.authorName})}</AlertTitle>
@@ -767,6 +836,16 @@ export default function TimeTrackingPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {leaveWelcomeData && profile && (
+        <LeaveWelcomeDialog
+          isOpen={showLeaveWelcome}
+          onClose={() => setShowLeaveWelcome(false)}
+          name={profile.name}
+          days={leaveWelcomeData.days}
+          resumeDate={leaveWelcomeData.resumeDate}
+        />
+      )}
     </div>
   );
 }

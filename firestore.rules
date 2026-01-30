@@ -94,5 +94,17 @@ service cloud.firestore {
       allow list, get: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
+
+    // --------------------------------------------------------------------
+    // Leave Announcements Collection
+    // --------------------------------------------------------------------
+
+    match /leaveAnnouncements/{announcementId} {
+      allow list, get: if isSignedIn();
+      // A user can only create a leave announcement for themselves.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Announcements are immutable.
+      allow update, delete: if false;
+    }
   }
 }

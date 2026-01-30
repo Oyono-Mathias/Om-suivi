@@ -2,9 +2,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
-import type { Profile, TimeEntry, Announcement } from '@/lib/types';
-import { Loader2, Send } from 'lucide-react';
+import { collection, query, orderBy, limit, serverTimestamp, where } from 'firebase/firestore';
+import type { Profile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
+import { Loader2, Send, PartyPopper } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { useTranslations, useLocale } from 'next-intl';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -124,6 +125,13 @@ export default function TeamPage() {
   const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('name')), [firestore]);
   const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<Profile>(allProfilesQuery);
 
+  const leaveAnnouncementsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    return query(collection(firestore, 'leaveAnnouncements'), where('leaveStartDate', '==', todayStr));
+  }, [firestore]);
+  const { data: leaveAnnouncements, isLoading: isLoadingLeaveAnnouncements } = useCollection<LeaveAnnouncement>(leaveAnnouncementsQuery);
+
   const isAdmin = currentUserProfile?.role === 'admin';
 
   const announcementSchema = z.object({
@@ -149,7 +157,7 @@ export default function TeamPage() {
     form.reset();
   };
 
-  const isLoading = isUserLoading || isLoadingProfiles || isLoadingCurrentUserProfile;
+  const isLoading = isUserLoading || isLoadingProfiles || isLoadingCurrentUserProfile || isLoadingLeaveAnnouncements;
 
   if (isLoading) {
     return (
@@ -185,6 +193,20 @@ export default function TeamPage() {
             </Button>
         )}
       </div>
+
+      {leaveAnnouncements && leaveAnnouncements.length > 0 && (
+          <div className="space-y-2">
+            {leaveAnnouncements.map(announcement => (
+              <Alert key={announcement.id} className="bg-primary/10 border-primary/20 text-primary-foreground">
+                <PartyPopper className="h-5 w-5 text-primary" />
+                <AlertTitle className="font-semibold">Congés !</AlertTitle>
+                <AlertDescription>
+                  {t('leaveAnnouncement', { name: announcement.userName })}
+                </AlertDescription>
+              </Alert>
+            ))}
+          </div>
+        )}
 
       <Card>
         <CardHeader>

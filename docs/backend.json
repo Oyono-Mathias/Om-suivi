@@ -235,6 +235,43 @@
         "authorName",
         "createdAt"
       ]
+    },
+    "LeaveAnnouncement": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LeaveAnnouncement",
+      "type": "object",
+      "description": "Represents an automated announcement when a user starts their annual leave.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the leave announcement."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who is on leave."
+        },
+        "userName": {
+          "type": "string",
+          "description": "The name of the user on leave."
+        },
+        "leaveStartDate": {
+          "type": "string",
+          "format": "date",
+          "description": "The start date of the leave."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the announcement was created."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "userName",
+        "leaveStartDate",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -344,6 +381,22 @@
             {
               "name": "announcementId",
               "description": "The unique identifier for the announcement."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/leaveAnnouncements/{announcementId}",
+        "definition": {
+          "entityName": "LeaveAnnouncement",
+          "schema": {
+            "$ref": "#/backend/entities/LeaveAnnouncement"
+          },
+          "description": "Stores automated announcements for when users go on leave.",
+          "params": [
+            {
+              "name": "announcementId",
+              "description": "The unique identifier for the leave announcement."
             }
           ]
         }

@@ -262,7 +262,8 @@
     "announcementDialogDescription": "This message will be displayed on the dashboard of all users.",
     "messageLabel": "Your message",
     "sendButton": "Send",
-    "announcementSentSuccess": "Announcement sent."
+    "announcementSentSuccess": "Announcement sent.",
+    "leaveAnnouncement": "{name} is on leave starting today! Enjoy the rest!"
   },
   "AdminPage": {
     "title": "Administration",
@@ -409,5 +410,10 @@
     "managerSignature": "The Line Manager",
     "directorSignature": "The Management",
     "goToLeaveRequest": "Generate Leave Request"
+  },
+  "LeaveWelcomeDialog": {
+    "title": "Happy Holidays, {name}!",
+    "description": "Enjoy your {days} well-deserved days off. See you on {resumeDate}!",
+    "closeButton": "Got it"
   }
 }
