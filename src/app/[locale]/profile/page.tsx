@@ -37,7 +37,7 @@ import { Loader2, MapPin, Paperclip } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { format, parseISO, differenceInCalendarMonths, differenceInYears } from "date-fns";
+import { format, parseISO, differenceInMonths, subDays, differenceInYears } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAd } from "@/context/AdContext";
 
@@ -245,7 +245,10 @@ export default function ProfilePage() {
         }
         
         // Base days calculation (1.5 days per month)
-        const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
+        // A cycle is from 26th to 25th. We add 1.5 days on the 26th.
+        // By subtracting 25 days, we shift the cycle to be from the 1st to the end of the month.
+        // Then we can use differenceInMonths.
+        const monthsWorkedInCycle = differenceInMonths(subDays(now, 25), subDays(cycleStartDate, 25));
         const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
         // Total
