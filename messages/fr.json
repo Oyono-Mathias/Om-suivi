@@ -1,4 +1,3 @@
-
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
@@ -249,15 +248,14 @@
     "remarkPauseLimit": "Reprise Manuelle"
   },
   "TeamPage": {
-    "title": "Aperçu de l'Équipe",
-    "description": "Un résumé des heures travaillées par vos collègues cette semaine.",
-    "weeklySummaryTitle": "Résumé Hebdomadaire",
-    "weeklySummaryDescription": "Partage et résumé des données pour les collègues.",
-    "tableMember": "Membre",
-    "tableTotalHours": "Heures Totales",
-    "tableOvertimeHours": "Heures Sup.",
-    "noTeamTitle": "Vous n'êtes pas encore dans une équipe",
-    "noTeamDescription": "Contactez votre administrateur pour être ajouté à une équipe afin de voir les données de vos collègues."
+    "title": "Annuaire de l'équipe",
+    "description": "Voyez le statut en temps réel de tous les employés.",
+    "directoryTitle": "Employés",
+    "directoryDescription": "Liste de tous les employés et leur statut actuel.",
+    "noUsersFound": "Aucun employé trouvé.",
+    "statusOnline": "En ligne",
+    "statusOffline": "Hors ligne",
+    "lastSeen": "Vu à {time}"
   },
   "AdminPage": {
     "title": "Administration",

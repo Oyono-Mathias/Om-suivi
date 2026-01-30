@@ -1,24 +1,98 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Image from "next/image";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
-import type { TeamMember } from "@/lib/types";
-import { Loader2, Users } from "lucide-react";
-import { Link } from "@/navigation";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { Button } from "@/components/ui/button";
-import { useTranslations } from "next-intl";
-import { Skeleton } from "@/components/ui/skeleton";
+import React, { useMemo } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import type { Profile, TimeEntry } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
+import { Link } from '@/navigation';
+import { Button } from '@/components/ui/button';
+import { useTranslations, useLocale } from 'next-intl';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { format, parse } from 'date-fns';
+import { fr, enUS } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// WhatsApp Icon Component
+const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <title>WhatsApp</title>
+        <path d="M12.04 0C5.43 0 0 5.43 0 12.04c0 2.21.59 4.29 1.66 6.09L0 24l6.09-1.65c1.8.97 3.88 1.55 6.09 1.55 6.61 0 12.04-5.43 12.04-12.04C24.08 5.43 18.65 0 12.04 0zM12.04 22.08c-1.9 0-3.68-.52-5.19-1.42l-.37-.22-3.85 1.04 1.06-3.75-.24-.38a9.96 9.96 0 0 1-1.5-5.29c0-5.52 4.49-10.01 10.01-10.01s10.01 4.49 10.01 10.01-4.49 10.01-10.01 10.01zM17.47 14.38c-.3-.15-1.76-.87-2.03-1-.27-.11-.47-.15-.67.15-.2.3-.77.87-.94 1.04-.18.18-.35.2-.64.04-.3-.15-1.25-.46-2.38-1.47s-1.8-1.74-2.11-2.04-.26-.35-.11-.54c.15-.2.3-.35.45-.52.15-.18.2-.22.3-.37.1-.15.05-.3-.02-.45-.07-.15-.67-1.61-.92-2.2-.25-.58-.5-.5-.67-.5h-.58c-.2 0-.52.07-.79.37-.27.3-.92.9-.92 2.19s.94 2.54 1.06 2.71c.12.18 1.84 2.81 4.46 3.93 2.62 1.12 2.62.74 3.1.72.47-.02 1.52-.62 1.73-1.22.21-.6.21-1.11.15-1.22-.06-.11-.25-.18-.55-.33z"/>
+    </svg>
+);
+
+
+function UserStatusCard({ user }: { user: Profile }) {
+  const t = useTranslations('TeamPage');
+  const tProfile = useTranslations('ProfilePage');
+  const locale = useLocale();
+  const dateFnsLocale = locale === 'fr' ? fr : enUS;
+  const firestore = useFirestore();
+
+  const latestEntryQuery = useMemoFirebase(
+    () => query(collection(firestore, 'users', user.id, 'timeEntries'), orderBy('date', 'desc'), orderBy('startTime', 'desc'), limit(1)),
+    [firestore, user.id]
+  );
+  
+  const { data: latestEntries, isLoading } = useCollection<TimeEntry>(latestEntryQuery);
+
+  const statusInfo = useMemo(() => {
+    if (isLoading) return { isOnline: false, label: '...' };
+    if (!latestEntries || latestEntries.length === 0) return { isOnline: false, label: t('statusOffline') };
+    
+    const lastEntry = latestEntries[0];
+    const isOnline = !lastEntry.endTime;
+
+    if (isOnline) {
+      return { isOnline: true, label: t('statusOnline') };
+    } else {
+      const lastSeenTime = parse(lastEntry.endTime, 'HH:mm', new Date());
+      return {
+          isOnline: false,
+          label: t('lastSeen', { time: format(lastSeenTime, 'p', { locale: dateFnsLocale }) })
+      };
+    }
+  }, [latestEntries, isLoading, t, dateFnsLocale]);
+
+  const professionLabel = user.profession ? tProfile(`professions.${user.profession}`) : '';
+
+  if(isLoading) {
+    return (
+        <Card className="flex items-center p-4 gap-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+            </div>
+        </Card>
+    )
+  }
+
+  return (
+    <Card className="flex items-center p-4 gap-4">
+      <div className="relative">
+        <Avatar className="h-12 w-12">
+          <AvatarFallback>{user.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+        </Avatar>
+        <span className={cn(
+          "absolute bottom-0 right-0 block h-3.5 w-3.5 rounded-full border-2 border-card",
+          statusInfo.isOnline ? 'bg-green-500' : 'bg-gray-400'
+        )} />
+      </div>
+      <div className="flex-1">
+        <p className="font-medium">{user.name}</p>
+        <p className="text-sm text-muted-foreground">{professionLabel}</p>
+        <p className={cn("text-xs", statusInfo.isOnline ? 'text-green-400' : 'text-muted-foreground')}>{statusInfo.label}</p>
+      </div>
+      <a href={`mailto:${user.email}`} aria-label={`Contact ${user.name}`} className="text-muted-foreground hover:text-primary transition-colors">
+        <WhatsAppIcon className="h-7 w-7 fill-current" />
+      </a>
+    </Card>
+  );
+}
+
 
 export default function TeamPage() {
   const t = useTranslations('TeamPage');
@@ -26,29 +100,12 @@ export default function TeamPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const teamsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'teams'), where('memberIds', 'array-contains', user.uid));
-  }, [firestore, user]);
+  const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('name')), [firestore]);
+  const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<Profile>(allProfilesQuery);
 
-  const { data: teams, isLoading: isLoadingTeams } = useCollection(teamsQuery);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const isLoading = isUserLoading || isLoadingProfiles;
 
-  useEffect(() => {
-    setIsClient(true);
-    const generatedMembers = PlaceHolderImages.filter(p => p.description.startsWith('Avatar for ')).map(p => ({
-        id: p.id,
-        name: p.description.replace('Avatar for ', ''),
-        avatarUrl: p.imageUrl,
-        avatarHint: p.imageHint,
-        totalHours: Math.random() * 40 + 5,
-        overtimeHours: Math.random() * 10
-    }));
-    setTeamMembers(generatedMembers);
-  }, []);
-
-  if (isUserLoading || isLoadingTeams) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin" />
@@ -66,17 +123,6 @@ export default function TeamPage() {
       </div>
     );
   }
-  
-  if (!teams || teams.length === 0) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen gap-4 text-center">
-        <Users className="w-16 h-16 text-muted-foreground" />
-        <h2 className="text-2xl font-bold">{t('noTeamTitle')}</h2>
-        <p className="text-muted-foreground max-w-sm">{t('noTeamDescription')}</p>
-      </div>
-    )
-  }
-
 
   return (
     <div className="space-y-6">
@@ -87,44 +133,19 @@ export default function TeamPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('weeklySummaryTitle')}</CardTitle>
-          <CardDescription>{t('weeklySummaryDescription')}</CardDescription>
+          <CardTitle>{t('directoryTitle')}</CardTitle>
+          <CardDescription>{t('directoryDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
            <div className="space-y-4">
-              {isClient && teamMembers.length > 0 ? (
-                teamMembers.map((member) => (
-                  <Card key={member.id} className="flex items-center p-4 gap-4">
-                    <Avatar className="h-12 w-12">
-                          <AvatarImage asChild src={member.avatarUrl}>
-                            <Image src={member.avatarUrl} alt={member.name} width={48} height={48} data-ai-hint={member.avatarHint} />
-                          </AvatarImage>
-                          <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                          <p className="font-medium">{member.name}</p>
-                          <div className="flex justify-between text-sm text-muted-foreground">
-                              <span>{t('tableTotalHours')}:</span>
-                              <span>{member.totalHours.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm text-muted-foreground">
-                              <span>{t('tableOvertimeHours')}:</span>
-                              <span className="font-medium text-destructive">{member.overtimeHours.toFixed(2)}</span>
-                          </div>
-                      </div>
-                  </Card>
+              {allProfiles && allProfiles.length > 0 ? (
+                allProfiles
+                  .map((profile) => (
+                    <UserStatusCard key={profile.id} user={profile} />
                 ))
               ) : (
-                <div className="space-y-4">
-                  {PlaceHolderImages.filter(p => p.description.startsWith('Avatar for ')).map((p) => (
-                      <Card key={p.id} className="flex items-center p-4 gap-4">
-                          <Skeleton className="h-12 w-12 rounded-full" />
-                          <div className="flex-1 space-y-2">
-                              <Skeleton className="h-4 w-3/4" />
-                              <Skeleton className="h-4 w-1/2" />
-                          </div>
-                      </Card>
-                  ))}
+                <div className="text-center h-24 flex items-center justify-center">
+                  <p>{t('noUsersFound')}</p>
                 </div>
               )}
             </div>

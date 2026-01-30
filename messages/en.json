@@ -1,4 +1,3 @@
-
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
@@ -249,15 +248,14 @@
     "remarkPauseLimit": "Manual Resume"
   },
   "TeamPage": {
-    "title": "Team Overview",
-    "description": "A summary of hours worked by your colleagues this week.",
-    "weeklySummaryTitle": "Weekly Summary",
-    "weeklySummaryDescription": "Data sharing and summarization for colleagues.",
-    "tableMember": "Member",
-    "tableTotalHours": "Total Hours",
-    "tableOvertimeHours": "Overtime Hours",
-    "noTeamTitle": "You are not yet on a team",
-    "noTeamDescription": "Contact your administrator to be added to a team to see your colleagues' data."
+    "title": "Team Directory",
+    "description": "See the real-time status of all employees.",
+    "directoryTitle": "Employees",
+    "directoryDescription": "A list of all employees and their current status.",
+    "noUsersFound": "No users found.",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "lastSeen": "Last seen at {time}"
   },
   "AdminPage": {
     "title": "Administration",
