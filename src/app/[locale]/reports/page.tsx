@@ -41,7 +41,7 @@ import { Loader2, ShieldAlert, HeartPulse, Paperclip, HelpCircle } from "lucide-
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
-import { getPayrollCycle, cn } from "@/lib/utils";
+import { getPayrollCycle, cn, formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -452,7 +452,7 @@ export default function ReportsPage() {
                     <p>
                     {t('absenceAlertDescription', {
                         count: absencePenalty.unjustifiedCount,
-                        penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
+                        penalty: formatCurrency(absencePenalty.totalPenalty)
                     })}
                     </p>
                     <div className="flex gap-2">
@@ -514,7 +514,7 @@ export default function ReportsPage() {
                 <Card className="p-4 text-center bg-primary/5">
                     <CardDescription className="text-primary">{t('estimatedPayout')}</CardDescription>
                     <CardTitle className="text-4xl text-primary font-mono tabular-nums">
-                      {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} 
+                      {formatCurrency(reportSummary.estimatedPayout)} 
                       <span className="text-2xl font-medium"> {profile.currency}</span>
                     </CardTitle>
                 </Card>

@@ -519,7 +519,7 @@
     "baseLabel": "Base",
     "seniorityLabel": "Seniority",
     "totalDays": "Total Days",
-    "annualGrossFormula": "Your allowance corresponds to 1/12th of your annual earnings",
+    "annualGrossFormula": "Your allowance corresponds to 1/12th of your total gross earnings for the reference period (base salary, overtime, bonuses). This amount may therefore vary from year to year.",
     "statusTaken": "Taken",
     "statusToBeTaken": "To be taken",
     "generateRequestButton": "Generate Leave Request",

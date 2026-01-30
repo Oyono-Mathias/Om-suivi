@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { getPayrollCycle } from '@/lib/utils';
+import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
 const DEFAULT_OVERTIME_RATES = {
@@ -243,8 +243,6 @@ export default function BulletinPage() {
     if (!user) return <div className="flex flex-col justify-center items-center h-screen gap-4"><p className="text-xl">{tShared('pleaseLogin')}</p><Link href="/login"><Button>{tShared('loginButton')}</Button></Link></div>;
     if (!profile || profile.monthlyBaseSalary === 0 || !profile.hireDate || !profile.leaveStartDate) return <div className="flex flex-col justify-center items-center h-screen gap-4 text-center"><p className="text-xl">{tShared('pleaseCompleteProfile')}</p><p className="text-muted-foreground max-w-sm">Assurez-vous que le salaire de base, la date d'embauche et la date de début du cycle de congé sont définis dans votre profil.</p><Link href="/profile"><Button>{tShared('goToProfileButton')}</Button></Link></div>;
     if (!payrollData) return <div className="space-y-6 pb-28"><h1 className="text-3xl font-headline font-bold">{t('title')}</h1><p className="text-muted-foreground">{t('noData')}</p></div>;
-    
-    const formatCurrency = (amount: number) => Math.round(amount).toLocaleString('fr-FR');
     
     return (
         <div className="space-y-6">

@@ -39,3 +39,7 @@ export const getPayrollCycle = (date: Date) => {
   }
   return { start, end };
 };
+
+export const formatCurrency = (amount: number) => {
+  return (Math.round(amount / 100) * 100).toLocaleString('fr-FR');
+};

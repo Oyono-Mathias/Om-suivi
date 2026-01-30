@@ -8,7 +8,7 @@ import { differenceInYears, parseISO, format, addYears, startOfYear, getMonth } 
 import { fr, enUS } from "date-fns/locale";
 import type { Profile, LeaveAnnouncement } from '@/lib/types';
 import { Link } from '@/navigation';
-
+import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -127,8 +127,8 @@ export default function DetailCongesScreen() {
                                     <CardHeader><CardTitle className="text-base">{t('financialSectionTitle')}</CardTitle></CardHeader>
                                     <CardContent>
                                         <div className="p-4 bg-muted/50 rounded-md text-center">
-                                            <p className="text-lg">{t('annualGrossFormula')}</p>
-                                            <p className="text-2xl font-bold text-primary mt-2">{data.payout.toLocaleString('fr-FR')} FCFA</p>
+                                            <p className="text-sm">{t('annualGrossFormula')}</p>
+                                            <p className="text-2xl font-bold text-primary mt-2">{formatCurrency(data.payout)} FCFA</p>
                                         </div>
                                     </CardContent>
                                 </Card>

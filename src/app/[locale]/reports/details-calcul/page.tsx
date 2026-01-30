@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import type { Profile, GlobalSettings, TimeEntry, AttendanceOverride } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
-import { getPayrollCycle } from '@/lib/utils';
+import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import { shifts } from '@/lib/shifts';
 import { parseISO, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, getDay, parse, differenceInYears, eachDayOfInterval, format } from "date-fns";
 import { Loader2 } from 'lucide-react';
@@ -232,8 +232,6 @@ export default function DetailsCalculPage() {
     if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
     if (!user) return <div className="flex flex-col justify-center items-center h-screen gap-4"><p className="text-xl">{tShared('pleaseLogin')}</p><Link href="/login"><Button>{tShared('loginButton')}</Button></Link></div>;
     if (!profile || profile.monthlyBaseSalary === 0 || !profile.profession) return <div className="flex flex-col justify-center items-center h-screen gap-4"><p className="text-xl text-center">{tShared('pleaseCompleteProfile')}</p><Link href="/profile"><Button>{tShared('goToProfileButton')}</Button></Link></div>;
-
-    const formatCurrency = (amount: number) => Math.round(amount).toLocaleString('fr-FR');
 
     return (
         <div className="space-y-6">
