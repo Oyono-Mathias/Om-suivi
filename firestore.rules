@@ -50,7 +50,8 @@ service cloud.firestore {
       allow read, write: if isOwner(userId) || isAdmin();
 
       match /timeEntries/{timeEntryId} {
-        allow get, list: if isOwner(userId) || isAdmin();
+        allow get: if isOwner(userId) || isAdmin();
+        allow list: if isOwner(userId);
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
         allow update: if isExistingOwner(userId) || isAdmin();
         allow delete: if isExistingOwner(userId) || isAdmin();
