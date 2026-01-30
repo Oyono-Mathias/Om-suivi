@@ -238,9 +238,8 @@ export default function ProfilePage() {
         // Seniority bonus calculation
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
-        if (seniorityYears >= 5) {
-            // 2 days bonus after 5 years, plus 1 day for every 2 additional years.
-            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2);
+        if (seniorityYears >= 3) {
+            senioritySurplus = 4;
         }
 
         // Base days calculation for the current cycle

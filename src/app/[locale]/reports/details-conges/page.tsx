@@ -53,8 +53,8 @@ export default function DetailCongesScreen() {
 
                 const seniorityYears = differenceInYears(referencePeriodEnd, hireDate);
                 let senioritySurplus = 0;
-                if (seniorityYears >= 5) {
-                    senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2);
+                if (seniorityYears >= 3) {
+                    senioritySurplus = 4;
                 }
 
                 const baseDays = 18;
@@ -62,7 +62,7 @@ export default function DetailCongesScreen() {
                 
                 // Simplified payout calculation using current base salary
                 const annualGrossSalary = profile.monthlyBaseSalary * 12;
-                const leavePayout = annualGrossSalary / 16;
+                const leavePayout = annualGrossSalary / 12;
                 
                 const wasLeaveTaken = leaveAnnouncements.some(announcement => {
                     const leaveDate = parseISO(announcement.leaveStartDate);
@@ -126,10 +126,10 @@ export default function DetailCongesScreen() {
                                 <Card>
                                     <CardHeader><CardTitle className="text-base">{t('financialSectionTitle')}</CardTitle></CardHeader>
                                     <CardContent>
-                                        <div className="p-4 bg-muted/50 rounded-md font-mono text-center text-lg">
-                                            {data.annualGross.toLocaleString('fr-FR')} FCFA / 16 = <span className="font-bold text-primary">{data.payout.toLocaleString('fr-FR')} FCFA</span>
+                                        <div className="p-4 bg-muted/50 rounded-md text-center">
+                                            <p className="text-lg">{t('annualGrossFormula')}</p>
+                                            <p className="text-2xl font-bold text-primary mt-2">{data.payout.toLocaleString('fr-FR')} FCFA</p>
                                         </div>
-                                         <p className="text-xs text-muted-foreground mt-2 text-center">Note: Montant estimé sur la base de votre salaire actuel, hors primes et heures supplémentaires.</p>
                                     </CardContent>
                                 </Card>
                             </div>
