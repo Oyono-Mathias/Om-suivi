@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -15,6 +15,7 @@ import { shifts } from '@/lib/shifts';
 import { getPayrollCycle } from '@/lib/utils';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import NetPayableCard from '@/components/net-payable-card';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -105,9 +106,9 @@ export default function BulletinPage() {
 
         const entriesByWeek: { [week: number]: TimeEntry[] } = {};
         cycleEntries.forEach(entry => {
-            const week = getWeek(parseISO(entry.date), { weekStartsOn: 1 });
-            if (!entriesByWeek[week]) entriesByWeek[week] = [];
-            entriesByWeek[week].push(entry);
+            const weekNum = getWeek(parseISO(entry.date), { weekStartsOn: 1 });
+            if (!entriesByWeek[weekNum]) entriesByWeek[weekNum] = [];
+            entriesByWeek[weekNum].push(entry);
         });
 
         for (const weekEntries of Object.values(entriesByWeek)) {
@@ -124,8 +125,8 @@ export default function BulletinPage() {
                 
                 const shift = shifts.find(s => s.id === entry.shiftId);
                 if (shift) {
-                    const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
-                    let shiftEndDateTime = parse(`${entry.date} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    const shiftStartDateTime = parseISO(`${entry.date}T${shift.startTime}`);
+                    let shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}`);
                     if (shiftEndDateTime <= shiftStartDateTime) shiftEndDateTime = addDays(shiftEndDateTime, 1);
                     
                     const overtimeStartDateTime = shiftEndDateTime;
@@ -167,35 +168,15 @@ export default function BulletinPage() {
         breakdown.holiday.payout = (breakdown.holiday.minutes / 60) * hourlyRate * breakdown.holiday.rate;
         
         const totalOvertimePayout = Object.values(breakdown).reduce((sum, tier) => sum + tier.payout, 0);
-        
-        // --- Seniority, Absence, and Fixed Bonuses ---
-        let seniorityBonus = 0;
-        if (profile.hireDate) {
-            const yearsOfService = differenceInYears(new Date(), parseISO(profile.hireDate));
-            if (yearsOfService >= 2) {
-                const bonusTiers = Math.floor(yearsOfService / 2);
-                seniorityBonus = bonusTiers * (baseSalary * 0.02);
-            }
-        }
-        
-        const workDaysInCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(day => getDay(day) !== 0 && getDay(day) !== 6); // Mon-Fri
-        const workedDays = new Set(cycleEntries.map(entry => entry.date));
-        const absenceCount = workDaysInCycle.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
 
-        let attendanceBonus = 3000;
-        let performanceBonus = 4000;
-        let absenceDeduction = 0;
+        // --- Fixed Bonuses ---
         const transportBonus = 18325;
         const housingBonus = baseSalary * 0.1; // 10% of base salary
 
-        if (absenceCount > 0) {
-            attendanceBonus = 0;
-            performanceBonus = 0;
-            const dailySalaryDeduction = baseSalary / 21.67; // Avg working days
-            absenceDeduction = absenceCount * dailySalaryDeduction;
-        }
-
-        const grossSalary = baseSalary + seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus + totalOvertimePayout - absenceDeduction;
+        // Per the user's latest provided physical paystub, we are simplifying the logic
+        // and removing seniority, attendance, performance, and absence deductions for now
+        // to align with the provided document.
+        const grossSalary = baseSalary + totalOvertimePayout + transportBonus + housingBonus;
 
         // Deductions
         const cnpsBase = grossSalary - transportBonus - housingBonus;
@@ -217,7 +198,7 @@ export default function BulletinPage() {
         const totalOvertimeHours = Object.values(breakdown).reduce((acc, tier) => acc + tier.minutes, 0) / 60;
 
         return {
-            cycleStart, cycleEnd, baseSalary, seniorityBonus, attendanceBonus, performanceBonus, transportBonus, housingBonus, absenceDeduction,
+            cycleStart, cycleEnd, baseSalary, transportBonus, housingBonus,
             overtimeBreakdown: breakdown, hourlyRate, totalOvertimePayout, grossSalary,
             cnpsDeduction, cnpsBase, cacDeduction, cacBase, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
             totalDeductions, netPay, totalHours, totalOvertimeHours
@@ -274,10 +255,14 @@ export default function BulletinPage() {
                 @media print {
                     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .no-print { display: none !important; }
-                    .print-container { padding: 0 !important; border: none !important; box-shadow: none !important; }
                     main { padding: 0 !important; }
+                    .print-container { padding: 0 !important; border: none !important; box-shadow: none !important; background-color: white !important; color: black !important; }
                     .print-table { font-size: 9px; }
                     .print-table th, .print-table td { padding: 4px 6px; }
+                    .print-header { color: black !important; }
+                    .print-muted { color: #666 !important; }
+                    .print-primary { color: #1E2A5D !important; }
+                    .print-border-b { border-bottom: 1px solid #ccc; }
                 }
             `}</style>
             <div className="flex flex-wrap items-center justify-between gap-4 no-print">
@@ -290,125 +275,117 @@ export default function BulletinPage() {
                 </div>
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
+            
+            {/* Mobile View */}
+            <div className="space-y-4 sm:hidden no-print">
+                <NetPayableCard netPay={payrollData.netPay} />
+                <Card>
+                    <CardHeader><CardTitle>{t('gainsSectionTitle')}</CardTitle></CardHeader>
+                    <CardContent>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between"><span>{t('baseSalaryLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.baseSalary)}</span></div>
+                             {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) =>
+                                <div className="flex justify-between" key={`gain-mob-${key}`}>
+                                    <span>{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})}</span>
+                                    <span className="font-mono">{formatCurrency(tier.payout)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between"><span>{t('transportBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.transportBonus)}</span></div>
+                            <div className="flex justify-between"><span>{t('housingBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.housingBonus)}</span></div>
+                            <div className="flex justify-between font-bold pt-2 border-t"><span>{t('grossSalaryLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span></div>
+                        </div>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader><CardTitle>{t('deductionsSectionTitle')}</CardTitle></CardHeader>
+                    <CardContent>
+                         <div className="space-y-2 text-sm">
+                            <div className="flex justify-between"><span>{t('cnpsLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cnpsDeduction)}</span></div>
+                            <div className="flex justify-between"><span>{t('cacLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cacDeduction)}</span></div>
+                            <div className="flex justify-between"><span>{t('redevanceCRTVLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.redevanceCRTV)}</span></div>
+                            {payrollData.cotisationSyndicale > 0 && <div className="flex justify-between"><span>{t('cotisationSyndicaleLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cotisationSyndicale)}</span></div>}
+                            <div className="flex justify-between"><span>{t('irppLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.irppDeduction)}</span></div>
+                            <div className="flex justify-between"><span>{t('cacSurIRPPLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cacSurIRPP)}</span></div>
+                            <div className="flex justify-between"><span>{t('communalTaxLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.taxeCommunale)}</span></div>
+                            <div className="flex justify-between font-bold pt-2 border-t"><span>{t('totalDeductionsLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.totalDeductions)}</span></div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-            <div className="p-0 sm:p-6 sm:border sm:rounded-lg sm:bg-card sm:text-card-foreground print-container">
-                <header className="hidden sm:flex justify-between items-start mb-6 border-b pb-4">
-                    <div>
-                        <Image src="/logo-om.png" alt="Company Logo" width={48} height={48} className="mb-2" />
-                        <h2 className="text-2xl font-bold text-primary font-headline">{t('title')}</h2>
-                        <p className="text-sm">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yy')} - {format(payrollData.cycleEnd, 'dd/MM/yy')}</p>
-                    </div>
-                    <div className='text-right'>
-                        <p className="font-semibold">{profile.name}</p>
-                        <p className="text-sm text-muted-foreground">{t('jobTitleLabel')}: {professionLabel}</p>
-                    </div>
-                </header>
+            {/* Desktop and Print View */}
+            <div className="print-container hidden sm:block">
+                <div className="border rounded-lg p-2 sm:p-8 bg-card text-card-foreground print:border-none print:shadow-none print:rounded-none">
+                    <header className="flex justify-between items-start mb-8 border-b pb-6 print:border-b print-header">
+                        <div className="flex items-center gap-4">
+                           <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
+                            <div>
+                                <h2 className="text-2xl font-bold text-primary print-primary">{t('appName')}</h2>
+                                <p className="text-sm print-muted">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yy')} - {format(payrollData.cycleEnd, 'dd/MM/yy')}</p>
+                            </div>
+                        </div>
+                        <div className='text-right'>
+                            <p className="font-semibold">{profile.name}</p>
+                            <p className="text-sm text-muted-foreground print-muted">{t('jobTitleLabel')}: {professionLabel}</p>
+                        </div>
+                    </header>
 
-                <div className="space-y-4 sm:hidden">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{t('gainsSectionTitle')}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between"><span>{t('baseSalaryLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.baseSalary)}</span></div>
-                                {payrollData.seniorityBonus > 0 && <div className="flex justify-between"><span>{t('seniorityBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.seniorityBonus)}</span></div>}
+                    <div className="overflow-x-auto print-table">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-2/5">{t('tableDesignation')}</TableHead>
+                                    <TableHead className="text-right">{t('tableNumber')}</TableHead>
+                                    <TableHead className="text-right">{t('tableBase')}</TableHead>
+                                    <TableHead className="text-right">{t('tableRate')}</TableHead>
+                                    <TableHead className="text-right">{t('tableGain')}</TableHead>
+                                    <TableHead className="text-right">{t('tableDeduction')}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {renderRow(t('baseSalaryLabel'), "30,00", (payrollData.baseSalary / 30).toFixed(2), null, payrollData.baseSalary, null)}
                                 {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) =>
-                                    <div className="flex justify-between" key={`gain-${key}`}>
-                                        <span>{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})}</span>
-                                        <span className="font-mono">{formatCurrency(tier.payout)}</span>
-                                    </div>
+                                   React.cloneElement(
+                                        renderRow(t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)}), (tier.minutes/60).toFixed(2), payrollData.hourlyRate, tier.rate*100, tier.payout, null),
+                                        { key: `overtime-tbl-${key}` }
+                                    )
                                 )}
-                                {payrollData.attendanceBonus > 0 && <div className="flex justify-between"><span>{t('attendanceBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.attendanceBonus)}</span></div>}
-                                {payrollData.performanceBonus > 0 && <div className="flex justify-between"><span>{t('performanceBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.performanceBonus)}</span></div>}
-                                <div className="flex justify-between"><span>{t('transportBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.transportBonus)}</span></div>
-                                <div className="flex justify-between"><span>{t('housingBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.housingBonus)}</span></div>
-                                {payrollData.absenceDeduction > 0 && <div className="flex justify-between text-destructive"><span>{t('absenceDeductionLabel')}</span> <span className="font-mono">- {formatCurrency(payrollData.absenceDeduction)}</span></div>}
-                                <div className="flex justify-between font-bold pt-2 border-t"><span>{t('grossSalaryLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span></div>
+                                {renderRow(t('transportBonusLabel'), null, null, null, payrollData.transportBonus, null)}
+                                {renderRow(t('housingBonusLabel'), payrollData.baseSalary, 0.1, 10, payrollData.housingBonus, null)}
+                                
+                                {React.cloneElement(renderRow(t('grossMonthlySalaryLabel'), null, null, null, null, null, true), {key: "gross-title"})}
+                                {React.cloneElement(renderRow('', null, null, null, payrollData.grossSalary, null, true), {key: "gross-value"})}
+                                
+                                <TableRow><TableCell colSpan={6} className="h-4"></TableCell></TableRow>
+
+                                {renderRow(t('cnpsLabel'), payrollData.cnpsBase, '4.200', null, null, payrollData.cnpsDeduction)}
+                                {renderRow(t('cacLabel'), payrollData.cacBase, '1.000', null, null, payrollData.cacDeduction)}
+                                {renderRow(t('redevanceCRTVLabel'), null, null, null, null, payrollData.redevanceCRTV)}
+                                {payrollData.cotisationSyndicale > 0 && renderRow(t('cotisationSyndicaleLabel'), payrollData.baseSalary, '1.000', null, null, payrollData.cotisationSyndicale)}
+                                {renderRow(t('irppLabel'), null, null, null, null, payrollData.irppDeduction)}
+                                {renderRow(t('cacSurIRPPLabel'), payrollData.irppDeduction, '10.000', null, null, payrollData.cacSurIRPP)}
+                                {renderRow(t('communalTaxLabel'), null, null, null, null, payrollData.taxeCommunale)}
+
+                                {React.cloneElement(renderRow(t('totalDeductionsLabel'), null, null, null, null, null, true), {key: "deduc-title"})}
+                                {React.cloneElement(renderRow('', null, null, null, null, payrollData.totalDeductions, true), {key: "deduc-value"})}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    
+                    <div className="flex justify-end mt-8">
+                        <div className="border-2 border-primary print-border-b rounded-2xl p-4 w-full max-w-sm bg-primary/5">
+                            <div className="flex justify-between items-center font-bold text-lg">
+                                <span className="text-primary print-primary">{t('netToPayLabel')}</span>
+                                <span className="text-primary print-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} FCFA</span>
                             </div>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>{t('deductionsSectionTitle')}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <div className="space-y-2 text-sm">
-                                <div className="flex justify-between"><span>{t('cnpsLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cnpsDeduction)}</span></div>
-                                <div className="flex justify-between"><span>{t('cacLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cacDeduction)}</span></div>
-                                <div className="flex justify-between"><span>{t('redevanceCRTVLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.redevanceCRTV)}</span></div>
-                                {payrollData.cotisationSyndicale > 0 && <div className="flex justify-between"><span>{t('cotisationSyndicaleLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cotisationSyndicale)}</span></div>}
-                                <div className="flex justify-between"><span>{t('irppLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.irppDeduction)}</span></div>
-                                <div className="flex justify-between"><span>{t('cacSurIRPPLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cacSurIRPP)}</span></div>
-                                <div className="flex justify-between"><span>{t('communalTaxLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.taxeCommunale)}</span></div>
-                                <div className="flex justify-between font-bold pt-2 border-t"><span>{t('totalDeductionsLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.totalDeductions)}</span></div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
+
+                    <footer className="mt-8 pt-4 border-t print-border-b text-center text-xs text-muted-foreground print-muted">
+                        <p>{t('footerText')}</p>
+                    </footer>
                 </div>
-
-
-                <div className="overflow-x-auto print-table hidden sm:block">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-2/5">{t('tableDesignation')}</TableHead>
-                            <TableHead className="text-right">{t('tableNumber')}</TableHead>
-                            <TableHead className="text-right">{t('tableBase')}</TableHead>
-                            <TableHead className="text-right">{t('tableRate')}</TableHead>
-                            <TableHead className="text-right">{t('tableGain')}</TableHead>
-                            <TableHead className="text-right">{t('tableDeduction')}</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {renderRow(t('baseSalaryLabel'), "30,00", (payrollData.baseSalary / 30).toFixed(2), null, payrollData.baseSalary, null)}
-                        {payrollData.seniorityBonus > 0 && renderRow(t('seniorityBonusLabel'), null, payrollData.baseSalary, '2.000', payrollData.seniorityBonus, null)}
-                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) =>
-                           React.cloneElement(
-                                renderRow(t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)}), (tier.minutes/60).toFixed(2), payrollData.hourlyRate, tier.rate*100, tier.payout, null),
-                                { key: `overtime-${key}` }
-                            )
-                        )}
-                        {payrollData.attendanceBonus > 0 && renderRow(t('attendanceBonusLabel'), null, null, null, payrollData.attendanceBonus, null)}
-                        {payrollData.performanceBonus > 0 && renderRow(t('performanceBonusLabel'), null, null, null, payrollData.performanceBonus, null)}
-                        {renderRow(t('transportBonusLabel'), null, null, null, payrollData.transportBonus, null)}
-                        {renderRow(t('housingBonusLabel'), payrollData.baseSalary, 0.1, 10, payrollData.housingBonus, null)}
-                        {payrollData.absenceDeduction > 0 && renderRow(t('absenceDeductionLabel'), null, null, null, null, null, payrollData.absenceDeduction)}
-
-                        {renderRow(t('grossMonthlySalaryLabel'), null, null, null, null, null, true)}
-                        {renderRow('', null, null, null, payrollData.grossSalary, null, true)}
-                        
-                        <TableRow><TableCell colSpan={6} className="h-4"></TableCell></TableRow>
-
-                        {renderRow(t('cnpsLabel'), payrollData.cnpsBase, '4.200', null, null, payrollData.cnpsDeduction)}
-                        {renderRow(t('cacLabel'), payrollData.cacBase, '1.000', null, null, payrollData.cacDeduction)}
-                        {renderRow(t('redevanceCRTVLabel'), null, null, null, null, payrollData.redevanceCRTV)}
-                        {payrollData.cotisationSyndicale > 0 && renderRow(t('cotisationSyndicaleLabel'), payrollData.baseSalary, '1.000', null, null, payrollData.cotisationSyndicale)}
-                        {renderRow(t('irppLabel'), null, null, null, null, payrollData.irppDeduction)}
-                        {renderRow(t('cacSurIRPPLabel'), payrollData.irppDeduction, '10.000', null, null, payrollData.cacSurIRPP)}
-                        {renderRow(t('communalTaxLabel'), null, null, null, null, payrollData.taxeCommunale)}
-
-                        {renderRow(t('totalDeductionsLabel'), null, null, null, null, null, true)}
-                        {renderRow('', null, null, null, null, payrollData.totalDeductions, true)}
-                    </TableBody>
-                </Table>
-                </div>
-                
-                <div className="flex justify-center sm:justify-end mt-8">
-                  <div className="border-2 border-primary rounded-2xl p-4 w-full max-w-sm bg-primary/5">
-                      <div className="flex justify-between items-center font-bold text-lg">
-                          <span className="text-primary">{t('netPayableLabel')}</span>
-                          <span className="text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} FCFA</span>
-                      </div>
-                  </div>
-                </div>
-
-                <footer className="mt-8 pt-4 border-t text-center text-xs text-muted-foreground">
-                    <p>{t('footerText')}</p>
-                </footer>
             </div>
         </div>
     );
 }
-
-    
