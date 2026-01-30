@@ -105,7 +105,7 @@
       "body": "Veuillez reprendre le service manuellement sur l'application."
     },
     "noticeBoardTitle": "Annonce de {authorName}",
-    "endShiftLockedTooltip": "Le service est verrouillé pour les 8 premières heures.",
+    "endShiftLockedTooltip": "Le service est verrouillé pour les 8 premières heures et 15 minutes.",
     "confirmEndShift": {
       "title": "Terminer le service ?",
       "description": "Vous avez quitté la zone de travail. Voulez-vous terminer votre session maintenant ?",
@@ -127,6 +127,27 @@
     "autoEndShiftHomeNotification": {
       "title": "OM Suivi: Service Terminé",
       "body": "Service terminé automatiquement car vous êtes arrivé à la maison."
+    },
+    "validation": {
+      "title": "OM Suivi: Activité en cours?",
+      "body": "Votre service est actif depuis plus de 8h15. Validez pour continuer.",
+      "dialogTitle": "Activité toujours en cours ?",
+      "dialogDescription": "Vous êtes hors de votre zone de travail. Veuillez confirmer que vous êtes toujours en service pour continuer le pointage.",
+      "confirmButton": "Oui, je continue",
+      "cancelButton": "Non, arrêter le service",
+      "continuedTitle": "Service prolongé"
+    },
+    "timeoutEnd": {
+      "title": "Service arrêté pour inactivité",
+      "description": "Le service a été automatiquement terminé après 15 minutes sans réponse."
+    },
+    "stopContexts": {
+      "work_zone": "Zone de travail",
+      "home_zone": "Arrêt auto (Domicile)",
+      "timeout": "Arrêt auto (Inactivité)",
+      "manual": "Manuel",
+      "mission_ended": "Fin de mission",
+      "admin_edit": "Modif. Admin"
     }
   },
   "ManualEntryDialog": {
@@ -354,7 +375,15 @@
     "absencePenaltyAmountLabel": "Pénalité par jour d'absence (FCFA)",
     "absencePenaltyAmountDescription": "Montant forfaitaire déduit pour chaque absence injustifiée.",
     "defaultHourlyRateLabel": "Taux Horaire par Défaut (FCFA)",
-    "defaultHourlyRateDescription": "Taux horaire de base pour les calculs standards."
+    "defaultHourlyRateDescription": "Taux horaire de base pour les calculs standards.",
+    "stopContexts": {
+      "work_zone": "Zone de travail",
+      "home_zone": "Arrêt auto (Domicile)",
+      "timeout": "Arrêt auto (Inactivité)",
+      "manual": "Manuel",
+      "mission_ended": "Fin de mission",
+      "admin_edit": "Modif. Admin"
+    }
   },
   "Shared": {
     "loading": "Chargement...",

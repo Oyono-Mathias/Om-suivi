@@ -285,6 +285,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
       modified_manually: true,
       modification_reason: 'admin_edit',
+      stopContext: 'admin_edit',
     }, { merge: true });
 
     toast({ title: "Pointage mis à jour", description: "L'entrée de temps a été modifiée avec succès." });
@@ -312,7 +313,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
   return (
     <>
       <Sheet open={!!user} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-3xl p-0">
+        <SheetContent className="w-full sm:max-w-4xl p-0">
             {user && (
                 <SheetHeader className="p-6 border-b flex-row items-center justify-between">
                     <div>
@@ -336,6 +337,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                             <TableRow>
                                 <TableHead>{t('dayHeader')}</TableHead>
                                 <TableHead>{t('statusHeader')}</TableHead>
+                                <TableHead>Remarques</TableHead>
                                 <TableHead className="text-right">{t('actionHeader')}</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -366,6 +368,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                                                 </TooltipProvider>
                                             </TableCell>
                                             <TableCell></TableCell>
+                                            <TableCell></TableCell>
                                         </TableRow>
                                     );
                                 }
@@ -386,6 +389,9 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                                                         {t('manualModificationLabel')}
                                                     </Badge>
                                                 )}
+                                            </TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">
+                                                {entryForDay.stopContext ? t(`stopContexts.${entryForDay.stopContext}`) : '-'}
                                             </TableCell>
                                             <TableCell className="text-right space-x-2">
                                                 <Button variant="outline" size="sm" onClick={() => setEditingEntry(entryForDay)}>Modifier</Button>
@@ -411,6 +417,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                                                     )}
                                                 </Badge>
                                             </TableCell>
+                                            <TableCell></TableCell>
                                             <TableCell className="text-right">
                                                  <Select onValueChange={(value: 'unjustified_absence' | 'sick_leave') => handleStatusChange(day, value)} defaultValue={override?.status || 'unjustified_absence'}>
                                                     <SelectTrigger className="w-[200px] ml-auto">
@@ -513,5 +520,3 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
     </>
   );
 }
-
-    

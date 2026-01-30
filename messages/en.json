@@ -105,7 +105,7 @@
       "body": "Please resume your shift manually in the app."
     },
     "noticeBoardTitle": "Announcement from {authorName}",
-    "endShiftLockedTooltip": "The shift is locked for the first 8 hours.",
+    "endShiftLockedTooltip": "The shift is locked for the first 8 hours and 15 minutes.",
     "confirmEndShift": {
       "title": "End Shift?",
       "description": "You have left the work zone. Do you want to end your shift now?",
@@ -127,6 +127,27 @@
     "autoEndShiftHomeNotification": {
       "title": "OM Suivi: Shift Ended",
       "body": "Shift ended automatically because you arrived home."
+    },
+    "validation": {
+      "title": "OM Suivi: Still working?",
+      "body": "Your shift has been active for over 8h15. Please validate to continue.",
+      "dialogTitle": "Still working?",
+      "dialogDescription": "You are outside your work zone. Please confirm you are still on shift to continue tracking.",
+      "confirmButton": "Yes, Continue Shift",
+      "cancelButton": "No, End Shift",
+      "continuedTitle": "Shift Extended"
+    },
+    "timeoutEnd": {
+      "title": "Shift Ended Due to Inactivity",
+      "description": "The shift was automatically ended after 15 minutes with no response."
+    },
+    "stopContexts": {
+      "work_zone": "Work Zone",
+      "home_zone": "Auto-stop (Home)",
+      "timeout": "Auto-stop (Inactive)",
+      "manual": "Manual",
+      "mission_ended": "Mission Ended",
+      "admin_edit": "Admin Edit"
     }
   },
   "ManualEntryDialog": {
@@ -354,7 +375,15 @@
     "absencePenaltyAmountLabel": "Penalty per absence day (FCFA)",
     "absencePenaltyAmountDescription": "Flat amount deducted for each unjustified absence.",
     "defaultHourlyRateLabel": "Default Hourly Rate (FCFA)",
-    "defaultHourlyRateDescription": "Base hourly rate for standard calculations."
+    "defaultHourlyRateDescription": "Base hourly rate for standard calculations.",
+    "stopContexts": {
+      "work_zone": "Work Zone",
+      "home_zone": "Auto-stop (Home)",
+      "timeout": "Auto-stop (Inactive)",
+      "manual": "Manual",
+      "mission_ended": "Mission Ended",
+      "admin_edit": "Admin Edit"
+    }
   },
   "Shared": {
     "loading": "Loading...",

@@ -1,5 +1,3 @@
-
-
 export type Shift = {
   id: string;
   name: string;
@@ -24,6 +22,7 @@ export interface TimeEntry {
   modified_manually?: boolean;
   modification_reason?: 'admin_edit';
   notes?: string;
+  stopContext?: 'work_zone' | 'home_zone' | 'timeout' | 'manual' | 'mission_ended' | 'admin_edit';
 }
 
 export interface Profile {

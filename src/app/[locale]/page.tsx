@@ -59,6 +59,7 @@ const WelcomeDialog = dynamic(() => import('@/components/welcome-dialog'), { ssr
 
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
+const LOCK_DURATION_SECONDS = 8.25 * 60 * 60; // 8 hours 15 minutes
 
 interface ActiveShiftState {
   activeTimeEntryId: string;
@@ -99,6 +100,7 @@ export default function TimeTrackingPage() {
   const [leaveWelcomeData, setLeaveWelcomeData] = useState<{ days: number; resumeDate: string; } | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showConfirmEndShift, setShowConfirmEndShift] = useState(false);
+  const [validationState, setValidationState] = useState<{pending: boolean; timeoutId: NodeJS.Timeout | null}>({pending: false, timeoutId: null});
 
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -120,6 +122,89 @@ export default function TimeTrackingPage() {
   const { data: announcements, isLoading: isLoadingAnnouncements } = useCollection<Announcement>(announcementsQuery);
   const latestAnnouncement = announcements?.[0];
 
+  const stopTimer = useCallback(() => {
+    if (activeTimer) {
+      clearInterval(activeTimer);
+      setActiveTimer(null);
+    }
+    if (validationState.timeoutId) {
+        clearTimeout(validationState.timeoutId);
+    }
+    setIsShiftActive(false);
+    setElapsedTime(0);
+    setActiveTimeEntryId(null);
+    setValidationState({ pending: false, timeoutId: null });
+    clearActiveShiftFromLocal();
+  }, [activeTimer, validationState.timeoutId, setIsShiftActive]);
+
+  const handleEndShift = useCallback((options?: { manualEndTime?: Date, stopContext?: TimeEntry['stopContext'] }) => {
+    const { manualEndTime, stopContext = 'manual' } = options || {};
+
+    const entryId = activeTimeEntryId || recoveryData?.activeTimeEntryId;
+    if (!entryId || !user || !profile) {
+      stopTimer();
+      return;
+    }
+
+    const allEntries = timeEntries || [];
+    const entryToUpdate = allEntries.find(e => e.id === entryId);
+    
+    let shiftId = entryToUpdate?.shiftId || selectedShiftId || recoveryData?.shiftId;
+    if (!shiftId) {
+        stopTimer();
+        return;
+    }
+  
+    const shift = shifts.find(s => s.id === shiftId);
+    if (!shift) return;
+
+    const effectiveEndTime = manualEndTime || new Date();
+    const endTimeStr = format(effectiveEndTime, 'HH:mm');
+    const today = format(effectiveEndTime, 'yyyy-MM-dd');
+  
+    const startTimeForCalc = entryToUpdate?.startTime || format(new Date(recoveryData!.startTimeISO), 'HH:mm');
+    const startDateForCalc = entryToUpdate?.date || format(new Date(recoveryData!.startTimeISO), 'yyyy-MM-dd');
+  
+    const startDateTime = parseISO(`${startDateForCalc}T${startTimeForCalc}:00`);
+    const totalDuration = differenceInMinutes(effectiveEndTime, startDateTime);
+  
+    const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
+    let overtimeDuration = 0;
+    
+    const isEligibleForAutoOvertime = ['storekeeper', 'deliveryDriver', 'chauffeur', 'machinist'].includes(profile.profession);
+
+    if (isEligibleForAutoOvertime && effectiveEndTime > shiftEndDateTime) {
+      overtimeDuration = differenceInMinutes(effectiveEndTime, shiftEndDateTime);
+    }
+  
+    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
+    updateDocumentNonBlocking(entryRef, {
+      endTime: endTimeStr,
+      duration: totalDuration > 0 ? totalDuration : 0,
+      overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+      ...(entryToUpdate?.location === 'Mission' && {location: 'Mission (Terminée)'}),
+      stopContext,
+    });
+  
+    toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
+
+    if (shift.id === 'night') {
+        localStorage.setItem('nightShiftJustEnded', new Date().toISOString());
+    }
+
+    if (Notification.permission === 'granted' && navigator.serviceWorker) {
+        const overtimeHours = (overtimeDuration / 60).toFixed(2);
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification('OM Suivi: Fin de Service', {
+                body: `Service terminé. ${overtimeHours} heures supplémentaires enregistrées.`,
+                icon: '/icons/icon-192x192.png',
+            });
+        });
+    }
+
+    tryShowAd();
+    stopTimer();
+  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, tryShowAd]);
 
   // --- Local Storage and Recovery Logic ---
   const saveActiveShiftToLocal = (data: ActiveShiftState) => {
@@ -187,7 +272,7 @@ export default function TimeTrackingPage() {
   const handleRecoveryEndShift = () => {
     if (!recoveryData) return;
     const effectiveEndTime = new Date(recoveryData.lastSeenISO);
-    handleEndShift(effectiveEndTime);
+    handleEndShift({ manualEndTime: effectiveEndTime, stopContext: 'manual' });
     setRecoveryData(null);
   };
 
@@ -197,18 +282,6 @@ export default function TimeTrackingPage() {
     toast({ title: "Session restaurée", description: "Votre session de travail a été reprise." });
     setRecoveryData(null);
   };
-
-
-  const stopTimer = useCallback(() => {
-    if (activeTimer) {
-      clearInterval(activeTimer);
-      setActiveTimer(null);
-    }
-    setIsShiftActive(false);
-    setElapsedTime(0);
-    setActiveTimeEntryId(null);
-    clearActiveShiftFromLocal();
-  }, [activeTimer, setIsShiftActive]);
 
   const startTimer = useCallback((entryId: string, startTime: Date, shiftId: string) => {
       setActiveTimeEntryId(entryId);
@@ -380,74 +453,6 @@ export default function TimeTrackingPage() {
     }
   }, [user, firestore, profile, t, toast, tShared, tryShowAd, startTimer]);
 
-
-  const handleEndShift = useCallback((manualEndTime?: Date) => {
-    const entryId = activeTimeEntryId || recoveryData?.activeTimeEntryId;
-    if (!entryId || !user || !profile) {
-      stopTimer();
-      return;
-    }
-
-    const allEntries = timeEntries || [];
-    const entryToUpdate = allEntries.find(e => e.id === entryId);
-    
-    let shiftId = entryToUpdate?.shiftId || selectedShiftId || recoveryData?.shiftId;
-    if (!shiftId) {
-        stopTimer();
-        return;
-    }
-  
-    const shift = shifts.find(s => s.id === shiftId);
-    if (!shift) return;
-
-    const effectiveEndTime = manualEndTime || new Date();
-    const endTimeStr = format(effectiveEndTime, 'HH:mm');
-    const today = format(effectiveEndTime, 'yyyy-MM-dd');
-  
-    const startTimeForCalc = entryToUpdate?.startTime || format(new Date(recoveryData!.startTimeISO), 'HH:mm');
-    const startDateForCalc = entryToUpdate?.date || format(new Date(recoveryData!.startTimeISO), 'yyyy-MM-dd');
-  
-    const startDateTime = parseISO(`${startDateForCalc}T${startTimeForCalc}:00`);
-    const totalDuration = differenceInMinutes(effectiveEndTime, startDateTime);
-  
-    const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
-    let overtimeDuration = 0;
-    
-    const isEligibleForAutoOvertime = ['storekeeper', 'deliveryDriver', 'chauffeur', 'machinist'].includes(profile.profession);
-
-    if (isEligibleForAutoOvertime && effectiveEndTime > shiftEndDateTime) {
-      overtimeDuration = differenceInMinutes(effectiveEndTime, shiftEndDateTime);
-    }
-  
-    const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
-    updateDocumentNonBlocking(entryRef, {
-      endTime: endTimeStr,
-      duration: totalDuration > 0 ? totalDuration : 0,
-      overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
-      ...(entryToUpdate?.location === 'Mission' && {location: 'Mission (Terminée)'})
-    });
-  
-    toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
-
-    if (shift.id === 'night') {
-        localStorage.setItem('nightShiftJustEnded', new Date().toISOString());
-    }
-
-    if (Notification.permission === 'granted' && navigator.serviceWorker) {
-        const overtimeHours = (overtimeDuration / 60).toFixed(2);
-        navigator.serviceWorker.ready.then((registration) => {
-            registration.showNotification('OM Suivi: Fin de Service', {
-                body: `Service terminé. ${overtimeHours} heures supplémentaires enregistrées.`,
-                icon: '/icons/icon-192x192.png',
-            });
-        });
-    }
-
-    tryShowAd();
-    stopTimer();
-  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, tryShowAd]);
-
-
   const handleGeofenceEnter = useCallback(async () => {
     if (!globalSettings?.autoClockInEnabled) return;
 
@@ -499,7 +504,7 @@ export default function TimeTrackingPage() {
     if (!isShiftActive || !activeTimeEntryId || !user || !firestore || !profile) return;
     
     // Exempt professions for Mission Mode
-    if (['deliveryDriver', 'chauffeur'].includes(profile.profession)) {
+    if (['deliveryDriver', 'chauffeur', 'storekeeper'].includes(profile.profession)) {
         const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', activeTimeEntryId);
         updateDocumentNonBlocking(entryRef, { location: 'Mission' });
         if (Notification.permission === 'granted' && navigator.serviceWorker) {
@@ -511,10 +516,8 @@ export default function TimeTrackingPage() {
         return;
     }
     
-    const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
-
-    // During the 8-hour lock
-    if (elapsedTimeRef.current < EIGHT_HOURS_IN_SECONDS) {
+    // During the 8.25-hour lock
+    if (elapsedTimeRef.current < LOCK_DURATION_SECONDS) {
         toast({
             variant: "destructive",
             title: t('exitWorkZoneLock.title'),
@@ -530,45 +533,22 @@ export default function TimeTrackingPage() {
         }
         return; // Do not end shift
     }
-
-    // After the 8-hour lock, if not an exempt profession, ask user to confirm.
-    setShowConfirmEndShift(true);
-
   }, [isShiftActive, activeTimeEntryId, user, firestore, profile, t, toast]);
 
 
   useEffect(() => {
-    if (!profile || !profile.workLatitude || !profile.workLongitude || !globalSettings?.geofenceRadius || profile.profession === 'other') {
-        setIsInWorkZone(null); // No workplace configured for user
+    if (!profile || !globalSettings?.geofenceRadius || profile.profession === 'other') {
+        setIsInWorkZone(null); 
         return;
     };
 
     const monitorLocation = () => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (!profile.workLatitude || !profile.workLongitude || !globalSettings?.geofenceRadius) return;
-
-                const distanceToWork = getDistanceFromLatLonInKm(
-                    position.coords.latitude,
-                    position.coords.longitude,
-                    profile.workLatitude,
-                    profile.workLongitude
-                );
-                const currentlyInWorkZone = distanceToWork * 1000 <= globalSettings.geofenceRadius;
-
-                // --- Geofence Transition Logic ---
-                if (isInWorkZone !== null && isInWorkZone !== currentlyInWorkZone) {
-                    if (currentlyInWorkZone) {
-                        handleGeofenceEnter();
-                    } else if (isShiftActive) {
-                        handleGeofenceExit();
-                    }
-                }
-                setIsInWorkZone(currentlyInWorkZone);
-
-                // --- Auto-stop when entering home zone ---
-                const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
-                if (isShiftActive && elapsedTimeRef.current > EIGHT_HOURS_IN_SECONDS && profile.homeLatitude && profile.homeLongitude && !currentlyInWorkZone) {
+                if (!globalSettings?.geofenceRadius) return;
+                
+                // --- PRIORITY 1: Immediate stop on entering home zone ---
+                if (isShiftActive && profile.homeLatitude && profile.homeLongitude) {
                     const distanceToHome = getDistanceFromLatLonInKm(
                         position.coords.latitude,
                         position.coords.longitude,
@@ -576,7 +556,7 @@ export default function TimeTrackingPage() {
                         profile.homeLongitude
                     );
                     if (distanceToHome * 1000 <= globalSettings.geofenceRadius) {
-                        handleEndShift();
+                        handleEndShift({ stopContext: 'home_zone' });
                         toast({
                             title: t('autoEndShiftHome.title'),
                             description: t('autoEndShiftHome.description'),
@@ -589,7 +569,49 @@ export default function TimeTrackingPage() {
                                 });
                             });
                         }
+                        return; // Stop further processing for this tick
                     }
+                }
+                
+                let currentlyInWorkZone = null;
+                if(profile.workLatitude && profile.workLongitude) {
+                    const distanceToWork = getDistanceFromLatLonInKm(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        profile.workLatitude,
+                        profile.workLongitude
+                    );
+                    currentlyInWorkZone = distanceToWork * 1000 <= globalSettings.geofenceRadius;
+                }
+
+                // --- Geofence Transition Logic (Enter/Exit Work Zone) ---
+                if (currentlyInWorkZone !== null && isInWorkZone !== null && isInWorkZone !== currentlyInWorkZone) {
+                    if (currentlyInWorkZone) {
+                        handleGeofenceEnter();
+                    } else if (isShiftActive) {
+                        handleGeofenceExit();
+                    }
+                }
+                setIsInWorkZone(currentlyInWorkZone);
+
+                // --- PRIORITY 2: Validation check after 8h15 ---
+                if (isShiftActive && !validationState.pending && elapsedTimeRef.current > LOCK_DURATION_SECONDS && !currentlyInWorkZone) {
+                    if (Notification.permission === 'granted' && navigator.serviceWorker) {
+                        navigator.serviceWorker.ready.then(reg => {
+                            reg.showNotification(t('validation.title'), { body: t('validation.body') });
+                        });
+                    }
+                    const timeoutId = setTimeout(() => {
+                        const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+                        if (!savedStateJSON) return;
+                        const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
+                        const startTime = new Date(savedState.startTimeISO);
+                        const forcedEndTime = new Date(startTime.getTime() + LOCK_DURATION_SECONDS * 1000);
+                        handleEndShift({ manualEndTime: forcedEndTime, stopContext: 'timeout' });
+                        toast({ title: t('timeoutEnd.title'), description: t('timeoutEnd.description') });
+                    }, 15 * 60 * 1000); // 15 minutes
+
+                    setValidationState({ pending: true, timeoutId });
                 }
                 
                 // --- Logic for when a shift is ACTIVE ---
@@ -613,7 +635,7 @@ export default function TimeTrackingPage() {
     monitorLocation();
 
     return () => clearInterval(intervalId);
-  }, [profile, globalSettings, isShiftActive, isInWorkZone, activeTimeEntryId, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t, toast]);
+  }, [profile, globalSettings, isShiftActive, isInWorkZone, activeTimeEntryId, validationState.pending, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t, toast]);
   
   
   const handleManualStart = async () => {
@@ -667,6 +689,22 @@ export default function TimeTrackingPage() {
       const locationString = useLocation ? suggestedLocation ?? undefined : undefined;
       await startShift(shift, locationString);
       setSuggestedLocation(null);
+  };
+  
+  const handleContinueShift = () => {
+    if (validationState.timeoutId) {
+        clearTimeout(validationState.timeoutId);
+    }
+    setValidationState({ pending: false, timeoutId: null });
+    toast({ title: t('validation.continuedTitle') });
+  };
+  
+  const handleUserInitiatedEndShift = () => {
+    if (validationState.timeoutId) {
+        clearTimeout(validationState.timeoutId);
+    }
+    handleEndShift({ stopContext: 'mission_ended' });
+    setValidationState({ pending: false, timeoutId: null });
   };
 
   const formatElapsedTime = (seconds: number) => {
@@ -804,14 +842,14 @@ export default function TimeTrackingPage() {
                         <Button
                             className="w-full h-20 text-xl"
                             variant="destructive"
-                            onClick={() => handleEndShift()}
-                            disabled={!isShiftActive || elapsedTime < (8*60*60)}
+                            onClick={() => handleEndShift({ stopContext: 'manual'})}
+                            disabled={!isShiftActive || elapsedTime < LOCK_DURATION_SECONDS}
                         >
                             {t('endShiftButton')}
                         </Button>
                     </div>
                 </TooltipTrigger>
-                {elapsedTime < (8*60*60) && isShiftActive && (
+                {elapsedTime < LOCK_DURATION_SECONDS && isShiftActive && (
                     <TooltipContent>
                         <p>{t('endShiftLockedTooltip')}</p>
                     </TooltipContent>
@@ -936,7 +974,26 @@ export default function TimeTrackingPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                   <AlertDialogCancel onClick={() => setShowConfirmEndShift(false)}>{t('confirmEndShift.cancelButton')}</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => { handleEndShift(); setShowConfirmEndShift(false); }}>{t('confirmEndShift.confirmButton')}</AlertDialogAction>
+                  <AlertDialogAction onClick={() => { handleEndShift({ stopContext: 'mission_ended' }); setShowConfirmEndShift(false); }}>{t('confirmEndShift.confirmButton')}</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
+
+       <AlertDialog open={validationState.pending}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>{t('validation.dialogTitle')}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      {t('validation.dialogDescription')}
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={handleUserInitiatedEndShift}>
+                      {t('validation.cancelButton')}
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={handleContinueShift}>
+                      {t('validation.confirmButton')}
+                  </AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
       </AlertDialog>
