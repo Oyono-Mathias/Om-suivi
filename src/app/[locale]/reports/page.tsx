@@ -332,34 +332,31 @@ export default function ReportsPage() {
   }, [timeEntries]);
 
   const leaveData = useMemo(() => {
-    // If hireDate is missing, we can't do anything.
     if (!profile?.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     
     try {
         const now = new Date();
         const hireDate = parseISO(profile.hireDate);
 
-        // Determine the start of the accrual cycle. Use leaveStartDate if available, otherwise fallback to hireDate.
-        const accrualStartSource = profile.leaveStartDate || profile.hireDate;
-        const cycleStartDate = parseISO(accrualStartSource);
-
-        // Seniority calculation
+        let cycleStartDate = hireDate;
+        if (profile.leaveStartDate) {
+            const parsedLeaveStartDate = parseISO(profile.leaveStartDate);
+            if (parsedLeaveStartDate < now) {
+                cycleStartDate = parsedLeaveStartDate;
+            }
+        }
+        
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
         if (seniorityYears >= 6) {
             senioritySurplus = 4;
-        } else if (seniorityYears >= 1) { // Covers years 1-5
+        } else if (seniorityYears >= 1) {
             senioritySurplus = 2;
         }
         
-        // Base days calculation (1.5 days per month)
-        // A cycle is from 26th to 25th. We add 1.5 days on the 26th.
-        // By subtracting 25 days, we shift the cycle to be from the 1st to the end of the month.
-        // Then we can use differenceInMonths.
         const monthsWorkedInCycle = differenceInMonths(subDays(now, 25), subDays(cycleStartDate, 25));
         const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
-        // Total
         const totalDays = baseDays + senioritySurplus;
 
         return {
