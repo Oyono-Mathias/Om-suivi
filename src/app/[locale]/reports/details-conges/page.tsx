@@ -1,60 +1,94 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { useTranslations } from 'next-intl';
-import { differenceInYears, parseISO } from 'date-fns';
-import type { Profile } from '@/lib/types';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
+import { useTranslations, useLocale } from 'next-intl';
+import { differenceInYears, parseISO, format, addYears, startOfYear, getMonth } from 'date-fns';
+import { fr, enUS } from 'date-fns/locale';
+import type { Profile, LeaveAnnouncement } from '@/lib/types';
 import { Link } from '@/navigation';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2, Paperclip } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
-export default function DetailsCongesPage() {
+export default function DetailCongesScreen() {
     const t = useTranslations('DetailsCongesPage');
     const tShared = useTranslations('Shared');
+    const locale = useLocale();
+    const dateFnsLocale = locale === 'fr' ? fr : enUS;
+
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
+    
+    const leaveAnnouncementsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'leaveAnnouncements'), where('userId', '==', user.uid)) : null, [firestore, user]);
+    const { data: leaveAnnouncements, isLoading: isLoadingLeaveAnnouncements } = useCollection<LeaveAnnouncement>(leaveAnnouncementsQuery);
 
-    const leaveData = useMemo(() => {
-        if (!profile?.hireDate) return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0, dailyRate: 0, totalPayout: 0 };
+    const annualLeaveData = useMemo(() => {
+        if (!profile?.hireDate || !leaveAnnouncements) return [];
+
         try {
             const hireDate = parseISO(profile.hireDate);
-            const now = new Date();
+            const firstYearOfService = hireDate.getFullYear();
+            const currentYear = new Date().getFullYear();
+            const years = [];
 
-            const seniorityYears = differenceInYears(now, hireDate);
-            let senioritySurplus = 0;
-            if (seniorityYears >= 5) {
-                senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
+            for (let year = firstYearOfService; year <= currentYear; year++) {
+                years.push(year);
             }
-            
-            const baseDays = 18; // Annual base
-            const totalDays = baseDays + senioritySurplus;
-            const dailyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 30) : 0;
-            const totalPayout = dailyRate * totalDays;
 
-            return {
-                baseDays,
-                senioritySurplus,
-                totalDays,
-                seniorityYears,
-                dailyRate,
-                totalPayout
-            };
+            return years.map(year => {
+                const referencePeriodStart = new Date(year, 5, 26); // June 26
+                const referencePeriodEnd = new Date(year + 1, 5, 25); // June 25 next year
+
+                if (referencePeriodStart > new Date()) return null;
+
+                const seniorityYears = differenceInYears(referencePeriodEnd, hireDate);
+                let senioritySurplus = 0;
+                if (seniorityYears >= 5) senioritySurplus = 2;
+                if (seniorityYears >= 10) senioritySurplus = 4;
+                if (seniorityYears >= 15) senioritySurplus = 6;
+
+                const totalDays = 18 + senioritySurplus;
+                
+                // Simplified payout calculation using current base salary
+                const annualGrossSalary = profile.monthlyBaseSalary * 12;
+                const leavePayout = annualGrossSalary / 16;
+                
+                const wasLeaveTaken = leaveAnnouncements.some(announcement => {
+                    const leaveDate = parseISO(announcement.leaveStartDate);
+                    return leaveDate >= referencePeriodStart && leaveDate <= referencePeriodEnd;
+                });
+                const status = wasLeaveTaken ? t('statusTaken') : t('statusToBeTaken');
+
+                return {
+                    year: year,
+                    referencePeriod: `${format(referencePeriodStart, 'dd/MM/yyyy')} - ${format(referencePeriodEnd, 'dd/MM/yyyy')}`,
+                    days: {
+                        base: 18,
+                        seniority: senioritySurplus,
+                        total: totalDays,
+                    },
+                    payout: leavePayout,
+                    annualGross: annualGrossSalary,
+                    status,
+                };
+            }).filter(Boolean).reverse();
+
         } catch (e) {
             console.error("Could not parse date for leave calculation", e);
-            return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0, dailyRate: 0, totalPayout: 0 };
+            return [];
         }
-    }, [profile?.hireDate, profile?.monthlyBaseSalary]);
+    }, [profile, leaveAnnouncements, t]);
 
-    const isLoading = isUserLoading || isLoadingProfile;
+    const isLoading = isUserLoading || isLoadingProfile || isLoadingLeaveAnnouncements;
     
     if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
     if (!user) return <div className="flex flex-col justify-center items-center h-screen gap-4"><p className="text-xl">{tShared('pleaseLogin')}</p><Link href="/login"><Button>{tShared('loginButton')}</Button></Link></div>;
@@ -65,75 +99,46 @@ export default function DetailsCongesPage() {
             <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
             <p className="text-muted-foreground">{t('description')}</p>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>{t('visualSummaryTitle')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell>{t('baseLeave')}</TableCell>
-                                <TableCell className="text-right font-mono tabular-nums">{leaveData.baseDays.toFixed(1)} {t('daysUnit')}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell>{t('senioritySurplus')}</TableCell>
-                                <TableCell className="text-right font-mono tabular-nums">{leaveData.senioritySurplus.toFixed(1)} {t('daysUnit')}</TableCell>
-                            </TableRow>
-                            <TableRow className="font-bold bg-primary/5 text-primary">
-                                <TableCell>{t('totalLeave')}</TableCell>
-                                <TableCell className="text-right font-mono tabular-nums text-lg">{leaveData.totalDays.toFixed(1)} {t('daysUnit')}</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            <Accordion type="single" collapsible className="w-full space-y-4">
+                {annualLeaveData.length > 0 ? annualLeaveData.map((data, index) => data && (
+                    <AccordionItem value={`item-${index}`} key={index} className="border rounded-lg bg-card text-card-foreground">
+                        <AccordionTrigger className="p-4 font-bold text-lg hover:no-underline">
+                            {t('year', {year: data.year})}
+                             <Badge variant={data.status === t('statusTaken') ? 'default' : 'secondary'} className="ml-auto mr-4">{data.status}</Badge>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                            <div className="space-y-6">
+                                <p className="text-sm text-muted-foreground">{t('referencePeriod')}: {data.referencePeriod}</p>
+                                
+                                <Card>
+                                    <CardHeader><CardTitle className="text-base">{t('daysSectionTitle')}</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <Table>
+                                            <TableBody>
+                                                <TableRow><TableCell>{t('baseLeave')}</TableCell><TableCell className="text-right font-mono">{data.days.base} jours</TableCell></TableRow>
+                                                <TableRow><TableCell>{t('seniorityBonus')}</TableCell><TableCell className="text-right font-mono">{data.days.seniority} jours</TableCell></TableRow>
+                                                <TableRow className="font-bold text-primary bg-primary/5"><TableCell>{t('totalDays')}</TableCell><TableCell className="text-right font-mono text-lg">{data.days.total} jours</TableCell></TableRow>
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>{t('calculationTitle')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <h4 className="font-semibold">{t('step1Title')}</h4>
-                        <p className="text-sm text-muted-foreground">{t('step1Formula')}</p>
-                        <div className="mt-2 p-3 bg-muted/50 rounded-md font-mono text-center text-lg">
-                            {t('step1Result', {
-                                salary: profile.monthlyBaseSalary.toLocaleString('fr-FR'),
-                                dailyRate: leaveData.dailyRate.toLocaleString('fr-FR'),
-                                currency: profile.currency
-                            })}
-                        </div>
-                    </div>
-                    <Separator />
-                    <div>
-                        <h4 className="font-semibold">{t('step2Title')}</h4>
-                        <p className="text-sm text-muted-foreground">{t('step2Formula')}</p>
-                        <div className="mt-2 p-4 bg-primary/5 rounded-md font-mono text-center text-2xl font-bold text-primary">
-                             {t('step2Result', {
-                                dailyRate: leaveData.dailyRate.toLocaleString('fr-FR'),
-                                totalDays: leaveData.totalDays.toFixed(1),
-                                totalPayout: leaveData.totalPayout.toLocaleString('fr-FR'),
-                                currency: profile.currency
-                            })}
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card className="bg-muted/30">
-                 <CardHeader>
-                    <CardTitle>{t('accrualLogicTitle')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">
-                        {t('accrualLogicDescription', {
-                            senioritySurplus: leaveData.senioritySurplus,
-                            seniorityYears: leaveData.seniorityYears
-                        })}
-                    </p>
-                </CardContent>
-            </Card>
+                                <Card>
+                                    <CardHeader><CardTitle className="text-base">{t('financialSectionTitle')}</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <div className="p-4 bg-muted/50 rounded-md font-mono text-center text-lg">
+                                            {data.annualGross.toLocaleString('fr-FR')} FCFA / 16 = <span className="font-bold text-primary">{data.payout.toLocaleString('fr-FR')} FCFA</span>
+                                        </div>
+                                         <p className="text-xs text-muted-foreground mt-2 text-center">Note: Montant estimé sur la base de votre salaire actuel, hors primes et heures supplémentaires.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                )) : (
+                    <p className="text-center text-muted-foreground py-8">{t('noLeaveHistory')}</p>
+                )}
+            </Accordion>
             
             <div className="text-center pt-4">
                 <Link href="/leave">

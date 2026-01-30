@@ -446,22 +446,20 @@
     "viewDocument": "View Document"
   },
   "DetailsCongesPage": {
-    "title": "Leave Entitlement Details",
-    "description": "Understand how your leave days and pay are calculated.",
-    "visualSummaryTitle": "Visual Summary of Your Annual Entitlement",
-    "baseLeave": "Annual base leave",
-    "senioritySurplus": "Seniority surplus",
-    "totalLeave": "Total leave days",
-    "daysUnit": "days",
-    "calculationTitle": "Estimated Leave Pay Calculation",
-    "step1Title": "Step 1: Daily Rate Calculation",
-    "step1Formula": "(Monthly Base Salary / 30 days)",
-    "step1Result": "{salary} / 30 = {dailyRate} {currency}",
-    "step2Title": "Step 2: Total Amount Calculation",
-    "step2Formula": "Daily Value × Total Accrued Days",
-    "step2Result": "{dailyRate} {currency} × {totalDays}d = {totalPayout} {currency}",
-    "accrualLogicTitle": "Accrual Logic",
-    "accrualLogicDescription": "You earn 1.5 base leave days for each month of effective work. Your {senioritySurplus} surplus days are based on your {seniorityYears} years of seniority.",
-    "generateRequestButton": "Generate my leave request"
+    "title": "Leave Management",
+    "description": "View the history and detailed breakdown of your annual leave entitlements.",
+    "referencePeriod": "Reference Period",
+    "daysSectionTitle": "Days Calculation",
+    "financialSectionTitle": "Allowance Calculation (1/16th Rule)",
+    "status": "Status",
+    "baseLeave": "Base Days",
+    "seniorityBonus": "Seniority Bonus",
+    "totalDays": "Total Days",
+    "annualGrossFormula": "Annual Gross Total / 16",
+    "statusTaken": "Taken",
+    "statusToBeTaken": "To be taken",
+    "generateRequestButton": "Generate Leave Request",
+    "noLeaveHistory": "No leave history to display.",
+    "year": "Year {year}"
   }
 }
