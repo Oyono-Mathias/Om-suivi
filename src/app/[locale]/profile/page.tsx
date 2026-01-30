@@ -101,7 +101,7 @@ export default function ProfilePage() {
         monthlyBaseSalary: profile.monthlyBaseSalary || 0,
         currency: profile.currency || 'FCFA',
         hireDate: profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
-        leaveStartDate: profile.leaveStartDate || format(new Date(), 'yyyy-MM-dd'),
+        leaveStartDate: profile.leaveStartDate || profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
         reminders: profile.reminders || { enabled: false, time: '17:00' },
         workLatitude: profile.workLatitude,
         workLongitude: profile.workLongitude,
@@ -231,17 +231,24 @@ export default function ProfilePage() {
   }
 
   const leaveData = useMemo(() => {
-    if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
+    // If hireDate is missing, we can't do anything.
+    if (!profile?.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
+    
     try {
         const now = new Date();
         const hireDate = parseISO(profile.hireDate);
-        const cycleStartDate = parseISO(profile.leaveStartDate);
+
+        // Determine the start of the accrual cycle. Use leaveStartDate if available, otherwise fallback to hireDate.
+        const accrualStartSource = profile.leaveStartDate || profile.hireDate;
+        const cycleStartDate = parseISO(accrualStartSource);
 
         // Seniority calculation
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
-        if (seniorityYears >= 5) {
-            senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
+        if (seniorityYears >= 6) {
+            senioritySurplus = 4;
+        } else if (seniorityYears >= 1) { // Covers years 1-5
+            senioritySurplus = 2;
         }
         
         // Base days calculation (1.5 days per month)

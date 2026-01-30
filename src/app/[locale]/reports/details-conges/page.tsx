@@ -5,7 +5,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useTranslations, useLocale } from 'next-intl';
 import { differenceInYears, parseISO, format, addYears, startOfYear, getMonth } from 'date-fns';
-import { fr, enUS } from 'date-fns/locale';
+import { fr, enUS } from "date-fns/locale";
 import type { Profile, LeaveAnnouncement } from '@/lib/types';
 import { Link } from '@/navigation';
 
@@ -53,10 +53,10 @@ export default function DetailCongesScreen() {
 
                 const seniorityYears = differenceInYears(referencePeriodEnd, hireDate);
                 let senioritySurplus = 0;
-                if (seniorityYears >= 1 && seniorityYears <= 4) {
-                    senioritySurplus = 2;
-                } else if (seniorityYears >= 6) {
+                if (seniorityYears >= 6) {
                     senioritySurplus = 4;
+                } else if (seniorityYears >= 1) { // Covers years 1-5
+                    senioritySurplus = 2;
                 }
 
                 const baseDays = 18;
