@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
@@ -38,7 +37,6 @@ import {
   max,
   min,
   differenceInMonths,
-  subDays,
   differenceInYears,
 } from "date-fns";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/lib/types";
@@ -272,7 +270,7 @@ export default function ReportsPage() {
                 
                 if (overtimeToProcess > 0) {
                     const weeklyTier1CapInMinutes = 8 * 60;
-                    const remainingTier1Capacity = weeklyTier1CapInMinutes - weeklyDaytimeOvertimeMinutes;
+                    const remainingTier1Capacity = weeklyDaytimeOvertimeMinutes - weeklyDaytimeOvertimeMinutes;
                     const minutesForTier1 = Math.min(overtimeToProcess, remainingTier1Capacity);
                     
                     if (minutesForTier1 > 0) {
@@ -338,23 +336,32 @@ export default function ReportsPage() {
         const now = new Date();
         const hireDate = parseISO(profile.hireDate);
 
-        let cycleStartDate = hireDate;
-        if (profile.leaveStartDate) {
-            const parsedLeaveStartDate = parseISO(profile.leaveStartDate);
-            if (parsedLeaveStartDate < now) {
-                cycleStartDate = parsedLeaveStartDate;
-            }
-        }
-        
+        // Seniority bonus calculation
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
-        if (seniorityYears >= 6) {
-            senioritySurplus = 4;
-        } else if (seniorityYears >= 1) {
-            senioritySurplus = 2;
+        if (seniorityYears >= 5) {
+            // 2 days bonus after 5 years, plus 1 day for every 2 additional years.
+            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2);
         }
-        
-        const monthsWorkedInCycle = differenceInMonths(subDays(now, 25), subDays(cycleStartDate, 25));
+
+        // Base days calculation for the current cycle
+        let cycleStartDate;
+        const parsedLeaveStartDate = profile.leaveStartDate ? parseISO(profile.leaveStartDate) : null;
+
+        // A cycle resets on the leave start date.
+        // If not set, or in the future, we look at the hire date anniversary.
+        if (parsedLeaveStartDate && parsedLeaveStartDate < now) {
+            cycleStartDate = parsedLeaveStartDate;
+        } else {
+            // Default to the last hire date anniversary.
+            cycleStartDate = new Date(now.getFullYear(), hireDate.getMonth(), hireDate.getDate());
+            if (cycleStartDate > now) {
+                cycleStartDate.setFullYear(cycleStartDate.getFullYear() - 1);
+            }
+        }
+
+        // The number of full months passed since the cycle started.
+        const monthsWorkedInCycle = differenceInMonths(now, cycleStartDate);
         const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
         const totalDays = baseDays + senioritySurplus;

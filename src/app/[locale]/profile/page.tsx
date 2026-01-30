@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -38,7 +37,7 @@ import { Loader2, MapPin, Paperclip, Home } from "lucide-react";
 import type { Profile, Profession, GlobalSettings } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { format, parseISO, differenceInMonths, subDays, differenceInYears } from "date-fns";
+import { format, parseISO, differenceInMonths, differenceInYears } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAd } from "@/context/AdContext";
 
@@ -237,23 +236,32 @@ export default function ProfilePage() {
         const now = new Date();
         const hireDate = parseISO(profile.hireDate);
 
-        let cycleStartDate = hireDate;
-        if (profile.leaveStartDate) {
-            const parsedLeaveStartDate = parseISO(profile.leaveStartDate);
-            if (parsedLeaveStartDate < now) {
-                cycleStartDate = parsedLeaveStartDate;
+        // Seniority bonus calculation
+        const seniorityYears = differenceInYears(now, hireDate);
+        let senioritySurplus = 0;
+        if (seniorityYears >= 5) {
+            // 2 days bonus after 5 years, plus 1 day for every 2 additional years.
+            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2);
+        }
+
+        // Base days calculation for the current cycle
+        let cycleStartDate;
+        const parsedLeaveStartDate = profile.leaveStartDate ? parseISO(profile.leaveStartDate) : null;
+
+        // A cycle resets on the leave start date.
+        // If not set, or in the future, we look at the hire date anniversary.
+        if (parsedLeaveStartDate && parsedLeaveStartDate < now) {
+            cycleStartDate = parsedLeaveStartDate;
+        } else {
+            // Default to the last hire date anniversary.
+            cycleStartDate = new Date(now.getFullYear(), hireDate.getMonth(), hireDate.getDate());
+            if (cycleStartDate > now) {
+                cycleStartDate.setFullYear(cycleStartDate.getFullYear() - 1);
             }
         }
 
-        const seniorityYears = differenceInYears(now, hireDate);
-        let senioritySurplus = 0;
-        if (seniorityYears >= 6) {
-            senioritySurplus = 4;
-        } else if (seniorityYears >= 1) {
-            senioritySurplus = 2;
-        }
-        
-        const monthsWorkedInCycle = differenceInMonths(subDays(now, 25), subDays(cycleStartDate, 25));
+        // The number of full months passed since the cycle started.
+        const monthsWorkedInCycle = differenceInMonths(now, cycleStartDate);
         const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
         const totalDays = baseDays + senioritySurplus;
