@@ -162,7 +162,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Main Content Area for Mobile */}
         <div className="flex flex-col min-h-screen bg-background">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm no-print">
+          <header className="flex h-14 items-center justify-between border-b bg-background px-4 no-print">
             <div className="flex items-center gap-2">
               <SidebarTrigger /> {/* Hamburger Menu to open the drawer */}
             </div>

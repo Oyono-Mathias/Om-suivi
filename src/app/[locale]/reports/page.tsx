@@ -41,7 +41,7 @@ import { Loader2, ShieldAlert, HeartPulse, Paperclip, HelpCircle } from "lucide-
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
-import { getPayrollCycle } from "@/lib/utils";
+import { getPayrollCycle, cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -460,9 +460,9 @@ export default function ReportsPage() {
                             <Button variant="link" size="sm" className="p-0 h-auto">Voir historique</Button>
                         </Link>
                          <Button 
-                            variant="secondary" 
+                            variant="outline"
                             size="sm" 
-                            className="mt-2 sm:mt-0" 
+                            className="mt-2 sm:mt-0 border-destructive-foreground/50 text-destructive-foreground hover:bg-destructive-foreground/10" 
                             onClick={() => handleJustifyClick(absencePenalty.unjustifiedDates[0])} 
                             disabled={isJustifying}
                         >
@@ -490,12 +490,12 @@ export default function ReportsPage() {
       
         <Card>
             <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle>{t('financialSummaryTitle')}</CardTitle>
                         <CardDescription>{t('financialSummaryDescription')}</CardDescription>
                     </div>
-                    <Link href="/reports/details-calcul" className="shrink-0 ml-2">
+                    <Link href="/reports/details-calcul" className="shrink-0">
                          <Button variant="link" className="text-sm px-0">
                             {t('seeCalculationDetailsTooltip')}
                         </Button>
