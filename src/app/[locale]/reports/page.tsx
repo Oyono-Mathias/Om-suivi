@@ -195,7 +195,7 @@ export default function ReportsPage() {
             totalPenalty += primesLost;
         }
         
-        return { unjustifiedCount, totalPenalty, sickLeaveCount, unjustifiedDates };
+        return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount, unjustifiedDates };
 
     }, [timeEntries, profile, attendanceOverrides]);
 
