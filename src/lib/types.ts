@@ -84,6 +84,17 @@ export interface LeaveAnnouncement {
   createdAt: any; // serverTimestamp
 }
 
+export interface LeaveRequest {
+  id: string;
+  userId: string;
+  leaveStartDate: string; // YYYY-MM-DD
+  resumeDate: string; // YYYY-MM-DD
+  totalDays: number;
+  baseDays: number;
+  senioritySurplus: number;
+  generatedAt: any; // serverTimestamp
+}
+
 export interface AbsenceJustification {
   id: string;
   userId: string;

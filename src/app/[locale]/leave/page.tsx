@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 import { useTranslations, useLocale } from 'next-intl';
 import { differenceInYears, format, parseISO, getDay, parse } from 'date-fns';
 import { fr, enUS } from "date-fns/locale";
@@ -36,6 +37,7 @@ export default function LeaveRequestPage() {
     const tProfile = useTranslations('ProfilePage');
     const locale = useLocale();
     const dateFnsLocale = locale === 'fr' ? fr : enUS;
+    const { toast } = useToast();
 
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -44,6 +46,7 @@ export default function LeaveRequestPage() {
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
     const [startDate, setStartDate] = useState<string | undefined>();
+    const [isSaving, setIsSaving] = useState(false);
 
     const leaveData = useMemo(() => {
         if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0 };
@@ -82,8 +85,47 @@ export default function LeaveRequestPage() {
         }
     }, [startDate, leaveData]);
     
-    const handlePrint = () => {
-        window.print();
+    const handlePrint = async () => {
+        if (!startDate || !user || !resumeDate || !leaveData || !firestore) {
+            toast({
+                variant: "destructive",
+                title: "Informations manquantes",
+                description: "Veuillez sélectionner une date de départ.",
+            });
+            return;
+        }
+
+        setIsSaving(true);
+        
+        const leaveRequestsRef = collection(firestore, 'users', user.uid, 'leaveRequests');
+        
+        const newLeaveRequest = {
+            userId: user.uid,
+            leaveStartDate: startDate,
+            resumeDate: format(resumeDate, 'yyyy-MM-dd'),
+            totalDays: leaveData.totalDays,
+            baseDays: leaveData.baseDays,
+            senioritySurplus: leaveData.senioritySurplus,
+            generatedAt: serverTimestamp(),
+        };
+
+        try {
+            await addDoc(leaveRequestsRef, newLeaveRequest);
+            toast({
+                title: "Demande sauvegardée",
+                description: "Votre note de congé a été enregistrée dans votre historique."
+            });
+            window.print();
+        } catch(error) {
+            console.error("Failed to save leave request:", error);
+            toast({
+                variant: "destructive",
+                title: "Erreur de sauvegarde",
+                description: "Impossible d'enregistrer la demande. Veuillez réessayer.",
+            });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const isLoading = isUserLoading || isLoadingProfile;
@@ -133,7 +175,10 @@ export default function LeaveRequestPage() {
                 <div>
                     <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
                 </div>
-                <Button onClick={handlePrint} className="h-12 w-full md:w-auto">{t('printButton')}</Button>
+                <Button onClick={handlePrint} className="h-12 w-full md:w-auto" disabled={!startDate || isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('printButton')}
+                </Button>
             </div>
 
             <div className="max-w-4xl mx-auto print-container border rounded-lg p-4 sm:p-8">

@@ -66,6 +66,12 @@ service cloud.firestore {
         // Only admins can read or write attendance status.
         allow read, write: if isAdmin();
       }
+
+      match /leaveRequests/{leaveRequestId} {
+        allow create: if isOwner(userId);
+        allow read, list: if isOwner(userId) || isAdmin();
+        allow update, delete: if isAdmin();
+      }
     }
 
     // --------------------------------------------------------------------

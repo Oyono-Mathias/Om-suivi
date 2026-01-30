@@ -386,6 +386,57 @@
         }
       },
       "required": ["question", "answer", "order", "locale"]
+    },
+    "LeaveRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LeaveRequest",
+      "type": "object",
+      "description": "Represents a user's generated annual leave request note.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the leave request."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user making the request."
+        },
+        "leaveStartDate": {
+          "type": "string",
+          "format": "date",
+          "description": "The requested start date of the leave."
+        },
+        "resumeDate": {
+          "type": "string",
+          "format": "date",
+          "description": "The calculated date of resumption of service."
+        },
+        "totalDays": {
+          "type": "number",
+          "description": "Total number of leave days requested."
+        },
+        "baseDays": {
+          "type": "number",
+          "description": "Base leave days for the period."
+        },
+        "senioritySurplus": {
+          "type": "number",
+          "description": "Bonus leave days from seniority."
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the leave note was generated."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "leaveStartDate",
+        "resumeDate",
+        "totalDays",
+        "generatedAt"
+      ]
     }
   },
   "auth": {
@@ -461,6 +512,26 @@
                 { "name": "userId", "description": "The user's UID." },
                 { "name": "logId", "description": "The unique ID for the log entry." }
             ]
+        }
+      },
+      {
+        "path": "/users/{userId}/leaveRequests/{leaveRequestId}",
+        "definition": {
+          "entityName": "LeaveRequest",
+          "schema": {
+            "$ref": "#/backend/entities/LeaveRequest"
+          },
+          "description": "Stores generated leave request documents for each user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The user's UID."
+            },
+            {
+              "name": "leaveRequestId",
+              "description": "The unique ID for the leave request document."
+            }
+          ]
         }
       },
       {
