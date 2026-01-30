@@ -538,7 +538,7 @@
     "q5_question": "Mon solde de congé semble incorrect. Pourquoi ?",
     "q5_answer": "Vous accumulez 1,5 jour de congé par mois de travail. De plus, un bonus d'ancienneté s'ajoute après quelques années de service. Assurez-vous que votre 'Date d'embauche' et votre 'Date de début du cycle de congé' (après votre dernier congé) sont bien à jour dans votre profil.",
     "q6_question": "Comment justifier une absence ?",
-    "q6_answer": "Dans la section 'Rapports', une alerte apparaîtra pour les jours d'absence. Cliquez sur le bouton 'Justifier', prenez en photo votre document (certificat médical, etc.) et envoyez-le. Un administrateur validera votre demande.",
+    "q6_answer": "Dans la section 'Rapports', une alerte apparaîtra pour les jours d'absence. Cliquez sur le bouton 'Justifier', prenez en photo votre document (certificat médical, etc.), et envoyez-le. Un administrateur validera votre demande.",
     "q7_question": "À quoi sert le 'Mode Mission' ?",
     "q7_answer": "Ce mode est conçu pour les employés mobiles (chauffeurs, livreurs). Il permet au compteur de continuer à tourner même si vous quittez la zone de travail principale pour effectuer une livraison ou une course, garantissant que votre temps de travail est correctement enregistré.",
     "q8_question": "J'ai oublié de pointer. Que faire ?",
