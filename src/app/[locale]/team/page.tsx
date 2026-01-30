@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -109,6 +110,7 @@ function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void
 export default function TeamPage() {
   const t = useTranslations('TeamPage');
   const tShared = useTranslations('Shared');
+  const tAdmin = useTranslations('AdminPage');
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -264,7 +266,7 @@ export default function TeamPage() {
             />
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline">{t("AdminPage.deleteEntryCancel")}</Button>
+                <Button type="button" variant="outline">{tAdmin("deleteEntryCancel")}</Button>
               </DialogClose>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
