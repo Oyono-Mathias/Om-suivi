@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -55,7 +54,7 @@ export default function LeaveRequestPage() {
             const seniorityYears = differenceInYears(now, hireDate);
             let senioritySurplus = 0;
             if (seniorityYears >= 5) {
-                senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
+                senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2);
             }
 
             const totalDays = 18 + senioritySurplus;
