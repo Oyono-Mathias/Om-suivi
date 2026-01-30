@@ -3,15 +3,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, setDoc } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search } from 'lucide-react';
+import { doc, collection, setDoc, query, where, orderBy } from 'firebase/firestore';
+import { Loader2, ShieldX, User, ShieldCheck, Search, Check } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, GlobalSettings } from '@/lib/types';
+import type { Profile, GlobalSettings, AbsenceJustification } from '@/lib/types';
 import { useTranslations } from 'next-intl';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,8 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
+import { format } from 'date-fns';
+import Image from 'next/image';
 
 function AccessDenied() {
   const t = useTranslations('Shared');
@@ -209,6 +211,74 @@ function GlobalSettingsForm() {
     );
 }
 
+function JustificationsTab() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isApproving, setIsApproving] = useState<string | null>(null);
+
+  const justificationsQuery = useMemoFirebase(() => 
+    query(collection(firestore, 'absenceJustifications'), where('status', '==', 'pending'), orderBy('submittedAt', 'asc')),
+    [firestore]
+  );
+  const { data: justifications, isLoading } = useCollection<AbsenceJustification>(justificationsQuery);
+
+  const handleApprove = async (justification: AbsenceJustification) => {
+    setIsApproving(justification.id);
+    try {
+      // 1. Update justification status
+      const justifRef = doc(firestore, 'absenceJustifications', justification.id);
+      await setDoc(justifRef, { status: 'approved' }, { merge: true });
+
+      // 2. Create attendance override
+      const overrideRef = doc(firestore, 'users', justification.userId, 'attendanceOverrides', justification.absenceDate);
+      await setDoc(overrideRef, { status: 'sick_leave' });
+
+      toast({ title: "Justificatif approuvé", description: `L'absence de ${justification.userName} pour le ${justification.absenceDate} est marquée comme maladie.`});
+    } catch (error) {
+        console.error("Approval failed:", error);
+        toast({ variant: 'destructive', title: "Erreur d'approbation" });
+    } finally {
+        setIsApproving(null);
+    }
+  };
+
+  if (isLoading) return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Justificatifs en Attente</CardTitle>
+        <CardDescription>Approuver les documents soumis par les employés pour justifier leurs absences.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {justifications && justifications.length > 0 ? (
+          justifications.map(justif => (
+            <Card key={justif.id} className="p-4 flex flex-col md:flex-row gap-4 items-start">
+              <div className="flex-1">
+                <p><strong>Employé:</strong> {justif.userName}</p>
+                <p><strong>Date d'absence:</strong> {format(new Date(justif.absenceDate), 'PPP')}</p>
+                <p className="text-sm text-muted-foreground">Soumis le: {format(justif.submittedAt.toDate(), 'PPP p')}</p>
+                 <Button className="mt-4" onClick={() => handleApprove(justif)} disabled={isApproving === justif.id}>
+                    {isApproving === justif.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-2 h-4 w-4"/>}
+                    Approuver comme Maladie
+                </Button>
+              </div>
+              <div className="w-full md:w-1/3">
+                <a href={justif.imageUrl} target="_blank" rel="noopener noreferrer" className="block border rounded-md overflow-hidden">
+                  <Image src={justif.imageUrl} alt={`Justificatif pour ${justif.absenceDate}`} width={200} height={200} className="object-cover w-full h-auto aspect-square"/>
+                </a>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <p className="text-center text-muted-foreground py-8">Aucun justificatif en attente.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
 export default function AdminPage() {
   const t = useTranslations('AdminPage');
   const tShared = useTranslations('Shared');
@@ -236,6 +306,13 @@ export default function AdminPage() {
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const pendingJustificationsQuery = useMemoFirebase(() => 
+    query(collection(firestore, 'absenceJustifications'), where('status', '==', 'pending')),
+    [firestore]
+  );
+  const { data: pendingJustifications } = useCollection<AbsenceJustification>(pendingJustificationsQuery);
+
 
   const isLoading = isUserLoading || isLoadingProfile;
 
@@ -268,8 +345,14 @@ export default function AdminPage() {
       <p className="text-muted-foreground">{t('description')}</p>
       
       <Tabs defaultValue="users">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="users">{t('usersTab')}</TabsTrigger>
+              <TabsTrigger value="justifications">
+                Justificatifs 
+                {pendingJustifications && pendingJustifications.length > 0 && 
+                    <Badge className="ml-2">{pendingJustifications.length}</Badge>
+                }
+              </TabsTrigger>
               <TabsTrigger value="config">{t('configTab')}</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="mt-6">
@@ -330,6 +413,9 @@ export default function AdminPage() {
                 )}
                 </CardContent>
             </Card>
+          </TabsContent>
+          <TabsContent value="justifications" className="mt-6">
+            <JustificationsTab />
           </TabsContent>
           <TabsContent value="config" className="mt-6">
             <GlobalSettingsForm />

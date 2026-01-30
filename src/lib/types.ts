@@ -1,5 +1,6 @@
 
 
+
 export type Shift = {
   id: string;
   name: string;
@@ -87,4 +88,14 @@ export interface LeaveAnnouncement {
   userName: string;
   leaveStartDate: string; // YYYY-MM-DD
   createdAt: any; // serverTimestamp
+}
+
+export interface AbsenceJustification {
+  id: string;
+  userId: string;
+  userName: string;
+  absenceDate: string; // YYYY-MM-DD
+  imageUrl: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: any; // serverTimestamp
 }

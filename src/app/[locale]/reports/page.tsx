@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Link } from '@/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -48,12 +48,14 @@ import {
   differenceInYears,
 } from "date-fns";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/lib/types";
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection } from "firebase/firestore";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useStorage } from "@/firebase";
+import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Loader2, HelpCircle, ShieldAlert, HeartPulse } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
 import { getPayrollCycle } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -73,6 +75,12 @@ export default function ReportsPage() {
     
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
+    const { toast } = useToast();
+
+    const [isJustifying, setIsJustifying] = useState(false);
+    const [dateToJustify, setDateToJustify] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user) return null;
@@ -99,15 +107,55 @@ export default function ReportsPage() {
         detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    const handleJustifyClick = (date: string) => {
+      setDateToJustify(date);
+      fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (!event.target.files || event.target.files.length === 0 || !dateToJustify || !user || !profile) return;
+      
+      const file = event.target.files[0];
+      setIsJustifying(true);
+    
+      try {
+        const storageRef = ref(storage, `justifications/${user.uid}/${dateToJustify}/${file.name}`);
+        const uploadTask = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(uploadTask.ref);
+    
+        const justificationsRef = collection(firestore, 'absenceJustifications');
+        await addDoc(justificationsRef, {
+          userId: user.uid,
+          userName: profile.name,
+          absenceDate: dateToJustify,
+          imageUrl: downloadURL,
+          status: 'pending',
+          submittedAt: serverTimestamp(),
+        });
+    
+        toast({ title: "Justificatif envoyé", description: "Votre document a été soumis pour approbation." });
+    
+      } catch (error) {
+        console.error("Upload failed", error);
+        toast({ variant: 'destructive', title: "Échec de l'envoi" });
+      } finally {
+        setIsJustifying(false);
+        setDateToJustify(null);
+        if(fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+
+
     const absencePenalty = useMemo(() => {
         if (!timeEntries || !profile || !profile.hireDate || !attendanceOverrides) {
-            return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount: 0 };
+            return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount: 0, unjustifiedDates: [] };
         }
 
         const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
         let unjustifiedAbsenceCount = 0;
         let sickLeaveCount = 0;
         let preRegistrationAbsenceCount = 0;
+        let unjustifiedDates: string[] = [];
         
         const hireDate = parseISO(profile.hireDate);
         const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) })
@@ -128,6 +176,7 @@ export default function ReportsPage() {
                         sickLeaveCount++;
                     } else {
                         unjustifiedAbsenceCount++;
+                        unjustifiedDates.push(dayString);
                     }
                 }
             }
@@ -146,7 +195,7 @@ export default function ReportsPage() {
             totalPenalty += primesLost;
         }
         
-        return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount };
+        return { unjustifiedCount, totalPenalty, sickLeaveCount, unjustifiedDates };
 
     }, [timeEntries, profile, attendanceOverrides]);
 
@@ -405,10 +454,25 @@ export default function ReportsPage() {
             <ShieldAlert className="h-4 w-4" />
             <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
             <AlertDescription>
-                {t('absenceAlertDescription', {
-                    count: absencePenalty.unjustifiedCount,
-                    penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
-                })}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <p>
+                    {t('absenceAlertDescription', {
+                        count: absencePenalty.unjustifiedCount,
+                        penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
+                    })}
+                    </p>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="mt-2 sm:mt-0" 
+                        onClick={() => handleJustifyClick(absencePenalty.unjustifiedDates[0])} 
+                        disabled={isJustifying}
+                    >
+                        {isJustifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Justifier une absence
+                    </Button>
+                </div>
             </AlertDescription>
         </Alert>
       )}

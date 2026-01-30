@@ -107,5 +107,15 @@ service cloud.firestore {
       // Announcements are immutable.
       allow update, delete: if false;
     }
+
+    // --------------------------------------------------------------------
+    // Absence Justifications Collection
+    // --------------------------------------------------------------------
+
+    match /absenceJustifications/{justificationId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, list, update: if isAdmin();
+      allow delete: if false;
+    }
   }
 }

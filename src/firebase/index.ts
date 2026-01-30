@@ -4,6 +4,7 @@ import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { initializeAuth, indexedDBLocalPersistence } from 'firebase/auth';
 import { initializeFirestore } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -24,7 +25,8 @@ export function getSdks(firebaseApp: FirebaseApp) {
     }),
     firestore: initializeFirestore(firebaseApp, {
       experimentalForceLongPolling: true,
-    })
+    }),
+    storage: getStorage(firebaseApp)
   };
 }
 

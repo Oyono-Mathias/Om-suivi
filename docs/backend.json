@@ -272,6 +272,51 @@
         "leaveStartDate",
         "createdAt"
       ]
+    },
+    "AbsenceJustification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AbsenceJustification",
+      "type": "object",
+      "description": "Represents a user's request to justify an absence with supporting documentation.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "absenceDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "userName",
+        "absenceDate",
+        "imageUrl",
+        "status",
+        "submittedAt"
+      ]
     }
   },
   "auth": {
@@ -397,6 +442,22 @@
             {
               "name": "announcementId",
               "description": "The unique identifier for the leave announcement."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/absenceJustifications/{justificationId}",
+        "definition": {
+          "entityName": "AbsenceJustification",
+          "schema": {
+            "$ref": "#/backend/entities/AbsenceJustification"
+          },
+          "description": "Stores user submissions for justifying absences.",
+          "params": [
+            {
+              "name": "justificationId",
+              "description": "The unique identifier for the justification."
             }
           ]
         }

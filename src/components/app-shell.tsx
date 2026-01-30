@@ -16,6 +16,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   SidebarSeparator,
+  SidebarMenuBadge,
 } from "@/components/ui/sidebar";
 import {
   BarChart3,
@@ -27,13 +28,13 @@ import {
   Newspaper,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
 import { signOut } from "firebase/auth";
-import { doc } from "firebase/firestore";
+import { collection, doc, query, where } from "firebase/firestore";
 import { Button } from "./ui/button";
 import LanguageSwitcher from "./language-switcher";
 import { useTranslations } from "next-intl";
-import type { Profile } from "@/lib/types";
+import type { Profile, AbsenceJustification } from "@/lib/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileBottomNav from "./mobile-bottom-nav";
 import { Skeleton } from "./ui/skeleton";
@@ -52,6 +53,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [firestore, user]);
 
   const { data: profile } = useDoc<Profile>(userProfileRef);
+
+  const pendingJustificationsQuery = useMemoFirebase(() => {
+    if (!firestore || profile?.role !== 'admin') return null;
+    return query(collection(firestore, 'absenceJustifications'), where('status', '==', 'pending'));
+  }, [firestore, profile]);
+
+  const { data: pendingJustifications } = useCollection<AbsenceJustification>(pendingJustificationsQuery);
+  const pendingCount = pendingJustifications?.length || 0;
   
   const handleSignOut = () => {
     if (auth) {
@@ -69,7 +78,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/team", label: t('team'), icon: Users },
     { href: "/profile", label: t('settings'), icon: Settings },
   ];
-  const adminNavItems = [{ href: "/admin", label: t('administration'), icon: Shield }];
+  const adminNavItems = [{ 
+    href: "/admin", 
+    label: t('administration'), 
+    icon: Shield,
+    badge: pendingCount > 0 ? pendingCount : undefined
+  }];
 
   // Pages without the main shell
   if (pathname.includes('/login') || pathname.includes('/reports/export') || pathname.includes('/leave')) {
@@ -111,6 +125,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               {profile?.role === 'admin' && adminNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname === item.href}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
+                  {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -168,6 +183,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {adminNavItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.label}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
+                    {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
                   </SidebarMenuItem>
                 ))}
               </>
