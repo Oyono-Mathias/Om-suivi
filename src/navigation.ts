@@ -1,4 +1,3 @@
-
 import {createLocalizedPathnamesNavigation} from 'next-intl/navigation';
 
 export const locales = ['fr', 'en'] as const;
@@ -33,7 +32,7 @@ export const pathnames = {
   },
   '/reports/details-conges': {
     en: '/reports/leave-details',
-    fr: '/reports/details-conges'
+    fr: '/rapports/details-conges'
   },
   '/bulletin': {
     en: '/paystub',
