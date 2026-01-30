@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -42,8 +41,7 @@ import {
 } from '@/components/ui/select';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from '@/navigation';
-import { AtSign, Briefcase, Loader2, Lock, User as UserIcon } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { AtSign, Briefcase, Loader2, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
@@ -56,6 +54,7 @@ import { useTranslations } from 'next-intl';
 import type { Profession } from '@/lib/types';
 import Image from 'next/image';
 import { format } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 export default function AuthPage() {
@@ -65,13 +64,16 @@ export default function AuthPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
   
+  // State for inline auth errors
+  const [authError, setAuthError] = useState<string | null>(null);
+
   const [isResetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const professions: { value: Profession, label: string }[] = [
     { value: 'machinist', label: tProfile('professions.machinist') },
@@ -111,6 +113,11 @@ export default function AuthPage() {
       router.replace('/');
     }
   }, [user, router]);
+  
+  // Reset error when tab changes
+  useEffect(() => {
+    setAuthError(null);
+  }, [activeTab]);
 
   if (isUserLoading || user) {
     return (
@@ -123,6 +130,7 @@ export default function AuthPage() {
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     if (!auth || !firestore) return;
     setIsLoading(true);
+    setAuthError(null);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const loggedInUser = userCredential.user;
@@ -137,14 +145,11 @@ export default function AuthPage() {
       }
     } catch (error) {
       if (error instanceof FirebaseError) {
-        toast({
-          variant: 'destructive',
-          title: t('loginErrorTitle'),
-          description:
+        setAuthError(
             error.code === 'auth/invalid-credential'
               ? t('loginErrorInvalid')
-              : t('loginErrorGeneric'),
-        });
+              : t('loginErrorGeneric')
+        );
       }
     } finally {
       setIsLoading(false);
@@ -154,6 +159,7 @@ export default function AuthPage() {
   const handleRegister = async (values: z.infer<typeof registerSchema>) => {
     if (!auth || !firestore) return;
     setIsLoading(true);
+    setAuthError(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -181,14 +187,11 @@ export default function AuthPage() {
       router.replace('/');
     } catch (error) {
       if (error instanceof FirebaseError) {
-        toast({
-          variant: 'destructive',
-          title: t('registerErrorTitle'),
-          description:
-            error.code === 'auth/email-already-in-use'
-              ? t('registerErrorInUse')
-              : t('registerErrorGeneric'),
-        });
+        setAuthError(
+          error.code === 'auth/email-already-in-use'
+            ? t('registerErrorInUse')
+            : t('registerErrorGeneric')
+        );
       }
     } finally {
       setIsLoading(false);
@@ -198,38 +201,42 @@ export default function AuthPage() {
   const handlePasswordReset = async () => {
     if (!auth || !resetEmail) return;
     setIsResetting(true);
+    setResetFeedback(null);
     try {
       await sendPasswordResetEmail(auth, resetEmail);
-      toast({ title: t('resetSuccessTitle'), description: t('resetSuccessDescription') });
-      setResetPasswordOpen(false);
-      setResetEmail('');
+      setResetFeedback({ type: 'success', message: t('resetSuccessDescription')});
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: t('resetErrorTitle'),
-        description: t('resetErrorDescription'),
-      });
+      setResetFeedback({ type: 'error', message: t('resetErrorDescription') });
     } finally {
       setIsResetting(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background to-secondary p-4 md:p-0">
-      <div className="flex flex-col items-center gap-6">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
+      <div className="flex flex-col items-center gap-6 w-full max-w-md">
         <Image src="/logo-om.png" alt="OM Suivi Logo" width={80} height={80} />
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
-          <Card className="w-full rounded-xl border-border/20 bg-card/60 shadow-2xl shadow-black/20 backdrop-blur-lg sm:w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Card className="w-full rounded-2xl border-border/20 bg-card/60 shadow-lg shadow-black/20 backdrop-blur-lg">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold">{t('title')}</CardTitle>
               <CardDescription>{t('description')}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 px-6 pb-6">
+            <CardContent className="space-y-6 px-4 md:px-6 pb-6">
               <TabsList className="grid w-full grid-cols-2 bg-secondary/30">
                 <TabsTrigger value="login" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('loginTab')}</TabsTrigger>
                 <TabsTrigger value="register" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('registerTab')}</TabsTrigger>
               </TabsList>
-              <TabsContent value="login">
+              
+              {authError && (
+                 <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>{activeTab === 'login' ? t('loginErrorTitle') : t('registerErrorTitle')}</AlertTitle>
+                    <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+              )}
+
+              <TabsContent value="login" className="m-0">
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                     <FormField
@@ -265,7 +272,7 @@ export default function AuthPage() {
                       )}
                     />
                      <div className="text-right">
-                      <Button variant="link" type="button" onClick={() => setResetPasswordOpen(true)} className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-primary">
+                      <Button variant="link" type="button" onClick={() => { setResetFeedback(null); setResetEmail(''); setResetPasswordOpen(true); }} className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-primary">
                         {t('forgotPasswordLink')}
                       </Button>
                     </div>
@@ -276,7 +283,7 @@ export default function AuthPage() {
                   </form>
                 </Form>
               </TabsContent>
-              <TabsContent value="register">
+              <TabsContent value="register" className="m-0">
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
                     <FormField
@@ -366,27 +373,42 @@ export default function AuthPage() {
       <Dialog open={isResetPasswordOpen} onOpenChange={setResetPasswordOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('resetPasswordTitle')}</DialogTitle>
-            <DialogDescription>{t('resetPasswordDescription')}</DialogDescription>
+            <DialogTitle>{resetFeedback?.type === 'success' ? t('resetSuccessTitle') : t('resetPasswordTitle')}</DialogTitle>
+            <DialogDescription>{resetFeedback?.type === 'success' ? resetFeedback.message : t('resetPasswordDescription')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <Label htmlFor="reset-email">{t('emailLabel')}</Label>
-            <Input
-              id="reset-email"
-              placeholder={t('emailPlaceholder')}
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              type="email"
-            />
-          </div>
+          
+          {resetFeedback?.type !== 'success' && (
+            <div className="space-y-4 py-2">
+              <Label htmlFor="reset-email">{t('emailLabel')}</Label>
+              <Input
+                id="reset-email"
+                placeholder={t('emailPlaceholder')}
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                type="email"
+              />
+              {resetFeedback?.type === 'error' && (
+                <p className="text-sm text-destructive">{resetFeedback.message}</p>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Annuler</Button>
-            </DialogClose>
-            <Button onClick={handlePasswordReset} disabled={isResetting}>
-              {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('resetPasswordButton')}
-            </Button>
+             {resetFeedback?.type === 'success' ? (
+                <DialogClose asChild>
+                    <Button>Fermer</Button>
+                </DialogClose>
+             ) : (
+                <>
+                <DialogClose asChild>
+                    <Button variant="outline">Annuler</Button>
+                </DialogClose>
+                <Button onClick={handlePasswordReset} disabled={isResetting}>
+                    {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('resetPasswordButton')}
+                </Button>
+                </>
+             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
