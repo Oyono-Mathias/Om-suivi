@@ -8,7 +8,7 @@ import { Loader2, Send, PartyPopper } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { useTranslations, useLocale } from 'next-intl';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -23,15 +23,6 @@ import { fr, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
-
-// WhatsApp Icon Component
-const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>WhatsApp</title>
-        <path d="M12.04 0C5.43 0 0 5.43 0 12.04c0 2.21.59 4.29 1.66 6.09L0 24l6.09-1.65c1.8.97 3.88 1.55 6.09 1.55 6.61 0 12.04-5.43 12.04-12.04C24.08 5.43 18.65 0 12.04 0zM12.04 22.08c-1.9 0-3.68-.52-5.19-1.42l-.37-.22-3.85 1.04 1.06-3.75-.24-.38a9.96 9.96 0 0 1-1.5-5.29c0-5.52 4.49-10.01 10.01-10.01s10.01 4.49 10.01 10.01-4.49 10.01-10.01 10.01zM17.47 14.38c-.3-.15-1.76-.87-2.03-1-.27-.11-.47-.15-.67.15-.2.3-.77.87-.94 1.04-.18.18-.35.2-.64.04-.3-.15-1.25-.46-2.38-1.47s-1.8-1.74-2.11-2.04-.26-.35-.11-.54c.15-.2.3-.35.45-.52.15-.18.2-.22.3-.37.1-.15.05-.3-.02-.45-.07-.15-.67-1.61-.92-2.2-.25-.58-.5-.5-.67-.5h-.58c-.2 0-.52.07-.79.37-.27.3-.92.9-.92 2.19s.94 2.54 1.06 2.71c.12.18 1.84 2.81 4.46 3.93 2.62 1.12 2.62.74 3.1.72.47-.02 1.52-.62 1.73-1.22.21-.6.21-1.11.15-1.22-.06-.11-.25-.18-.55-.33z"/>
-    </svg>
-);
-
 
 function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void }) {
   const t = useTranslations('TeamPage');
@@ -83,6 +74,7 @@ function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void
     <Card onClick={onClick} className={cn("flex items-center p-4 gap-4", onClick && "cursor-pointer hover:bg-muted/50 transition-colors")}>
       <div className="relative">
         <Avatar className="h-12 w-12">
+          <AvatarImage src={`https://picsum.photos/seed/${user.id.substring(0, 5)}/100/100`} alt={user.name} />
           <AvatarFallback>{user.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
         </Avatar>
         <span className={cn(
@@ -95,11 +87,6 @@ function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void
         <p className="text-sm text-muted-foreground">{professionLabel}</p>
         <p className={cn("text-xs", statusInfo.isOnline ? 'text-green-400' : 'text-muted-foreground')}>{statusInfo.label}</p>
       </div>
-      {user.email && 
-        <a href={`mailto:${user.email}`} aria-label={`Contact ${user.name}`} className="text-muted-foreground hover:text-primary transition-colors">
-            <WhatsAppIcon className="h-7 w-7 fill-current" />
-        </a>
-      }
     </Card>
   );
 }
