@@ -16,6 +16,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { shifts } from '@/lib/shifts';
 import { Separator } from '@/components/ui/separator';
 import { getPayrollCycle } from '@/lib/utils';
+import Image from 'next/image';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -265,7 +266,7 @@ export default function ExportReportPage() {
                 <div className="border rounded-lg p-2 sm:p-8 print:border-none print:shadow-none print:rounded-none">
                     <header className="flex justify-between items-start mb-8 border-b pb-6">
                         <div className="flex items-center gap-4">
-                           <img src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
+                           <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
                             <div>
                                 <h2 className="text-2xl font-bold text-primary font-headline">{t('appName')}</h2>
                                 <h3 className="text-lg font-semibold">{t('reportTitle')}</h3>
@@ -396,3 +397,5 @@ export default function ExportReportPage() {
         </div>
     );
 }
+
+    
