@@ -2,7 +2,7 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, indexedDBLocalPersistence } from 'firebase/auth';
 import { initializeFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
@@ -19,7 +19,9 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
+    auth: initializeAuth(firebaseApp, {
+      persistence: indexedDBLocalPersistence
+    }),
     firestore: initializeFirestore(firebaseApp, {
       experimentalForceLongPolling: true,
     })
