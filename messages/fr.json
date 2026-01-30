@@ -310,6 +310,7 @@
   },
   "BulletinPage": {
     "title": "Bulletin de Paie",
+    "appName": "OM Suivi",
     "description": "Détail de votre rémunération pour la période du {startDate} au {endDate}.",
     "printButton": "Imprimer le Bulletin",
     "periodLabel": "Période",

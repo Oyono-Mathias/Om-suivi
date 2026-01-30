@@ -310,6 +310,7 @@
   },
   "BulletinPage": {
     "title": "Paystub",
+    "appName": "OM Suivi",
     "description": "Your compensation details for the period from {startDate} to {endDate}.",
     "printButton": "Print Paystub",
     "periodLabel": "Period",
