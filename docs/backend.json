@@ -180,6 +180,25 @@
         "breakDuration": {
           "type": "number",
           "description": "The allowed break duration in minutes."
+        },
+        "overtimeRates": {
+          "type": "object",
+          "description": "The multipliers for different overtime tiers.",
+          "properties": {
+            "tier1": { "type": "number" },
+            "tier2": { "type": "number" },
+            "night": { "type": "number" },
+            "sunday": { "type": "number" },
+            "holiday": { "type": "number" }
+          }
+        },
+        "absencePenaltyAmount": {
+          "type": "number",
+          "description": "The flat penalty amount in FCFA for each day of unjustified absence."
+        },
+        "defaultHourlyRate": {
+          "type": "number",
+          "description": "A default hourly rate for certain calculations."
         }
       },
       "required": [

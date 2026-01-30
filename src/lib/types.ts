@@ -1,6 +1,5 @@
 
 
-
 export type Shift = {
   id: string;
   name: string;
@@ -68,6 +67,8 @@ export interface GlobalSettings {
     autoClockInEnabled: boolean;
     breakDuration?: number;
     overtimeRates?: OvertimeRates;
+    absencePenaltyAmount?: number;
+    defaultHourlyRate?: number;
 }
 
 export interface AttendanceOverride {

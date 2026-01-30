@@ -325,7 +325,13 @@
     "backfillSuccess": "Historique régularisé avec succès.",
     "backfillError": "Erreur lors de la régularisation.",
     "preHireAbsenceTooltip": "Période non inscrite. Contactez l'administrateur pour régularisation.",
-    "preHireAbsenceLabel": "Absent (Non-inscrit)"
+    "preHireAbsenceLabel": "Absent (Non-inscrit)",
+    "payrollSettingsTitle": "Paramètres de Paie",
+    "payrollSettingsDescription": "Ajustez les valeurs utilisées pour les calculs de paie.",
+    "absencePenaltyAmountLabel": "Pénalité par jour d'absence (FCFA)",
+    "absencePenaltyAmountDescription": "Montant forfaitaire déduit pour chaque absence injustifiée.",
+    "defaultHourlyRateLabel": "Taux Horaire par Défaut (FCFA)",
+    "defaultHourlyRateDescription": "Taux horaire de base pour les calculs standards."
   },
   "Shared": {
     "loading": "Chargement...",

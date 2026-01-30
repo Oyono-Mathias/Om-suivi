@@ -50,6 +50,8 @@ function GlobalSettingsForm() {
     const settingsSchema = z.object({
         autoClockInEnabled: z.boolean(),
         breakDuration: z.coerce.number().min(0),
+        absencePenaltyAmount: z.coerce.number().min(0),
+        defaultHourlyRate: z.coerce.number().min(0),
         overtimeRates: z.object({
             tier1: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
             tier2: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
@@ -64,6 +66,8 @@ function GlobalSettingsForm() {
         defaultValues: {
             autoClockInEnabled: true,
             breakDuration: 40,
+            absencePenaltyAmount: 2426,
+            defaultHourlyRate: 420,
             overtimeRates: {
                 tier1: 1.2,
                 tier2: 1.3,
@@ -79,6 +83,8 @@ function GlobalSettingsForm() {
             form.reset({
                 autoClockInEnabled: globalSettings.autoClockInEnabled,
                 breakDuration: globalSettings.breakDuration || 40,
+                absencePenaltyAmount: globalSettings.absencePenaltyAmount || 2426,
+                defaultHourlyRate: globalSettings.defaultHourlyRate || 420,
                 overtimeRates: globalSettings.overtimeRates || { tier1: 1.2, tier2: 1.3, night: 1.4, sunday: 1.5, holiday: 1.5 }
             });
         }
@@ -131,6 +137,39 @@ function GlobalSettingsForm() {
                                         <Input type="number" {...field} />
                                     </FormControl>
                                     <FormDescription>{t('breakDurationDescription')}</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+                
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('payrollSettingsTitle')}</CardTitle>
+                        <CardDescription>{t('payrollSettingsDescription')}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <FormField
+                            control={form.control}
+                            name="absencePenaltyAmount"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('absencePenaltyAmountLabel')}</FormLabel>
+                                    <FormControl><Input type="number" {...field} /></FormControl>
+                                    <FormDescription>{t('absencePenaltyAmountDescription')}</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="defaultHourlyRate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('defaultHourlyRateLabel')}</FormLabel>
+                                    <FormControl><Input type="number" {...field} /></FormControl>
+                                    <FormDescription>{t('defaultHourlyRateDescription')}</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

@@ -325,7 +325,13 @@
     "backfillSuccess": "History regularized successfully.",
     "backfillError": "Error during regularization.",
     "preHireAbsenceTooltip": "This day is marked absent because you were not yet registered. Contact an administrator for regularization.",
-    "preHireAbsenceLabel": "Absent (Not Registered)"
+    "preHireAbsenceLabel": "Absent (Not Registered)",
+    "payrollSettingsTitle": "Payroll Settings",
+    "payrollSettingsDescription": "Adjust the values used for payroll calculations.",
+    "absencePenaltyAmountLabel": "Penalty per absence day (FCFA)",
+    "absencePenaltyAmountDescription": "Flat amount deducted for each unjustified absence.",
+    "defaultHourlyRateLabel": "Default Hourly Rate (FCFA)",
+    "defaultHourlyRateDescription": "Base hourly rate for standard calculations."
   },
   "Shared": {
     "loading": "Loading...",

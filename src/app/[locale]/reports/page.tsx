@@ -170,23 +170,14 @@ export default function ReportsPage() {
                 }
             }
         }
-
-        let totalPenalty = 0;
-        const totalAbsenceForDeduction = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
-        if (totalAbsenceForDeduction > 0) {
-            const salaryDeduction = totalAbsenceForDeduction * 3360;
-            const transportDeduction = totalAbsenceForDeduction * 705;
-            totalPenalty += salaryDeduction + transportDeduction;
-        }
-
-        if (unjustifiedAbsenceCount > 0) {
-            const primesLost = 7000; // attendance (3000) + performance (4000)
-            totalPenalty += primesLost;
-        }
         
+        const totalAbsencesForPenalty = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
+        const penaltyPerDay = globalSettings?.absencePenaltyAmount ?? 2426;
+        const totalPenalty = totalAbsencesForPenalty * penaltyPerDay;
+
         return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount, unjustifiedDates };
 
-    }, [timeEntries, profile, attendanceOverrides]);
+    }, [timeEntries, profile, attendanceOverrides, globalSettings]);
 
     const reportSummary = useMemo(() => {
         if (!timeEntries || !profile || !attendanceOverrides) {
