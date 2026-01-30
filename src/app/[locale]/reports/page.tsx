@@ -81,7 +81,7 @@ export default function ReportsPage() {
     }, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
-    const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
+    const { start: cycleStart, end: cycleEnd } = useMemo(() => getPayrollCycle(new Date()), []);
 
     const timeEntriesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -282,7 +282,7 @@ export default function ReportsPage() {
                 
                 if (overtimeToProcess > 0) {
                     const weeklyTier1CapInMinutes = 8 * 60;
-                    const remainingTier1Capacity = weeklyTier1CapInMinutes - weeklyDaytimeOvertimeMinutes;
+                    const remainingTier1Capacity = weeklyDaytimeOvertimeMinutes - weeklyDaytimeOvertimeMinutes;
                     const minutesForTier1 = Math.min(overtimeToProcess, remainingTier1Capacity);
                     
                     if (minutesForTier1 > 0) {

@@ -190,7 +190,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
   const [isBackfillOpen, setIsBackfillOpen] = useState(false);
 
 
-  const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
+  const { start: cycleStart, end: cycleEnd } = useMemo(() => getPayrollCycle(new Date()), []);
 
   const timeEntriesQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.id, 'timeEntries'), orderBy('date', 'desc')) : null,

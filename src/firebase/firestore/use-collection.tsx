@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Query,
   onSnapshot,
@@ -61,10 +61,8 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const stableQuery = useMemo(() => memoizedTargetRefOrQuery, [memoizedTargetRefOrQuery]);
-
   useEffect(() => {
-    if (!stableQuery) {
+    if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -74,7 +72,7 @@ export function useCollection<T = any>(
     setIsLoading(true);
 
     const unsubscribe = onSnapshot(
-      stableQuery,
+      memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = snapshot.docs.map(doc => ({
           ...(doc.data() as T),
@@ -86,9 +84,9 @@ export function useCollection<T = any>(
       },
       (error: FirestoreError) => {
         const path: string =
-          stableQuery.type === 'collection'
-            ? (stableQuery as CollectionReference).path
-            : (stableQuery as unknown as InternalQuery)._query.path.canonicalString()
+          memoizedTargetRefOrQuery.type === 'collection'
+            ? (memoizedTargetRefOrQuery as CollectionReference).path
+            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
@@ -103,7 +101,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [stableQuery]);
+  }, [memoizedTargetRefOrQuery]);
 
   return { data, isLoading, error };
 }
