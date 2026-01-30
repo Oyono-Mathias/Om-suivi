@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
@@ -11,12 +10,6 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   ChartContainer,
   ChartTooltip,
@@ -51,7 +44,7 @@ import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/l
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useStorage } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Loader2, HelpCircle, ShieldAlert, HeartPulse, Paperclip } from "lucide-react";
+import { Loader2, ShieldAlert, HeartPulse, Paperclip } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
 import { getPayrollCycle } from "@/lib/utils";
@@ -70,7 +63,6 @@ export default function ReportsPage() {
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');
     const tBulletin = useTranslations('BulletinPage');
-    const tLeave = useTranslations('LeaveRequestPage');
     
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -287,7 +279,7 @@ export default function ReportsPage() {
                 
                 if (overtimeToProcess > 0) {
                     const weeklyTier1CapInMinutes = 8 * 60;
-                    const remainingTier1Capacity = weeklyTier1CapInMinutes - weeklyDaytimeOvertimeMinutes;
+                    const remainingTier1Capacity = weeklyDaytimeOvertimeMinutes - weeklyTier1CapInMinutes;
                     const minutesForTier1 = Math.min(overtimeToProcess, remainingTier1Capacity);
                     
                     if (minutesForTier1 > 0) breakdown.tier1.minutes += minutesForTier1;
@@ -506,32 +498,26 @@ export default function ReportsPage() {
             </CardContent>
         </Card>
         
-        <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="leave-balance">
-                <AccordionTrigger className="p-4 bg-card border rounded-lg hover:no-underline">
-                    <div className="flex items-center gap-4">
-                        <HeartPulse className="h-5 w-5" />
-                        <div>
-                        <p className="font-semibold text-left">{tBulletin('acquiredRightsTitle')}</p>
-                        <p className="text-sm text-muted-foreground -mt-1 text-left">{tProfile('leaveBalanceDescription')}</p>
-                        </div>
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                    <Card className="border-t-0 rounded-t-none">
-                        <CardContent className="pt-6">
-                        <p className="text-4xl font-bold">{leaveData.totalDays.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">{tProfile('leaveBalanceDays')}</span></p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            {t('leaveTableBase', {defaultValue: 'Congé de base'})} ({leaveData.baseDays.toFixed(1)}j) + {t('leaveTableSeniority', {defaultValue: 'Surplus Ancienneté'})} ({leaveData.senioritySurplus}j)
-                        </p>
-                        <Link href="/leave" className="mt-4 inline-block">
-                            <Button><Paperclip className="mr-2 h-4 w-4" />{tLeave('goToLeaveRequest')}</Button>
-                        </Link>
-                        </CardContent>
-                    </Card>
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
+        <Card>
+            <CardHeader>
+                <CardTitle>{tBulletin('acquiredRightsTitle')}</CardTitle>
+                <CardDescription>{tProfile('leaveBalanceDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-4xl font-bold">{leaveData.totalDays.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">{tProfile('leaveBalanceDays')}</span></p>
+                <p className="text-sm text-muted-foreground mt-2">
+                    {t('leaveTableBase')} ({leaveData.baseDays.toFixed(1)}j) + {t('leaveTableSeniority')} ({leaveData.senioritySurplus}j)
+                </p>
+                <div className="flex flex-wrap gap-4 mt-4">
+                    <Link href="/reports/details-conges">
+                        <Button variant="link" className="p-0 h-auto">Voir le détail du calcul</Button>
+                    </Link>
+                    <Link href="/leave">
+                        <Button><Paperclip className="mr-2 h-4 w-4" />{t('leaveRequestButton', {defaultValue: 'Generate Leave Request'})}</Button>
+                    </Link>
+                </div>
+            </CardContent>
+        </Card>
 
       <Card>
         <CardHeader>
@@ -569,5 +555,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
-    

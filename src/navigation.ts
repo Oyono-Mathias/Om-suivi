@@ -31,6 +31,10 @@ export const pathnames = {
     en: '/reports/absence-history',
     fr: '/rapports/historique-absences'
   },
+  '/reports/details-conges': {
+    en: '/reports/leave-details',
+    fr: '/reports/details-conges'
+  },
   '/bulletin': {
     en: '/paystub',
     fr: '/bulletin'

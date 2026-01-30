@@ -212,7 +212,8 @@
     "sickLeaveAlertTitle": "Absences Justifiées",
     "sickLeaveAlertDescription": "Vous avez {count, plural, one {# jour de congé maladie payé} other {# jours de congé maladie payés}} ce mois-ci.",
     "leaveTableBase": "Congé de base",
-    "leaveTableSeniority": "Surplus Ancienneté"
+    "leaveTableSeniority": "Surplus Ancienneté",
+    "leaveRequestButton": "Générer une demande de congé"
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -437,5 +438,24 @@
     "statusApproved": "Approuvé",
     "statusRejected": "Rejeté",
     "viewDocument": "Voir le document"
+  },
+  "DetailsCongesPage": {
+    "title": "Détails des Droits à Congé",
+    "description": "Comprenez comment vos jours de congé et votre indemnité sont calculés.",
+    "visualSummaryTitle": "Résumé Visuel de vos Droits Annuels",
+    "baseLeave": "Congé de base annuel",
+    "senioritySurplus": "Surplus d'ancienneté",
+    "totalLeave": "Total jours de congé",
+    "daysUnit": "jours",
+    "calculationTitle": "Calcul de l'Indemnité de Congé Estimée",
+    "step1Title": "Étape 1 : Calcul de la Valeur Journalière",
+    "step1Formula": "(Salaire de Base Mensuel / 30 jours)",
+    "step1Result": "{salary} / 30 = {dailyRate} {currency}",
+    "step2Title": "Étape 2 : Calcul du Montant Total",
+    "step2Formula": "Valeur Journalière × Total des Jours Acquis",
+    "step2Result": "{dailyRate} {currency} × {totalDays}j = {totalPayout} {currency}",
+    "accrualLogicTitle": "Logique d'Accumulation",
+    "accrualLogicDescription": "Vous accumulez 1,5 jour de congé de base pour chaque mois de travail effectif. Votre surplus de {senioritySurplus} jours est lié à vos {seniorityYears} ans d'ancienneté.",
+    "generateRequestButton": "Générer ma demande de congé"
   }
 }
