@@ -441,37 +441,40 @@ export default function ReportsPage() {
         </Link>
       </div>
 
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+
       {absencePenalty.unjustifiedCount > 0 && (
-        
-            <Alert variant="destructive">
-                <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
-                <AlertDescription>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <p>
-                        {t('absenceAlertDescription', {
-                            count: absencePenalty.unjustifiedCount,
-                            penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
-                        })}
-                        </p>
-                         <Link href="/reports/historique-absences">
-                             <Button 
-                                variant="secondary" 
-                                size="sm" 
-                                className="mt-2 sm:mt-0" 
-                                onClick={(e) => { e.preventDefault(); handleJustifyClick(absencePenalty.unjustifiedDates[0]); }} 
-                                disabled={isJustifying}
-                            >
-                                {isJustifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Justifier une absence
-                            </Button>
-                         </Link>
+        <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
+            <AlertDescription>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <p>
+                    {t('absenceAlertDescription', {
+                        count: absencePenalty.unjustifiedCount,
+                        penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
+                    })}
+                    </p>
+                    <div className="flex gap-2">
+                        <Link href="/reports/historique-absences">
+                            <Button variant="link" size="sm" className="p-0 h-auto">Voir historique</Button>
+                        </Link>
+                         <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="mt-2 sm:mt-0" 
+                            onClick={() => handleJustifyClick(absencePenalty.unjustifiedDates[0])} 
+                            disabled={isJustifying}
+                        >
+                            {isJustifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Justifier une absence
+                        </Button>
                     </div>
-                </AlertDescription>
-            </Alert>
-        
+                </div>
+            </AlertDescription>
+        </Alert>
       )}
-       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+       
 
       {absencePenalty.sickLeaveCount > 0 && (
         <Alert variant="default" className="bg-blue-950/50 border-blue-500/50 text-blue-300">
