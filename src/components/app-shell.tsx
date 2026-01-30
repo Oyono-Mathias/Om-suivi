@@ -165,6 +165,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <header className="flex h-14 items-center justify-between border-b bg-background px-4 no-print">
             <div className="flex items-center gap-2">
               <SidebarTrigger /> {/* Hamburger Menu to open the drawer */}
+              <Image src="/logo-omsuivi.png" alt="OM Suivi Logo" width={32} height={32} className="rounded-full" />
             </div>
              <div className="flex items-center gap-2">
                 <Link href="/profile">
@@ -231,9 +232,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm no-print">
-          <SidebarTrigger />
-          <h1 className="text-lg font-semibold">{t('appName')}</h1>
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm no-print">
+            <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <h1 className="text-lg font-semibold">{t('appName')}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+                <Link href="/profile">
+                    <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.photoURL || userAvatar?.imageUrl} data-ai-hint={userAvatar?.imageHint || "person portrait"} alt={user?.displayName || t('user')} />
+                    <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                </Link>
+            </div>
         </header>
         <main className="flex-1 p-4 sm:p-6 print:p-0">{children}</main>
       </SidebarInset>

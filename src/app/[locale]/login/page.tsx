@@ -217,7 +217,7 @@ export default function AuthPage() {
       <div className="flex flex-col items-center gap-6 w-full max-w-md">
         <Image src="/logo-omsuivi.png" alt="OM Suivi Logo" width={80} height={80} className="rounded-full" />
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <Card className="w-full rounded-2xl border-border/20 bg-card/60 shadow-lg shadow-black/20 backdrop-blur-lg">
+          <Card className="w-full rounded-lg border-border/20 bg-card/60 shadow-lg shadow-black/20 backdrop-blur-lg">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold">{t('title')}</CardTitle>
               <CardDescription>{t('description')}</CardDescription>
