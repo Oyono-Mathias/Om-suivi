@@ -384,7 +384,10 @@
     "acquiredRightsTitle": "Droits Acquis (Congés Payés)",
     "accruedLeaveDaysLabel": "Jours de congé accumulés",
     "estimatedLeavePayLabel": "Indemnité de congé estimée",
-    "leaveDaysUnit": "jours"
+    "leaveDaysUnit": "jours",
+    "confidentialityNote": "Pour vous aider à faire valoir vos droits, conservez ce bulletin de paie sans limitation de durée.",
+    "directorSignature": "La Direction",
+    "signatureAndStamp": "(Signature et Cachet)"
   },
   "LeaveRequestPage": {
     "title": "Demande de Congé Annuel",
@@ -417,3 +420,4 @@
     "closeButton": "Compris"
   }
 }
+    

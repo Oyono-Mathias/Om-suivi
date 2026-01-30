@@ -384,7 +384,10 @@
     "acquiredRightsTitle": "Acquired Rights (Paid Leave)",
     "accruedLeaveDaysLabel": "Accrued Leave Days",
     "estimatedLeavePayLabel": "Estimated Leave Pay",
-    "leaveDaysUnit": "days"
+    "leaveDaysUnit": "days",
+    "confidentialityNote": "To help you assert your rights, please keep this payslip indefinitely.",
+    "directorSignature": "Management",
+    "signatureAndStamp": "(Signature and Stamp)"
   },
   "LeaveRequestPage": {
     "title": "Annual Leave Request",
@@ -417,3 +420,4 @@
     "closeButton": "Got it"
   }
 }
+    

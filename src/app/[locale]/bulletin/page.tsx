@@ -182,36 +182,33 @@ export default function BulletinPage() {
 
         let attendanceBonus = 3000;
         let performanceBonus = 4000;
-        let salaryDeduction = 0;
         
+        const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
+        const workedDays = new Set(timeEntries.map(e => e.date));
+        const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave').map(o => o.id));
+
+        let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
             const hireDate = parseISO(profile.hireDate);
-            const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
-            const workedDays = new Set(timeEntries.map(e => e.date));
-            const overridesMap = new Map(attendanceOverrides.map(o => [o.id, o.status]));
-            
-            let unjustifiedAbsenceCount = 0;
-            let preRegistrationAbsenceCount = 0;
-
             for (const day of cycleWorkDays) {
                 const dayString = format(day, 'yyyy-MM-dd');
-                if (day < startOfDay(hireDate)) {
-                    preRegistrationAbsenceCount++;
-                } else if (!workedDays.has(dayString) && overridesMap.get(dayString) !== 'sick_leave') {
+                if (day >= startOfDay(hireDate) && !workedDays.has(dayString) && !sickLeaveDays.has(dayString)) {
                     unjustifiedAbsenceCount++;
                 }
             }
-            const totalAbsenceForDeduction = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
-            salaryDeduction = totalAbsenceForDeduction * (3360 + 705); // Salary + Transport
-            if (unjustifiedAbsenceCount > 0) {
-                attendanceBonus = 0;
-                performanceBonus = 0;
-            }
         }
         
-        const proratedBaseSalary = baseSalary - (salaryDeduction > 0 ? (unjustifiedAbsenceCount + preRegistrationAbsenceCount) * 3360 : 0);
-        const transportBonus = 18325 - (salaryDeduction > 0 ? (unjustifiedAbsenceCount + preRegistrationAbsenceCount) * 705 : 0);
-        const housingBonus = baseSalary * 0.1;
+        const totalWorkableDaysInCycle = cycleWorkDays.length;
+        const totalDaysWorked = workedDays.size + sickLeaveDays.size;
+        const proratedBaseSalary = (baseSalary / totalWorkableDaysInCycle) * totalDaysWorked;
+        
+        if (unjustifiedAbsenceCount > 0) {
+            attendanceBonus = 0;
+            performanceBonus = 0;
+        }
+        
+        const transportBonus = (18325 / 26) * (totalDaysWorked); 
+        const housingBonus = proratedBaseSalary * 0.1;
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
         const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + totalOvertimePayout + transportBonus + housingBonus;
@@ -223,7 +220,7 @@ export default function BulletinPage() {
         const irppDeduction = calculateIRPP(totalEarnings, transportBonus, housingBonus, cnpsDeduction);
         const cacSurIRPP = irppDeduction * 0.1;
         const redevanceCRTV = 1950;
-        const cotisationSyndicale = baseSalary * 0.01;
+        const cotisationSyndicale = proratedBaseSalary * 0.01;
         const taxeCommunale = 270;
 
         const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
@@ -247,7 +244,6 @@ export default function BulletinPage() {
         }
 
         const totalLeaveDays = accruedLeaveDays + senioritySurplusLeave;
-        const estimatedLeavePay = totalLeaveDays * (baseSalary / 24);
 
         return {
             cycleStart, cycleEnd, 
@@ -258,7 +254,7 @@ export default function BulletinPage() {
             grossSalary: totalEarnings,
             cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
             totalDeductions, netPay,
-            accruedLeaveDays, senioritySurplusLeave, totalLeaveDays, estimatedLeavePay
+            accruedLeaveDays, senioritySurplusLeave, totalLeaveDays
         };
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
     
@@ -276,9 +272,9 @@ export default function BulletinPage() {
              <style jsx global>{`
                 @media print {
                     body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    main { padding: 0 !important; margin: 0 !important; }
+                    main { padding: 0 !important; margin: 0 !important; width: 100%; height: 100%; }
                     .no-print { display: none !important; }
-                    .print-container { width: 100%; border: 1px solid black; padding: 1.5rem; margin: 0; box-shadow: none; }
+                    .print-container { width: 100%; height: 100%; border: none; padding: 1.5rem; margin: 0; box-shadow: none; display: flex; flex-direction: column; }
                     .print-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
                     .print-table th, .print-table td { border: 1px solid black; padding: 4px; }
                     .print-table th { background-color: #f2f2f2 !important; font-weight: bold; text-align: center; }
@@ -355,51 +351,61 @@ export default function BulletinPage() {
                     </tbody>
                 </table>
                 
-                <div className="flex justify-end break-inside-avoid">
-                    <div className="w-full max-w-sm">
-                        <table className="print-table w-full text-sm">
-                           <tbody>
-                                <tr>
-                                    <td className="px-2 py-1 font-bold">{t('grossSalaryLabel')}</td>
-                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
-                                </tr>
-                                <tr>
-                                    <td className="px-2 py-1 font-bold">{t('totalDeductionsLabel')}</td>
-                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.totalDeductions)}</td>
-                                </tr>
-                                <tr className="bg-primary/10 text-primary-foreground">
-                                    <td className="p-2 font-bold text-lg">{t('netToPayLabel')}</td>
-                                    <td className="p-2 text-right font-bold text-xl font-mono tabular-nums">{formatCurrency(payrollData.netPay)}</td>
-                                </tr>
-                           </tbody>
-                        </table>
+                <div className="flex justify-end break-inside-avoid mt-4">
+                    <div className="w-full max-w-xs space-y-1 text-sm">
+                        <div className="flex justify-between">
+                            <span className="font-semibold">{t('grossSalaryLabel')}:</span>
+                            <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="font-semibold">{t('totalDeductionsLabel')}:</span>
+                            <span className="font-mono">{formatCurrency(payrollData.totalDeductions)}</span>
+                        </div>
+                        <div className="mt-2 p-2 border-2 border-black flex justify-between items-center font-bold">
+                            <span className="text-base">{t('netToPayLabel')}</span>
+                            <span className="text-lg font-mono">{formatCurrency(payrollData.netPay)}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-8 pt-4 border-t break-inside-avoid">
-                    <h3 className="font-bold text-sm mb-2">{t('acquiredRightsTitle')}</h3>
-                    <table className="print-table w-full max-w-xs text-xs">
-                        <thead>
-                            <tr className="bg-muted">
-                                <th className="px-2 py-1 text-left">Compteur</th>
-                                <th className="px-2 py-1 text-right">Acquis</th>
-                                <th className="px-2 py-1 text-right">Pris</th>
-                                <th className="px-2 py-1 text-right">Solde</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td className="px-2 py-1">Congés payés (jours)</td>
-                                <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
-                                <td className="px-2 py-1 text-right font-mono tabular-nums">0.00</td>
-                                <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <div className="mt-auto pt-4">
+                    <div className="mt-8 pt-4 border-t break-inside-avoid">
+                        <h3 className="font-bold text-sm mb-2">{t('acquiredRightsTitle')}</h3>
+                        <table className="print-table w-full max-w-xs text-xs">
+                            <thead>
+                                <tr className="bg-muted">
+                                    <th className="px-2 py-1 text-left">Compteur</th>
+                                    <th className="px-2 py-1 text-right">Acquis</th>
+                                    <th className="px-2 py-1 text-right">Pris</th>
+                                    <th className="px-2 py-1 text-right">Solde</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="px-2 py-1">Congés payés (jours)</td>
+                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
+                                    <td className="px-2 py-1 text-right font-mono tabular-nums">0.00</td>
+                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
+                    <div className="flex justify-end mt-20 print:mt-16 break-inside-avoid">
+                        <div className="w-64 text-center">
+                            <p className="font-bold mb-16">{t('directorSignature')}</p>
+                            <div className="border-t border-black pt-1 text-xs text-muted-foreground">
+                                {t('signatureAndStamp')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <p className="text-xs text-center text-muted-foreground/80 mt-12 print:mt-8">
+                        {t('confidentialityNote')}
+                    </p>
+                </div>
             </div>
-            <p className="text-xs text-center text-muted-foreground pt-4 no-print">{t('footerText')}</p>
         </div>
     );
 }
+    
