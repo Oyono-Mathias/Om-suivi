@@ -205,7 +205,9 @@
     "overtimeHoliday": "HS Jours Fériés à {rate}%",
     "estimatedDeductionsTitle": "Retenues Estimées",
     "cnpsDeductionLabel": "CNPS (4.2%)",
-    "estimatedNetPayout": "Net à Percevoir Estimé"
+    "estimatedNetPayout": "Net à Percevoir Estimé",
+    "absenceAlertTitle": "Absence Détectée",
+    "absenceAlertDescription": "Vous avez {count, plural, one {# absence} other {# absences}} ce mois-ci. Cela représente une pénalité estimée de -{penalty} FCFA sur votre paie."
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -353,5 +355,3 @@
     "netToPayLabel": "NET A PAYER"
   }
 }
-
-    

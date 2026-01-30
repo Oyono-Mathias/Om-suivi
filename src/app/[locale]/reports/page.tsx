@@ -24,6 +24,7 @@ import {
   ChartTooltipContent,
   ChartConfig,
 } from "@/components/ui/chart";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
   eachDayOfInterval,
@@ -47,7 +48,7 @@ import {
 import type { TimeEntry, Profile, GlobalSettings } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
-import { Loader2, HelpCircle } from "lucide-react";
+import { Loader2, HelpCircle, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
 import { getPayrollCycle } from "@/lib/utils";
@@ -89,6 +90,38 @@ export default function ReportsPage() {
     const scrollToDetails = () => {
         detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
+
+    const absencePenalty = useMemo(() => {
+        if (!timeEntries || !profile || !profile.hireDate) {
+            return { count: 0, totalPenalty: 0 };
+        }
+
+        const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
+
+        const absenceCheckStart = max([cycleStart, parseISO(profile.hireDate)]);
+        const absenceCheckEnd = min([cycleEnd, new Date()]);
+
+        let absenceCount = 0;
+
+        if (absenceCheckStart < absenceCheckEnd) {
+            const daysInCycleToCheck = eachDayOfInterval({ start: absenceCheckStart, end: absenceCheckEnd });
+            const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); // Mon-Sat
+            const workedDays = new Set(timeEntries.map(e => e.date));
+            absenceCount = workDays.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
+        }
+        
+        if (absenceCount === 0) {
+            return { count: 0, totalPenalty: 0 };
+        }
+
+        const salaryDeduction = absenceCount * 3360;
+        const transportDeduction = absenceCount * 705;
+        const primesLost = 7000; // Assiduité (3000) + Rendement (4000) are lost if absenceCount > 0
+        const totalPenalty = salaryDeduction + transportDeduction + primesLost;
+        
+        return { count: absenceCount, totalPenalty };
+
+    }, [timeEntries, profile]);
 
     const reportSummary = useMemo(() => {
         if (!timeEntries || !profile) {
@@ -308,6 +341,19 @@ export default function ReportsPage() {
           <Button>{t('exportButton')}</Button>
         </Link>
       </div>
+
+      {absencePenalty.count > 0 && (
+        <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
+            <AlertDescription>
+                {t('absenceAlertDescription', {
+                    count: absencePenalty.count,
+                    penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
+                })}
+            </AlertDescription>
+        </Alert>
+      )}
       
         <Card>
             <CardHeader>
@@ -446,5 +492,6 @@ export default function ReportsPage() {
     
 
     
+
 
 

@@ -13,6 +13,7 @@ import { Link } from '@/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { shifts } from '@/lib/shifts';
 import { getPayrollCycle, cn } from '@/lib/utils';
+import Image from 'next/image';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -51,7 +52,7 @@ const calculateIRPP = (grossSalary: number, transportBonus: number, housingBonus
 // Reusable component for paystub line items
 const PaystubRow = ({ label, value, isAbsence, isTotal }: { label: string; value: string; isAbsence?: boolean; isTotal?: boolean; }) => (
     <div className={cn("flex justify-between items-center text-sm", isTotal && "font-bold pt-2 border-t mt-2 border-muted-foreground/20")}>
-        <span className={cn(isAbsence ? "text-destructive" : "text-card-foreground/80")}>{label}</span>
+        <span className={cn("text-card-foreground/80", isAbsence && "text-destructive" )}>{label}</span>
         <span className={cn("font-mono tabular-nums", isAbsence ? "text-destructive" : "text-card-foreground")}>{value}</span>
     </div>
 );
@@ -197,18 +198,23 @@ export default function BulletinPage() {
 
             if (absenceCheckStart < absenceCheckEnd) {
                 const daysInCycleToCheck = eachDayOfInterval({ start: absenceCheckStart, end: absenceCheckEnd });
-                const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); // Mon-Sat
+                // Work days are Monday (1) to Saturday (6). Sunday is 0.
+                const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); 
                 const workedDays = new Set(timeEntries.map(e => e.date));
                 absenceCount = workDays.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
             }
 
             if (absenceCount > 0) {
-                const dailySalary = baseSalary / 26;
-                const dailyTransport = 18325 / 26;
-                absenceDeduction = absenceCount * (dailySalary + dailyTransport);
+                attendanceBonus = 0;
+                performanceBonus = 0;
+                // Rule: Deduct 3360 FCFA from Base Salary and 705 FCFA from Transport Indemnity per absence.
+                const salaryDeduction = absenceCount * 3360;
+                const transportDeduction = absenceCount * 705;
+                absenceDeduction = salaryDeduction + transportDeduction;
             } else {
                  attendanceBonus = 3000;
                  performanceBonus = 4000;
+                 absenceDeduction = 0;
             }
         }
         
@@ -217,7 +223,7 @@ export default function BulletinPage() {
 
         // totalEarnings is the base for tax calculation
         const totalEarnings = baseSalary + totalOvertimePayout + seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus;
-        // grossSalary is for UI display as per the image
+        // grossSalary is for UI display
         const grossSalary = totalEarnings - absenceDeduction;
         
         const cnpsBase = totalEarnings - transportBonus - housingBonus;
@@ -232,7 +238,7 @@ export default function BulletinPage() {
         const cotisationSyndicale = baseSalary * 0.01;
         const taxeCommunale = 270;
 
-        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
+        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale + absenceDeduction;
         const netPay = grossSalary - totalDeductions;
 
         return {
@@ -284,6 +290,13 @@ export default function BulletinPage() {
                     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .no-print { display: none !important; }
                     main { padding: 0 !important; }
+                    .print-container {
+                        padding: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                    }
+                    .print-primary { color: hsl(var(--primary)) !important; }
+                    .print-muted { color: hsl(var(--muted-foreground)) !important; }
                 }
             `}</style>
 
@@ -316,17 +329,16 @@ export default function BulletinPage() {
                         <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />
                         <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />
 
-                        {payrollData.absenceDeduction > 0 && (
-                             <PaystubRow label={t('absenceDeductionLabel')} value={`- ${formatCurrency(payrollData.absenceDeduction)}`} isAbsence />
-                        )}
-
-                        <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary)} isTotal />
+                        <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary + payrollData.absenceDeduction)} isTotal />
                     </CardContent>
                 </Card>
 
                  <Card>
                     <CardHeader><CardTitle className="text-xl">{t('deductionsSectionTitle')}</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
+                        {payrollData.absenceDeduction > 0 && (
+                             <PaystubRow label={t('absenceDeductionLabel')} value={`${formatCurrency(payrollData.absenceDeduction)}`} isAbsence />
+                        )}
                         <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
                         <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
                         <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
@@ -343,12 +355,12 @@ export default function BulletinPage() {
                     <CardContent className="p-4">
                          <div className="flex justify-between items-center">
                             <span className="text-lg font-bold text-primary">{t('netPayableLabel')}</span>
-                            <span className="text-2xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} FCFA</span>
+                            <span className="text-2xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <p className="text-xs text-center text-muted-foreground pt-4">{t('footerText')}</p>
+                <p className="text-xs text-center text-muted-foreground pt-4 no-print">{t('footerText')}</p>
             </div>
         </div>
     );

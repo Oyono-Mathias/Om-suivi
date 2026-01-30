@@ -205,7 +205,9 @@
     "overtimeHoliday": "Holiday OT at {rate}%",
     "estimatedDeductionsTitle": "Estimated Deductions",
     "cnpsDeductionLabel": "CNPS (4.2%)",
-    "estimatedNetPayout": "Estimated Net Payout"
+    "estimatedNetPayout": "Estimated Net Payout",
+    "absenceAlertTitle": "Absence Detected",
+    "absenceAlertDescription": "You have {count, plural, one {# absence} other {# absences}} this month. This represents an estimated penalty of -{penalty} FCFA on your pay."
   },
   "ExportReportPage": {
     "title": "Export Report",
@@ -353,5 +355,3 @@
     "netToPayLabel": "NET PAY"
   }
 }
-
-    
