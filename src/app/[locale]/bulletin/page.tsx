@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -232,11 +231,10 @@ export default function BulletinPage() {
         }
         
         const totalAbsenceForDeduction = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
-        if (totalAbsenceForDeduction > 0) {
-            const salaryDeduction = totalAbsenceForDeduction * 3360;
-            const transportDeduction = totalAbsenceForDeduction * 705;
-            absenceDeduction = salaryDeduction + transportDeduction;
-        }
+        const salaryDeduction = totalAbsenceForDeduction * 3360;
+        const transportDeduction = totalAbsenceForDeduction * 705;
+        absenceDeduction = salaryDeduction + transportDeduction;
+
 
         if (unjustifiedAbsenceCount > 0) {
             attendanceBonus = 0;
@@ -245,6 +243,8 @@ export default function BulletinPage() {
         
         const transportBonus = 18325;
         const housingBonus = baseSalary * 0.1;
+
+        const proratedBaseSalary = baseSalary - salaryDeduction;
 
         const totalEarnings = baseSalary + totalOvertimePayout + seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus;
         const grossSalary = totalEarnings - absenceDeduction;
@@ -265,46 +265,17 @@ export default function BulletinPage() {
         const netPay = grossSalary - totalDeductions;
 
         return {
-            cycleStart, cycleEnd, baseSalary, transportBonus, housingBonus,
+            cycleStart, cycleEnd, 
+            baseSalary: proratedBaseSalary,
+            transportBonus, housingBonus,
             seniorityBonus, attendanceBonus, performanceBonus,
-            absenceDeduction, unjustifiedAbsenceCount, sickLeaveCount, grossSalary,
+            unjustifiedAbsenceCount, sickLeaveCount, grossSalary,
             overtimeBreakdown, totalOvertimePayout,
             cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
             totalDeductions, netPay
         };
 
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
-
-    const leaveData = useMemo(() => {
-        if (!profile?.leaveStartDate || !profile?.hireDate || !payrollData) {
-            return { accruedDays: 0, leavePayAllocation: 0, baseDays: 0, senioritySurplus: 0 };
-        }
-        try {
-            const cycleStartDate = parseISO(profile.leaveStartDate);
-            const hireDate = parseISO(profile.hireDate);
-            const now = new Date();
-
-            const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
-            const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
-
-            const seniorityYears = differenceInYears(now, hireDate);
-            let senioritySurplus = 0;
-            if (seniorityYears >= 5) {
-                senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2) * 2;
-            }
-            
-            const accruedDays = baseDays + senioritySurplus;
-            
-            const taxableGross = payrollData.grossSalary;
-            const leavePayAllocation = (taxableGross / 30) * accruedDays;
-
-            return { accruedDays, leavePayAllocation, baseDays, senioritySurplus };
-
-        } catch (e) {
-            console.error("Could not parse date for leave calculation", e);
-            return { accruedDays: 0, leavePayAllocation: 0, baseDays: 0, senioritySurplus: 0 };
-        }
-    }, [profile?.leaveStartDate, profile?.hireDate, payrollData]);
     
     const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
 
@@ -384,13 +355,12 @@ export default function BulletinPage() {
                             <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />
                             <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />
                              {payrollData.sickLeaveCount > 0 && <PaystubRow label={t('paidSickLeaveLabel')} value={`${payrollData.sickLeaveCount} jours`} />}
-                            <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary + payrollData.absenceDeduction)} isTotal />
+                            <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary)} isTotal />
                         </CardContent>
                     </Card>
                      <Card>
                         <CardHeader><CardTitle>{t('deductionsSectionTitle')}</CardTitle></CardHeader>
                         <CardContent className="space-y-2">
-                            {payrollData.absenceDeduction > 0 && <PaystubRow label={t('absenceDeductionLabel')} value={`-${formatCurrency(payrollData.absenceDeduction)}`} isAbsence />}
                             <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
                             <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
                             <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
@@ -398,7 +368,7 @@ export default function BulletinPage() {
                             <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
                             <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
                             <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
-                             <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions + payrollData.absenceDeduction)} isTotal />
+                             <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
                         </CardContent>
                     </Card>
                      <Card className="border-primary">
@@ -407,14 +377,6 @@ export default function BulletinPage() {
                                 <span className="text-lg font-bold text-primary">{t('netPayableLabel')}</span>
                                 <span className="text-2xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
                             </div>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader><CardTitle>{t('acquiredRightsTitle')}</CardTitle></CardHeader>
-                        <CardContent className="space-y-2">
-                             <PaystubRow label={t('accruedLeaveDaysLabel')} value={`${leaveData.accruedDays.toFixed(1)} ${t('leaveDaysUnit')}`} />
-                             <p className="text-xs text-muted-foreground pl-1">Base ({leaveData.baseDays.toFixed(1)}j) + Surplus ({leaveData.senioritySurplus}j)</p>
-                             <PaystubRow label={t('estimatedLeavePayLabel')} value={`${formatCurrency(leaveData.leavePayAllocation)}`} />
                         </CardContent>
                     </Card>
                 </div>
@@ -449,11 +411,10 @@ export default function BulletinPage() {
                                 {payrollData.transportBonus > 0 && <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />}
                                 {payrollData.housingBonus > 0 && <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />}
                                  {payrollData.sickLeaveCount > 0 && <PaystubRow label={t('paidSickLeaveLabel')} value={`${payrollData.sickLeaveCount} jours`} />}
-                                <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary + payrollData.absenceDeduction)} isTotal />
+                                <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary)} isTotal />
                             </div>
                             <div className="col-span-2">
                                 <h3 className="font-bold mb-2 border-b pb-1">{t('deductionsSectionTitle')}</h3>
-                                {payrollData.absenceDeduction > 0 && <PaystubRow label={t('absenceDeductionLabel')} value={`${formatCurrency(payrollData.absenceDeduction)}`} isAbsence />}
                                 <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
                                 <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
                                 <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
@@ -461,7 +422,7 @@ export default function BulletinPage() {
                                 <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
                                 <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
                                 <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
-                                <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions + payrollData.absenceDeduction)} isTotal />
+                                <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
                             </div>
                         </div>
 
@@ -471,15 +432,6 @@ export default function BulletinPage() {
                                 <span className="text-3xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
                             </div>
                         </div>
-
-                         <div className="mt-8 pt-4 border-t print:border-gray-300">
-                             <h3 className="font-bold mb-2 text-lg">{t('acquiredRightsTitle')}</h3>
-                             <div className="space-y-1 text-sm">
-                                 <PaystubRow label={t('accruedLeaveDaysLabel')} value={`${leaveData.accruedDays.toFixed(1)} ${t('leaveDaysUnit')}`} />
-                                 <p className="text-xs text-muted-foreground pl-2">Détail: Congé de base ({leaveData.baseDays.toFixed(1)}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)</p>
-                                 <PaystubRow label={t('estimatedLeavePayLabel')} value={`${formatCurrency(leaveData.leavePayAllocation)}`} />
-                             </div>
-                         </div>
                     </CardContent>
                 </Card>
                 <p className="text-xs text-center text-muted-foreground pt-4 no-print">{t('footerText')}</p>
