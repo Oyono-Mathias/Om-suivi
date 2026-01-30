@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
@@ -342,21 +341,24 @@ export default function ReportsPage() {
   }, [timeEntries]);
 
   const leaveData = useMemo(() => {
-    if (!profile?.leaveStartDate || !profile.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
+    if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     try {
-        const hireDate = parseISO(profile.hireDate);
         const now = new Date();
+        const hireDate = parseISO(profile.hireDate);
+        const cycleStartDate = parseISO(profile.leaveStartDate);
 
+        // Seniority calculation
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
         if (seniorityYears >= 5) {
             senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
         }
-
-        const cycleStartDate = parseISO(profile.leaveStartDate);
+        
+        // Base days calculation (1.5 days per month)
         const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
         const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
+        // Total
         const totalDays = baseDays + senioritySurplus;
 
         return {

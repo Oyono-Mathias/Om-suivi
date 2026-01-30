@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -232,31 +231,34 @@ export default function ProfilePage() {
   }
 
   const leaveData = useMemo(() => {
-    if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: '0.0', senioritySurplus: 0, totalDays: '0.0' };
+    if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     try {
-        const cycleStartDate = parseISO(profile.leaveStartDate);
-        const hireDate = parseISO(profile.hireDate);
         const now = new Date();
+        const hireDate = parseISO(profile.hireDate);
+        const cycleStartDate = parseISO(profile.leaveStartDate);
 
-        const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
-        const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
-        
+        // Seniority calculation
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
         if (seniorityYears >= 5) {
             senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
         }
+        
+        // Base days calculation (1.5 days per month)
+        const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
+        const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
+        // Total
         const totalDays = baseDays + senioritySurplus;
 
         return {
-            baseDays: baseDays.toFixed(1),
+            baseDays,
             senioritySurplus,
-            totalDays: totalDays.toFixed(1)
+            totalDays
         };
     } catch (e) {
         console.error("Could not parse date for leave calculation", e);
-        return { baseDays: '0.0', senioritySurplus: 0, totalDays: '0.0' };
+        return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     }
   }, [profile?.leaveStartDate, profile?.hireDate]);
 
@@ -406,9 +408,9 @@ export default function ProfilePage() {
               <CardDescription>{t('leaveBalanceDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
-                <p className="text-4xl font-bold">{leaveData.totalDays} <span className="text-xl font-medium text-muted-foreground">{t('leaveBalanceDays')}</span></p>
+                <p className="text-4xl font-bold">{leaveData.totalDays.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">{t('leaveBalanceDays')}</span></p>
                 <p className="text-sm text-muted-foreground mt-2">
-                    Congé de base ({leaveData.baseDays}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)
+                    Congé de base ({leaveData.baseDays.toFixed(1)}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)
                 </p>
                 <Link href="/leave" className="mt-4 inline-block">
                     <Button><Paperclip className="mr-2 h-4 w-4" />{tLeave('goToLeaveRequest')}</Button>
