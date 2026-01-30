@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -62,6 +61,7 @@ const PaystubRow = ({ label, value, isAbsence, isTotal }: { label: string; value
 export default function BulletinPage() {
     const t = useTranslations('BulletinPage');
     const tShared = useTranslations('Shared');
+    const tProfile = useTranslations('ProfilePage');
     const locale = useLocale();
     const dateFnsLocale = locale === 'fr' ? fr : enUS;
 
@@ -339,6 +339,7 @@ export default function BulletinPage() {
                             {payrollData.totalOvertimePayout > 0 && <PaystubRow label={t('overtimeLabel')} value={formatCurrency(payrollData.totalOvertimePayout)} />}
                             <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />
                             <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />
+                             {payrollData.sickLeaveCount > 0 && <PaystubRow label={t('paidSickLeaveLabel')} value={`${payrollData.sickLeaveCount} jours`} />}
                             <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary + payrollData.absenceDeduction)} isTotal />
                         </CardContent>
                     </Card>
@@ -379,7 +380,7 @@ export default function BulletinPage() {
                             </div>
                             <div className="text-right">
                                 <p className="font-semibold">{t('employeeLabel')}: {profile.name}</p>
-                                <p className="text-sm text-muted-foreground">{t('jobTitleLabel')}: {profile.profession ? t(`../ProfilePage.professions.${profile.profession}`) : ''}</p>
+                                <p className="text-sm text-muted-foreground">{t('jobTitleLabel')}: {profile.profession ? tProfile(`professions.${profile.profession}`) : ''}</p>
                             </div>
                         </header>
                         
