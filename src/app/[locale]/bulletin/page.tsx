@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, differenceInCalendarMonths, parse } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -64,18 +64,16 @@ export default function BulletinPage() {
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
-    const { start: cycleStart, end: cycleEnd } = useMemo(() => getPayrollCycle(new Date()), []);
-    const cycleStartString = useMemo(() => format(cycleStart, 'yyyy-MM-dd'), [cycleStart]);
-    const cycleEndString = useMemo(() => format(cycleEnd, 'yyyy-MM-dd'), [cycleEnd]);
+    const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
 
     const timeEntriesQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(
             collection(firestore, 'users', user.uid, 'timeEntries'),
-            where('date', '>=', cycleStartString),
-            where('date', '<=', cycleEndString)
+            where('date', '>=', format(cycleStart, 'yyyy-MM-dd')),
+            where('date', '<=', format(cycleEnd, 'yyyy-MM-dd'))
         );
-    }, [firestore, user, cycleStartString, cycleEndString]);
+    }, [firestore, user, cycleStart, cycleEnd]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
     const settingsRef = useMemoFirebase(() => (user ? doc(firestore, 'settings', 'global') : null), [firestore, user]);
@@ -84,10 +82,10 @@ export default function BulletinPage() {
     const overridesQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, 'users', user.uid, 'attendanceOverrides'),
-            where('__name__', '>=', cycleStartString),
-            where('__name__', '<=', cycleEndString)
+            where('__name__', '>=', format(cycleStart, 'yyyy-MM-dd')),
+            where('__name__', '<=', format(cycleEnd, 'yyyy-MM-dd'))
         );
-    }, [firestore, user, cycleStartString, cycleEndString]);
+    }, [firestore, user, cycleStart, cycleEnd]);
     const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
 
     const handlePrint = () => { window.print(); };
