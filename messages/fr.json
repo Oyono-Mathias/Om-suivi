@@ -313,7 +313,7 @@
     "backfillStatusPaidLeave": "Congé Payé / Justifié",
     "backfillSuccess": "Historique régularisé avec succès.",
     "backfillError": "Erreur lors de la régularisation.",
-    "preHireAbsenceTooltip": "Cette journée est marquée absente car vous n'étiez pas encore inscrit. Contactez l'administrateur si vous travailliez déjà.",
+    "preHireAbsenceTooltip": "Période non inscrite. Contactez l'administrateur pour régularisation.",
     "preHireAbsenceLabel": "Absent (Non-inscrit)"
   },
   "Shared": {

@@ -103,20 +103,23 @@ export default function ReportsPage() {
         }
 
         const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
-        const absenceCheckStart = max([cycleStart, parseISO(profile.hireDate)]);
-        const absenceCheckEnd = min([cycleEnd, new Date()]);
-
         let unjustifiedAbsenceCount = 0;
         let sickLeaveCount = 0;
+        let preRegistrationAbsenceCount = 0;
+        
+        const hireDate = parseISO(profile.hireDate);
+        const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) })
+          .filter(d => getDay(d) !== 0); // Mon-Sat
+        
+        const workedDays = new Set(timeEntries.map(e => e.date));
+        const overridesMap = new Map(attendanceOverrides.map(o => [o.id, o.status]));
 
-        if (absenceCheckStart < absenceCheckEnd) {
-            const daysInCycleToCheck = eachDayOfInterval({ start: absenceCheckStart, end: absenceCheckEnd });
-            const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); // Mon-Sat
-            const workedDays = new Set(timeEntries.map(e => e.date));
-            const overridesMap = new Map(attendanceOverrides.map(o => [o.id, o.status]));
+        for (const day of cycleWorkDays) {
+            const dayString = format(day, 'yyyy-MM-dd');
             
-            for (const day of workDays) {
-                const dayString = format(day, 'yyyy-MM-dd');
+            if (day < startOfDay(hireDate)) {
+                preRegistrationAbsenceCount++;
+            } else {
                 if (!workedDays.has(dayString)) {
                     const status = overridesMap.get(dayString);
                     if (status === 'sick_leave') {
@@ -127,15 +130,19 @@ export default function ReportsPage() {
                 }
             }
         }
-        
-        if (unjustifiedAbsenceCount === 0) {
-            return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount };
+
+        let totalPenalty = 0;
+        const totalAbsenceForDeduction = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
+        if (totalAbsenceForDeduction > 0) {
+            const salaryDeduction = totalAbsenceForDeduction * 3360;
+            const transportDeduction = totalAbsenceForDeduction * 705;
+            totalPenalty += salaryDeduction + transportDeduction;
         }
 
-        const salaryDeduction = unjustifiedAbsenceCount * 3360;
-        const transportDeduction = unjustifiedAbsenceCount * 705;
-        const primesLost = 7000;
-        const totalPenalty = salaryDeduction + transportDeduction + primesLost;
+        if (unjustifiedAbsenceCount > 0) {
+            const primesLost = 7000; // attendance (3000) + performance (4000)
+            totalPenalty += primesLost;
+        }
         
         return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount };
 

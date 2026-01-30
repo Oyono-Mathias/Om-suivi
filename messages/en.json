@@ -313,7 +313,7 @@
     "backfillStatusPaidLeave": "Paid Leave / Justified",
     "backfillSuccess": "History regularized successfully.",
     "backfillError": "Error during regularization.",
-    "preHireAbsenceTooltip": "This day is marked absent because you were not yet registered. Contact an administrator if you were already working.",
+    "preHireAbsenceTooltip": "This day is marked absent because you were not yet registered. Contact an administrator for regularization.",
     "preHireAbsenceLabel": "Absent (Not Registered)"
   },
   "Shared": {

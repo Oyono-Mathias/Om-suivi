@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -9,8 +10,8 @@ import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/l
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
-import { Link } from '@/navigation';
-import { useTranslations, useLocale } from 'next-intl';
+import { Link, useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
 import { shifts } from '@/lib/shifts';
 import { getPayrollCycle, cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -202,19 +203,22 @@ export default function BulletinPage() {
         let absenceDeduction = 0;
         let unjustifiedAbsenceCount = 0;
         let sickLeaveCount = 0;
+        let preRegistrationAbsenceCount = 0;
         
         if (profile.hireDate) {
-            const absenceCheckStart = max([cycleStart, parseISO(profile.hireDate)]);
-            const absenceCheckEnd = min([cycleEnd, new Date()]);
+            const hireDate = parseISO(profile.hireDate);
+            const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) })
+              .filter(d => getDay(d) !== 0); // Mon-Sat are work days
+            
+            const workedDays = new Set(timeEntries.map(e => e.date));
             const overridesMap = new Map(attendanceOverrides.map(o => [o.id, o.status]));
 
-            if (absenceCheckStart < absenceCheckEnd) {
-                const daysInCycleToCheck = eachDayOfInterval({ start: absenceCheckStart, end: absenceCheckEnd });
-                const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); 
-                const workedDays = new Set(timeEntries.map(e => e.date));
+            for (const day of cycleWorkDays) {
+                const dayString = format(day, 'yyyy-MM-dd');
                 
-                for (const day of workDays) {
-                    const dayString = format(day, 'yyyy-MM-dd');
+                if (day < startOfDay(hireDate)) {
+                    preRegistrationAbsenceCount++;
+                } else {
                     if (!workedDays.has(dayString)) {
                         const status = overridesMap.get(dayString);
                         if (status === 'sick_leave') {
@@ -225,14 +229,18 @@ export default function BulletinPage() {
                     }
                 }
             }
+        }
+        
+        const totalAbsenceForDeduction = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
+        if (totalAbsenceForDeduction > 0) {
+            const salaryDeduction = totalAbsenceForDeduction * 3360;
+            const transportDeduction = totalAbsenceForDeduction * 705;
+            absenceDeduction = salaryDeduction + transportDeduction;
+        }
 
-            if (unjustifiedAbsenceCount > 0) {
-                attendanceBonus = 0;
-                performanceBonus = 0;
-                const salaryDeduction = unjustifiedAbsenceCount * 3360;
-                const transportDeduction = unjustifiedAbsenceCount * 705;
-                absenceDeduction = salaryDeduction + transportDeduction;
-            }
+        if (unjustifiedAbsenceCount > 0) {
+            attendanceBonus = 0;
+            performanceBonus = 0;
         }
         
         const transportBonus = 18325;
@@ -253,7 +261,7 @@ export default function BulletinPage() {
         const cotisationSyndicale = baseSalary * 0.01;
         const taxeCommunale = 270;
 
-        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale + absenceDeduction;
+        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
         const netPay = grossSalary - totalDeductions;
 
         return {
@@ -354,7 +362,7 @@ export default function BulletinPage() {
                             <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
                             <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
                             <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
-                             <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
+                             <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions + payrollData.absenceDeduction)} isTotal />
                         </CardContent>
                     </Card>
                      <Card className="border-primary">
@@ -409,7 +417,7 @@ export default function BulletinPage() {
                                 <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
                                 <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
                                 <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
-                                <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
+                                <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions + payrollData.absenceDeduction)} isTotal />
                             </div>
                         </div>
 
