@@ -218,7 +218,11 @@
     "leaveBalanceTitle": "My Leave Balance",
     "leaveBalanceDescription": "Estimated leave days accrued during the current cycle.",
     "leaveBalanceDays": "days",
-    "goToLeaveRequest": "Generate Leave Request"
+    "goToLeaveRequest": "Generate Leave Request",
+    "homeConfigTitle": "Home Configuration",
+    "homeConfigDescription": "Define your home zone for automatic service stop.",
+    "setHomeLocationButton": "Set my current location as home",
+    "homeLocationSetSuccessTitle": "Home location updated."
   },
   "ReportsPage": {
     "title": "Dashboard",

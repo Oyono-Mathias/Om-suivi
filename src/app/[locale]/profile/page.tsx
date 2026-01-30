@@ -130,7 +130,7 @@ export default function ProfilePage() {
           } else {
             form.setValue('homeLatitude', latitude);
             form.setValue('homeLongitude', longitude);
-            toast({ title: "Domicile défini", description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}` });
+            toast({ title: t('homeLocationSetSuccessTitle'), description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}` });
           }
         },
         (error) => {
@@ -480,13 +480,13 @@ export default function ProfilePage() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Configuration du Domicile</CardTitle>
-              <CardDescription>Définissez votre zone de domicile pour l'arrêt automatique du service.</CardDescription>
+              <CardTitle>{t('homeConfigTitle')}</CardTitle>
+              <CardDescription>{t('homeConfigDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                <Button type="button" variant="outline" className="w-full" onClick={() => handleSetLocation('home')}>
                   <Home className="mr-2 h-4 w-4" />
-                  Définir ma position actuelle comme domicile
+                  {t('setHomeLocationButton')}
                 </Button>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField

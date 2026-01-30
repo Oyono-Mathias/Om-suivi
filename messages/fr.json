@@ -218,7 +218,11 @@
     "leaveBalanceTitle": "Mon Solde Congé",
     "leaveBalanceDescription": "Estimations de vos droits à congé pour le cycle actuel.",
     "leaveBalanceDays": "jours",
-    "goToLeaveRequest": "Générer une demande de congé"
+    "goToLeaveRequest": "Générer une demande de congé",
+    "homeConfigTitle": "Configuration du Domicile",
+    "homeConfigDescription": "Définissez votre zone de domicile pour l'arrêt automatique du service.",
+    "setHomeLocationButton": "Définir ma position actuelle comme domicile",
+    "homeLocationSetSuccessTitle": "Lieu de domicile mis à jour."
   },
   "ReportsPage": {
     "title": "Tableau de Bord",
