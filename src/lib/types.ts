@@ -23,6 +23,7 @@ export interface TimeEntry {
   profession: Profession;
   modified_manually?: boolean;
   modification_reason?: 'admin_edit';
+  notes?: string;
 }
 
 export interface Profile {
@@ -42,7 +43,8 @@ export interface Profile {
   };
   workLatitude?: number;
   workLongitude?: number;
-  workRadius?: number;
+  homeLatitude?: number;
+  homeLongitude?: number;
 }
 
 export interface OvertimeRates {
@@ -60,6 +62,7 @@ export interface GlobalSettings {
     overtimeRates?: OvertimeRates;
     absencePenaltyAmount?: number;
     defaultHourlyRate?: number;
+    geofenceRadius?: number;
 }
 
 export interface AttendanceOverride {
@@ -90,4 +93,13 @@ export interface AbsenceJustification {
   imageUrl: string;
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: any; // serverTimestamp
+}
+
+export interface WorkplaceUpdateLog {
+    id: string;
+    userId: string;
+    eventType: 'enter_work' | 'exit_work' | 'enter_home' | 'exit_home';
+    timestamp: any; // serverTimestamp
+    latitude: number;
+    longitude: number;
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -33,8 +34,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { Loader2, MapPin, Paperclip } from "lucide-react";
-import type { Profile, Profession } from "@/lib/types";
+import { Loader2, MapPin, Paperclip, Home } from "lucide-react";
+import type { Profile, Profession, GlobalSettings } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { format, parseISO, differenceInMonths, subDays, differenceInYears } from "date-fns";
@@ -69,7 +70,8 @@ export default function ProfilePage() {
     }),
     workLatitude: z.number().optional(),
     workLongitude: z.number().optional(),
-    workRadius: z.coerce.number().min(10, { message: t('radiusMinError')}),
+    homeLatitude: z.number().optional(),
+    homeLongitude: z.number().optional(),
   });
 
   const userProfileRef = useMemoFirebase(() => {
@@ -78,6 +80,9 @@ export default function ProfilePage() {
   }, [firestore, user]);
 
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
+  
+  const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
+  const { data: globalSettings } = useDoc<GlobalSettings>(settingsRef);
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -89,7 +94,6 @@ export default function ProfilePage() {
       hireDate: '',
       leaveStartDate: '',
       reminders: { enabled: false, time: '17:00' },
-      workRadius: 50,
     }
   });
   
@@ -105,7 +109,8 @@ export default function ProfilePage() {
         reminders: profile.reminders || { enabled: false, time: '17:00' },
         workLatitude: profile.workLatitude,
         workLongitude: profile.workLongitude,
-        workRadius: profile.workRadius || 50,
+        homeLatitude: profile.homeLatitude,
+        homeLongitude: profile.homeLongitude,
       });
     } else if (user) {
       form.reset({
@@ -115,32 +120,27 @@ export default function ProfilePage() {
     }
   }, [profile, user, form]);
 
-  const handleSetWorkplace = () => {
+  const handleSetLocation = (type: 'work' | 'home') => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          form.setValue('workLatitude', latitude);
-          form.setValue('workLongitude', longitude);
-          toast({
-            title: t('workplaceSetSuccess'),
-            description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`,
-          });
+          if (type === 'work') {
+            form.setValue('workLatitude', latitude);
+            form.setValue('workLongitude', longitude);
+            toast({ title: t('workplaceSetSuccess'), description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}` });
+          } else {
+            form.setValue('homeLatitude', latitude);
+            form.setValue('homeLongitude', longitude);
+            toast({ title: "Domicile défini", description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}` });
+          }
         },
         (error) => {
-          toast({
-            variant: 'destructive',
-            title: tGeo('geoFailedTitle'),
-            description: tGeo('geoFailedDescription'),
-          });
+          toast({ variant: 'destructive', title: tGeo('geoFailedTitle'), description: tGeo('geoFailedDescription') });
         }
       );
     } else {
-      toast({
-        variant: 'destructive',
-        title: tGeo('geoNotSupportedTitle'),
-        description: tGeo('geoNotSupportedDescription'),
-      });
+      toast({ variant: 'destructive', title: tGeo('geoNotSupportedTitle'), description: tGeo('geoNotSupportedDescription') });
     }
   };
 
@@ -431,11 +431,11 @@ export default function ProfilePage() {
               <CardDescription>{t('workplaceSettingsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-               <Button type="button" variant="outline" className="w-full" onClick={handleSetWorkplace}>
+               <Button type="button" variant="outline" className="w-full" onClick={() => handleSetLocation('work')}>
                   <MapPin className="mr-2 h-4 w-4" />
                   {t('setWorkplaceButton')}
                 </Button>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField
                     control={form.control}
                     name="workLatitude"
@@ -462,16 +462,48 @@ export default function ProfilePage() {
                         </FormItem>
                     )}
                     />
+                </div>
+                 <FormItem>
+                    <FormLabel>{t('radiusLabel')}</FormLabel>
+                    <Input value={globalSettings?.geofenceRadius || 50} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
+                    <FormDescription>Le rayon est défini par un administrateur.</FormDescription>
+                </FormItem>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuration du Domicile</CardTitle>
+              <CardDescription>Définissez votre zone de domicile pour l'arrêt automatique du service.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+               <Button type="button" variant="outline" className="w-full" onClick={() => handleSetLocation('home')}>
+                  <Home className="mr-2 h-4 w-4" />
+                  Définir ma position actuelle comme domicile
+                </Button>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField
                     control={form.control}
-                    name="workRadius"
+                    name="homeLatitude"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>{t('radiusLabel')}</FormLabel>
+                        <FormLabel>{t('latitudeLabel')}</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="50" {...field} />
+                            <Input type="number" placeholder={t('undefinedPlaceholder')} {...field} value={field.value ?? ''} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
                         </FormControl>
-                        <FormDescription>{t('radiusDescription')}</FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="homeLongitude"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{t('longitudeLabel')}</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder={t('undefinedPlaceholder')} {...field} value={field.value ?? ''} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
+                        </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -479,6 +511,7 @@ export default function ProfilePage() {
                 </div>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader>
