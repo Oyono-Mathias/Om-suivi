@@ -35,7 +35,7 @@ import {
 } from "date-fns";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useStorage } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Loader2, ShieldAlert, HeartPulse, Paperclip, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -81,10 +81,16 @@ export default function ReportsPage() {
     }, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
+    const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
+
     const timeEntriesQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return collection(firestore, 'users', user.uid, 'timeEntries');
-    }, [firestore, user]);
+        return query(
+            collection(firestore, 'users', user.uid, 'timeEntries'),
+            where('date', '>=', format(cycleStart, 'yyyy-MM-dd')),
+            where('date', '<=', format(cycleEnd, 'yyyy-MM-dd'))
+        );
+    }, [firestore, user, cycleStart, cycleEnd]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
     
     const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
@@ -92,8 +98,12 @@ export default function ReportsPage() {
     
     const overridesQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return collection(firestore, 'users', user.uid, 'attendanceOverrides');
-    }, [firestore, user]);
+        return query(
+            collection(firestore, 'users', user.uid, 'attendanceOverrides'),
+            where('__name__', '>=', format(cycleStart, 'yyyy-MM-dd')),
+            where('__name__', '<=', format(cycleEnd, 'yyyy-MM-dd'))
+        );
+    }, [firestore, user, cycleStart, cycleEnd]);
     const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
 
     const handleJustifyClick = (date: string) => {
@@ -140,7 +150,6 @@ export default function ReportsPage() {
             return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount: 0, unjustifiedDates: [] };
         }
 
-        const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
         let unjustifiedAbsenceCount = 0;
         let sickLeaveCount = 0;
         let preRegistrationAbsenceCount = 0;
@@ -177,7 +186,7 @@ export default function ReportsPage() {
 
         return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount, unjustifiedDates };
 
-    }, [timeEntries, profile, attendanceOverrides, globalSettings]);
+    }, [timeEntries, profile, attendanceOverrides, globalSettings, cycleStart, cycleEnd]);
 
     const reportSummary = useMemo(() => {
         if (!timeEntries || !profile || !attendanceOverrides) {
@@ -191,12 +200,8 @@ export default function ReportsPage() {
         }
 
         const rates = globalSettings?.overtimeRates || DEFAULT_OVERTIME_RATES;
-        const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
-
-        const monthEntries = timeEntries.filter(entry => {
-            const entryDate = parseISO(entry.date);
-            return entryDate >= cycleStart && entryDate <= cycleEnd;
-        });
+        
+        const monthEntries = timeEntries; // Already filtered by query
 
         let totalDurationMinutes = 0;
         monthEntries.forEach(entry => totalDurationMinutes += entry.duration);
@@ -242,10 +247,15 @@ export default function ReportsPage() {
                 
                 const shift = shifts.find(s => s.id === entry.shiftId);
                 if (shift) {
-                    const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
                     let shiftEndDateTime = parse(`${entry.date} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
-                    if (shiftEndDateTime <= shiftStartDateTime) shiftEndDateTime = addDays(shiftEndDateTime, 1);
                     
+                    if (shift.id === 'night') {
+                         const startDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                         if(shiftEndDateTime <= startDateTime) {
+                            shiftEndDateTime = addDays(shiftEndDateTime, 1);
+                         }
+                    }
+
                     const overtimeStartDateTime = shiftEndDateTime;
                     const overtimeEndDateTime = addMinutes(overtimeStartDateTime, entry.overtimeDuration);
                     
@@ -272,7 +282,7 @@ export default function ReportsPage() {
                 
                 if (overtimeToProcess > 0) {
                     const weeklyTier1CapInMinutes = 8 * 60;
-                    const remainingTier1Capacity = weeklyDaytimeOvertimeMinutes - weeklyDaytimeOvertimeMinutes;
+                    const remainingTier1Capacity = weeklyTier1CapInMinutes - weeklyDaytimeOvertimeMinutes;
                     const minutesForTier1 = Math.min(overtimeToProcess, remainingTier1Capacity);
                     
                     if (minutesForTier1 > 0) {
@@ -432,8 +442,8 @@ export default function ReportsPage() {
       </div>
 
       {absencePenalty.unjustifiedCount > 0 && (
-        <Link href="/reports/historique-absences">
-            <Alert variant="destructive" className="cursor-pointer hover:bg-destructive/10">
+        
+            <Alert variant="destructive">
                 <ShieldAlert className="h-4 w-4" />
                 <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
                 <AlertDescription>
@@ -444,20 +454,22 @@ export default function ReportsPage() {
                             penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
                         })}
                         </p>
-                        <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            className="mt-2 sm:mt-0" 
-                            onClick={(e) => { e.preventDefault(); handleJustifyClick(absencePenalty.unjustifiedDates[0]); }} 
-                            disabled={isJustifying}
-                        >
-                            {isJustifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Justifier une absence
-                        </Button>
+                         <Link href="/reports/historique-absences">
+                             <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                className="mt-2 sm:mt-0" 
+                                onClick={(e) => { e.preventDefault(); handleJustifyClick(absencePenalty.unjustifiedDates[0]); }} 
+                                disabled={isJustifying}
+                            >
+                                {isJustifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Justifier une absence
+                            </Button>
+                         </Link>
                     </div>
                 </AlertDescription>
             </Alert>
-        </Link>
+        
       )}
        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
 

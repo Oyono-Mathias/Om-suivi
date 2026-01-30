@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, limit, serverTimestamp, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, serverTimestamp, where, doc } from 'firebase/firestore';
 import type { Profile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
 import { Loader2, Send, PartyPopper } from 'lucide-react';
 import { Link } from '@/navigation';
@@ -18,7 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { doc } from 'firebase/firestore';
 import { format, parse } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';

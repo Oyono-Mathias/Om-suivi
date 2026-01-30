@@ -51,6 +51,7 @@ function GlobalSettingsForm() {
         breakDuration: z.coerce.number().min(0),
         absencePenaltyAmount: z.coerce.number().min(0),
         defaultHourlyRate: z.coerce.number().min(0),
+        geofenceRadius: z.coerce.number().min(10),
         overtimeRates: z.object({
             tier1: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
             tier2: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
@@ -67,6 +68,7 @@ function GlobalSettingsForm() {
             breakDuration: 40,
             absencePenaltyAmount: 2426,
             defaultHourlyRate: 420,
+            geofenceRadius: 50,
             overtimeRates: {
                 tier1: 1.2,
                 tier2: 1.3,
@@ -84,6 +86,7 @@ function GlobalSettingsForm() {
                 breakDuration: globalSettings.breakDuration || 40,
                 absencePenaltyAmount: globalSettings.absencePenaltyAmount || 2426,
                 defaultHourlyRate: globalSettings.defaultHourlyRate || 420,
+                geofenceRadius: globalSettings.geofenceRadius || 50,
                 overtimeRates: globalSettings.overtimeRates || { tier1: 1.2, tier2: 1.3, night: 1.4, sunday: 1.5, holiday: 1.5 }
             });
         }
@@ -123,6 +126,20 @@ function GlobalSettingsForm() {
                                             onCheckedChange={field.onChange}
                                         />
                                     </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="geofenceRadius"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Rayon de Géofence (mètres)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} />
+                                    </FormControl>
+                                    <FormDescription>Le rayon pour le pointage automatique et la détection de sortie.</FormDescription>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -335,7 +352,7 @@ export default function AdminPage() {
 
   const allProfilesQuery = useMemoFirebase(() => {
     if (!firestore || profile?.role !== 'admin') return null;
-    return collection(firestore, 'users');
+    return query(collection(firestore, 'users'), orderBy('name', 'asc'));
   }, [firestore, profile?.role]);
 
   const { data: allProfiles, isLoading: isLoadingAllProfiles } = useCollection<Profile>(allProfilesQuery);

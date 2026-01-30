@@ -264,10 +264,9 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
 
     const totalDuration = differenceInMinutes(endDateTime, startDateTime);
 
-    const shiftStartTimeOnDate = parse(`${dateStr} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
     let shiftEndDateTime = parse(`${dateStr} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
-    if (shift.id === 'night') {
+    if (shift.id === 'night' && shiftEndDateTime <= startDateTime) {
         shiftEndDateTime = addDays(shiftEndDateTime, 1);
     }
     
