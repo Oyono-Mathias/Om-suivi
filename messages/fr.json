@@ -1,3 +1,4 @@
+
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
@@ -209,7 +210,9 @@
     "absenceAlertTitle": "Absence Détectée",
     "absenceAlertDescription": "Vous avez {count, plural, one {# absence} other {# absences}} ce mois-ci. Cela représente une pénalité estimée de -{penalty} FCFA sur votre paie.",
     "sickLeaveAlertTitle": "Absences Justifiées",
-    "sickLeaveAlertDescription": "Vous avez {count, plural, one {# jour de congé maladie payé} other {# jours de congé maladie payés}} ce mois-ci."
+    "sickLeaveAlertDescription": "Vous avez {count, plural, one {# jour de congé maladie payé} other {# jours de congé maladie payés}} ce mois-ci.",
+    "leaveTableBase": "Congé de base",
+    "leaveTableSeniority": "Surplus Ancienneté"
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
@@ -418,6 +421,21 @@
     "title": "Bonnes vacances, {name} !",
     "description": "Profitez bien de vos {days} jours de repos bien mérités. On se revoit le {resumeDate} !",
     "closeButton": "Compris"
+  },
+  "DetailsCalculPage": {
+    "title": "Détails du Calcul",
+    "description": "Explication du calcul de votre paiement estimé."
+  },
+  "HistoriqueAbsencesPage": {
+    "title": "Historique des Absences",
+    "description": "Suivez le statut de vos justifications d'absence.",
+    "noJustifications": "Vous n'avez soumis aucune justification.",
+    "status": "Statut",
+    "date": "Date",
+    "document": "Document",
+    "statusPending": "En attente",
+    "statusApproved": "Approuvé",
+    "statusRejected": "Rejeté",
+    "viewDocument": "Voir le document"
   }
 }
-    

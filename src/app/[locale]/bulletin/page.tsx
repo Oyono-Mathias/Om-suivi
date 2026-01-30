@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, differenceInCalendarMonths } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, differenceInCalendarMonths, parse } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -128,8 +129,8 @@ export default function BulletinPage() {
                 
                 const shift = shifts.find(s => s.id === entry.shiftId);
                 if (shift) {
-                    const shiftStartDateTime = parseISO(`${entry.date}T${shift.startTime}`);
-                    let shiftEndDateTime = parseISO(`${entry.date}T${shift.endTime}`);
+                    const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    let shiftEndDateTime = parse(`${entry.date} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
                     if (shiftEndDateTime <= shiftStartDateTime) shiftEndDateTime = addDays(shiftEndDateTime, 1);
                     
                     const overtimeStartDateTime = shiftEndDateTime;
@@ -226,25 +227,6 @@ export default function BulletinPage() {
         const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
         const netPay = totalEarnings - totalDeductions;
 
-        let accruedLeaveDays = 0;
-        if (profile.leaveStartDate) {
-            try {
-                const leaveCycleStart = parseISO(profile.leaveStartDate);
-                const monthsInCycle = differenceInCalendarMonths(new Date(), leaveCycleStart);
-                if (monthsInCycle > 0) accruedLeaveDays = monthsInCycle * 1.5;
-            } catch (e) { console.error("Could not parse leaveStartDate", profile.leaveStartDate); }
-        }
-
-        let senioritySurplusLeave = 0;
-        if (profile.hireDate) {
-            try {
-                const seniorityYrs = differenceInYears(new Date(), parseISO(profile.hireDate));
-                if (seniorityYrs >= 5) senioritySurplusLeave = 2 + Math.floor(Math.max(0, seniorityYrs - 5) / 2) * 2;
-            } catch(e) { console.error("Could not parse hireDate for leave surplus", profile.hireDate); }
-        }
-
-        const totalLeaveDays = accruedLeaveDays + senioritySurplusLeave;
-
         return {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
@@ -253,8 +235,7 @@ export default function BulletinPage() {
             overtimeBreakdown,
             grossSalary: totalEarnings,
             cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
-            totalDeductions, netPay,
-            accruedLeaveDays, senioritySurplusLeave, totalLeaveDays
+            totalDeductions, netPay
         };
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
     
@@ -369,28 +350,6 @@ export default function BulletinPage() {
                 </div>
 
                 <div className="mt-auto pt-4">
-                    <div className="mt-8 pt-4 border-t break-inside-avoid">
-                        <h3 className="font-bold text-sm mb-2">{t('acquiredRightsTitle')}</h3>
-                        <table className="print-table w-full max-w-xs text-xs">
-                            <thead>
-                                <tr className="bg-muted">
-                                    <th className="px-2 py-1 text-left">Compteur</th>
-                                    <th className="px-2 py-1 text-right">Acquis</th>
-                                    <th className="px-2 py-1 text-right">Pris</th>
-                                    <th className="px-2 py-1 text-right">Solde</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td className="px-2 py-1">Congés payés (jours)</td>
-                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
-                                    <td className="px-2 py-1 text-right font-mono tabular-nums">0.00</td>
-                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
                     <div className="flex justify-end mt-20 print:mt-16 break-inside-avoid">
                         <div className="w-64 text-center">
                             <p className="font-bold mb-16">{t('directorSignature')}</p>
@@ -408,4 +367,3 @@ export default function BulletinPage() {
         </div>
     );
 }
-    

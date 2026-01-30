@@ -12,12 +12,11 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   ChartContainer,
   ChartTooltip,
@@ -51,7 +50,7 @@ import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/l
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useStorage } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Loader2, HelpCircle, ShieldAlert, HeartPulse } from "lucide-react";
+import { Loader2, HelpCircle, ShieldAlert, HeartPulse, Paperclip } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
 import { getPayrollCycle } from "@/lib/utils";
@@ -70,8 +69,7 @@ export default function ReportsPage() {
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');
     const tBulletin = useTranslations('BulletinPage');
-    const tExport = useTranslations('ExportReportPage');
-    const detailsRef = useRef<HTMLDivElement>(null);
+    const tLeave = useTranslations('LeaveRequestPage');
     
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -102,10 +100,6 @@ export default function ReportsPage() {
         return collection(firestore, 'users', user.uid, 'attendanceOverrides');
     }, [firestore, user]);
     const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
-
-    const scrollToDetails = () => {
-        detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
 
     const handleJustifyClick = (date: string) => {
       setDateToJustify(date);
@@ -206,16 +200,7 @@ export default function ReportsPage() {
                 totalOvertimeHours: '0.00',
                 estimatedPayout: 0,
                 cnpsDeduction: 0,
-                netPayout: 0,
-                hourlyRate: 0,
-                overtimeBreakdown: {
-                    tier1: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.tier1, payout: 0 },
-                    tier2: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.tier2, payout: 0 },
-                    night: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.night, payout: 0 },
-                    sunday: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.sunday, payout: 0 },
-                    holiday: { minutes: 0, rate: DEFAULT_OVERTIME_RATES.holiday, payout: 0 },
-                },
-                rates: DEFAULT_OVERTIME_RATES
+                netPayout: 0
             };
         }
 
@@ -269,7 +254,6 @@ export default function ReportsPage() {
                     continue;
                 }
                 
-                // Night Overtime Calculation
                 const shift = shifts.find(s => s.id === entry.shiftId);
                 if (shift) {
                     const shiftStartDateTime = parse(`${entry.date} ${shift.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
@@ -282,10 +266,10 @@ export default function ReportsPage() {
                     const dayOfOvertime = startOfDay(overtimeStartDateTime);
                     let nightWindowStart, nightWindowEnd;
                     
-                    if (getHours(overtimeStartDateTime) < 6) { // Part of previous day's night window
+                    if (getHours(overtimeStartDateTime) < 6) { 
                         nightWindowStart = set(addDays(dayOfOvertime, -1), { hours: 22, minutes: 0, seconds: 0, milliseconds: 0 });
                         nightWindowEnd = set(dayOfOvertime, { hours: 6, minutes: 0, seconds: 0, milliseconds: 0 });
-                    } else { // Part of current day's night window
+                    } else {
                         nightWindowStart = set(dayOfOvertime, { hours: 22, minutes: 0, seconds: 0, milliseconds: 0 });
                         nightWindowEnd = set(addDays(dayOfOvertime, 1), { hours: 6, minutes: 0, seconds: 0, milliseconds: 0 });
                     }
@@ -331,9 +315,6 @@ export default function ReportsPage() {
             estimatedPayout: totalPayout,
             cnpsDeduction: cnpsDeduction,
             netPayout: netPayout,
-            hourlyRate,
-            overtimeBreakdown: breakdown,
-            rates,
         };
     }, [timeEntries, profile, globalSettings, attendanceOverrides]);
 
@@ -363,18 +344,18 @@ export default function ReportsPage() {
   const leaveData = useMemo(() => {
     if (!profile?.leaveStartDate || !profile.hireDate) return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     try {
-        const cycleStartDate = parseISO(profile.leaveStartDate);
         const hireDate = parseISO(profile.hireDate);
         const now = new Date();
 
-        const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
-        const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
-        
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
         if (seniorityYears >= 5) {
-            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2) * 2;
+            senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
         }
+
+        const cycleStartDate = parseISO(profile.leaveStartDate);
+        const monthsWorkedInCycle = differenceInCalendarMonths(now, cycleStartDate);
+        const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
         const totalDays = baseDays + senioritySurplus;
 
@@ -450,32 +431,35 @@ export default function ReportsPage() {
       </div>
 
       {absencePenalty.unjustifiedCount > 0 && (
-        <Alert variant="destructive">
-            <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
-            <AlertDescription>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <p>
-                    {t('absenceAlertDescription', {
-                        count: absencePenalty.unjustifiedCount,
-                        penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
-                    })}
-                    </p>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                    <Button 
-                        variant="secondary" 
-                        size="sm" 
-                        className="mt-2 sm:mt-0" 
-                        onClick={() => handleJustifyClick(absencePenalty.unjustifiedDates[0])} 
-                        disabled={isJustifying}
-                    >
-                        {isJustifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Justifier une absence
-                    </Button>
-                </div>
-            </AlertDescription>
-        </Alert>
+        <Link href="/reports/historique-absences">
+            <Alert variant="destructive" className="cursor-pointer hover:bg-destructive/10">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>{t('absenceAlertTitle')}</AlertTitle>
+                <AlertDescription>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <p>
+                        {t('absenceAlertDescription', {
+                            count: absencePenalty.unjustifiedCount,
+                            penalty: absencePenalty.totalPenalty.toLocaleString('fr-FR')
+                        })}
+                        </p>
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="mt-2 sm:mt-0" 
+                            onClick={(e) => { e.preventDefault(); handleJustifyClick(absencePenalty.unjustifiedDates[0]); }} 
+                            disabled={isJustifying}
+                        >
+                            {isJustifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Justifier une absence
+                        </Button>
+                    </div>
+                </AlertDescription>
+            </Alert>
+        </Link>
       )}
+       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+
       {absencePenalty.sickLeaveCount > 0 && (
         <Alert variant="default" className="bg-blue-950/50 border-blue-500/50 text-blue-300">
             <HeartPulse className="h-4 w-4 text-blue-500" />
@@ -495,18 +479,11 @@ export default function ReportsPage() {
                         <CardTitle>{t('financialSummaryTitle')}</CardTitle>
                         <CardDescription>{t('financialSummaryDescription')}</CardDescription>
                     </div>
-                     <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button onClick={scrollToDetails} variant="ghost" size="icon" className="cursor-pointer" aria-label={t('seeCalculationDetailsTooltip')}>
-                                    <HelpCircle className="h-5 w-5" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{t('seeCalculationDetailsTooltip')}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <Link href="/reports/details-calcul">
+                         <Button variant="ghost" size="icon" aria-label={t('seeCalculationDetailsTooltip')}>
+                            <HelpCircle className="h-5 w-5" />
+                        </Button>
+                    </Link>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -519,7 +496,7 @@ export default function ReportsPage() {
                     <CardTitle className="text-4xl text-destructive font-mono tabular-nums">{reportSummary.totalOvertimeHours}<span className="text-2xl font-medium"> {t('hourUnit')}</span></CardTitle>
                 </Card>
                 <Card className="p-4 text-center bg-primary/5">
-                    <CardDescription className="text-primary">{tExport('estimatedPayout')}</CardDescription>
+                    <CardDescription className="text-primary">{t('estimatedPayout')}</CardDescription>
                     <CardTitle className="text-4xl text-primary font-mono tabular-nums">
                       {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} 
                       <span className="text-2xl font-medium"> {profile.currency}</span>
@@ -528,76 +505,32 @@ export default function ReportsPage() {
             </CardContent>
         </Card>
         
-        <Card>
-            <CardHeader>
-                <CardTitle>{tBulletin('acquiredRightsTitle')}</CardTitle>
-                <CardDescription>{tProfile('leaveBalanceDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p className="text-4xl font-bold">{leaveData.totalDays.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">{tProfile('leaveBalanceDays')}</span></p>
-                <p className="text-sm text-muted-foreground mt-2">
-                    Congé de base ({leaveData.baseDays.toFixed(1)}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)
-                </p>
-            </CardContent>
-        </Card>
-
-        <Card ref={detailsRef} className="bg-muted/30 scroll-mt-20">
-            <CardHeader>
-                <CardTitle>{t('calculationDetailsTitle')}</CardTitle>
-                <CardDescription>{t('calculationDetailsDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 text-sm">
-                <div>
-                    <h4 className="font-semibold mb-2">{t('hourlyRateFormulaTitle')}</h4>
-                    <div className="p-3 bg-background/50 rounded-md font-mono text-center text-base md:text-lg">
-                        <span className="tabular-nums">
-                        {t('hourlyRateFormula', {
-                            salary: profile.monthlyBaseSalary.toLocaleString('fr-FR'),
-                            rate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
-                            currency: profile.currency,
-                        })}
-                        </span>
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="leave-balance">
+                <AccordionTrigger className="p-4 bg-card border rounded-lg hover:no-underline">
+                    <div className="flex items-center gap-4">
+                        <HeartPulse className="h-5 w-5" />
+                        <div>
+                        <p className="font-semibold text-left">{tBulletin('acquiredRightsTitle')}</p>
+                        <p className="text-sm text-muted-foreground -mt-1 text-left">{tProfile('leaveBalanceDescription')}</p>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <h4 className="font-semibold mb-2">{t('overtimePayoutFormulaTitle')}</h4>
-                    <div className="space-y-2 p-3 bg-background/50 rounded-md font-mono tabular-nums">
-                        {Object.entries(reportSummary.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => {
-                             const tierKey = key as keyof typeof reportSummary.overtimeBreakdown;
-                            let label;
-                            switch(tierKey) {
-                                case 'tier1': label = t('overtimeTier1', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'tier2': label = t('overtimeTier2', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'night': label = t('overtimeNight', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'sunday': label = t('overtimeSunday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                case 'holiday': label = t('overtimeHoliday', { rate: (tier.rate * 100 - 100).toFixed(0) }); break;
-                                default: label = t('overtimeTierLabel', { rate: (tier.rate * 100 - 100).toFixed(0) });
-                            }
-                            return(
-                            <p key={key}>
-                                <span className="font-semibold">{label}:</span> {t('overtimeTierFormula', {
-                                    hours: (tier.minutes / 60).toFixed(2),
-                                    hourlyRate: reportSummary.hourlyRate.toLocaleString('fr-FR'),
-                                    multiplier: tier.rate,
-                                    payout: tier.payout.toLocaleString('fr-FR', { minimumFractionDigits: 0 }),
-                                    currency: profile.currency
-                                })}
-                            </p>
-                        )})}
-                        <Separator className="my-2"/>
-                        <p className="font-bold text-right pt-2">{t('totalEstimatedPayout')}: {reportSummary.estimatedPayout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</p>
-                    </div>
-                </div>
-                 <div>
-                    <h4 className="font-semibold mb-2">{t('estimatedDeductionsTitle')}</h4>
-                    <div className="space-y-2 p-3 bg-background/50 rounded-md font-mono tabular-nums">
-                        <p>{t('cnpsDeductionLabel')}: -{reportSummary.cnpsDeduction.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</p>
-                        <Separator className="my-2"/>
-                        <p className="font-bold text-right pt-2">{t('estimatedNetPayout')}: {reportSummary.netPayout.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {profile.currency}</p>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <Card className="border-t-0 rounded-t-none">
+                        <CardContent className="pt-6">
+                        <p className="text-4xl font-bold">{leaveData.totalDays.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">{tProfile('leaveBalanceDays')}</span></p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            {t('leaveTableBase', {defaultValue: 'Congé de base'})} ({leaveData.baseDays.toFixed(1)}j) + {t('leaveTableSeniority', {defaultValue: 'Surplus Ancienneté'})} ({leaveData.senioritySurplus}j)
+                        </p>
+                        <Link href="/leave" className="mt-4 inline-block">
+                            <Button><Paperclip className="mr-2 h-4 w-4" />{tLeave('goToLeaveRequest')}</Button>
+                        </Link>
+                        </CardContent>
+                    </Card>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
 
       <Card>
         <CardHeader>

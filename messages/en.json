@@ -1,3 +1,4 @@
+
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
@@ -209,7 +210,9 @@
     "absenceAlertTitle": "Absence Detected",
     "absenceAlertDescription": "You have {count, plural, one {# absence} other {# absences}} this month. This represents an estimated penalty of -{penalty} FCFA on your pay.",
     "sickLeaveAlertTitle": "Justified Absences",
-    "sickLeaveAlertDescription": "You have {count, plural, one {# paid sick leave day} other {# paid sick leave days}} this month."
+    "sickLeaveAlertDescription": "You have {count, plural, one {# paid sick leave day} other {# paid sick leave days}} this month.",
+    "leaveTableBase": "Base Leave",
+    "leaveTableSeniority": "Seniority Surplus"
   },
   "ExportReportPage": {
     "title": "Export Report",
@@ -418,6 +421,21 @@
     "title": "Happy Holidays, {name}!",
     "description": "Enjoy your {days} well-deserved days off. See you on {resumeDate}!",
     "closeButton": "Got it"
+  },
+  "DetailsCalculPage": {
+    "title": "Calculation Details",
+    "description": "An explanation of how your estimated payout is calculated."
+  },
+  "HistoriqueAbsencesPage": {
+    "title": "Absence History",
+    "description": "Track the status of your absence justifications.",
+    "noJustifications": "You have not submitted any justifications.",
+    "status": "Status",
+    "date": "Date",
+    "document": "Document",
+    "statusPending": "Pending",
+    "statusApproved": "Approved",
+    "statusRejected": "Rejected",
+    "viewDocument": "View Document"
   }
 }
-    
