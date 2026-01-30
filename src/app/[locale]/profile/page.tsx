@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from "@zod-resolvers/zod";
 import * as z from "zod";
 import {
   Card,
@@ -46,7 +46,6 @@ export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
   const tShared = useTranslations('Shared');
   const tGeo = useTranslations('TimeTrackingPage');
-  const tLeave = useTranslations('LeaveRequestPage');
   const locale = useLocale();
   
   const { user, isUserLoading } = useUser();
@@ -428,7 +427,7 @@ export default function ProfilePage() {
                     Congé de base ({leaveData.baseDays.toFixed(1)}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)
                 </p>
                 <Link href="/leave" className="mt-4 inline-block">
-                    <Button><Paperclip className="mr-2 h-4 w-4" />{tLeave('goToLeaveRequest')}</Button>
+                    <Button><Paperclip className="mr-2 h-4 w-4" />{t('goToLeaveRequest')}</Button>
                 </Link>
             </CardContent>
           </Card>

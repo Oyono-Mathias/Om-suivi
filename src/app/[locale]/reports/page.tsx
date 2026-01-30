@@ -533,7 +533,7 @@ export default function ReportsPage() {
                         <Button variant="link" className="p-0 h-auto">Voir le détail du calcul</Button>
                     </Link>
                     <Link href="/leave">
-                        <Button><Paperclip className="mr-2 h-4 w-4" />{t('leaveRequestButton', {defaultValue: 'Generate Leave Request'})}</Button>
+                        <Button><Paperclip className="mr-2 h-4 w-4" />{t('leaveRequestButton')}</Button>
                     </Link>
                 </div>
             </CardContent>

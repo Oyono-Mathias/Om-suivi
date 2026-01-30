@@ -217,7 +217,8 @@
     "leaveStartDateLabel": "Date de début du cycle de congé",
     "leaveBalanceTitle": "Mon Solde Congé",
     "leaveBalanceDescription": "Estimations de vos droits à congé pour le cycle actuel.",
-    "leaveBalanceDays": "jours"
+    "leaveBalanceDays": "jours",
+    "goToLeaveRequest": "Générer une demande de congé"
   },
   "ReportsPage": {
     "title": "Tableau de Bord",
@@ -475,8 +476,7 @@
     "signatures": "Signatures",
     "employeeSignature": "L'Employé",
     "managerSignature": "Le Responsable Hiérarchique",
-    "directorSignature": "La Direction",
-    "goToLeaveRequest": "Générer une demande de congé"
+    "directorSignature": "La Direction"
   },
   "LeaveWelcomeDialog": {
     "title": "Bonnes vacances, {name} !",

@@ -217,7 +217,8 @@
     "leaveStartDateLabel": "Leave Cycle Start Date",
     "leaveBalanceTitle": "My Leave Balance",
     "leaveBalanceDescription": "Estimated leave days accrued during the current cycle.",
-    "leaveBalanceDays": "days"
+    "leaveBalanceDays": "days",
+    "goToLeaveRequest": "Generate Leave Request"
   },
   "ReportsPage": {
     "title": "Dashboard",
@@ -475,8 +476,7 @@
     "signatures": "Signatures",
     "employeeSignature": "The Employee",
     "managerSignature": "The Line Manager",
-    "directorSignature": "The Management",
-    "goToLeaveRequest": "Generate Leave Request"
+    "directorSignature": "The Management"
   },
   "LeaveWelcomeDialog": {
     "title": "Happy Holidays, {name}!",

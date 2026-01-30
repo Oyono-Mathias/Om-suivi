@@ -163,7 +163,7 @@ export default function LeaveRequestPage() {
                                 className="mt-1 w-full"
                             />
                         </div>
-                        <div className="print-only-date text-sm">
+                        <div className="print-only-date text-sm hidden print:block">
                              <strong>{t('leaveStartDateLabel')}:</strong> {startDate ? format(parse(startDate, 'yyyy-MM-dd', new Date()), "PPP", { locale: dateFnsLocale }) : '____ / ____ / ________'}
                         </div>
                         <div>
