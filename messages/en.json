@@ -104,7 +104,30 @@
       "title": "OM Suivi: Pause limit exceeded",
       "body": "Please resume your shift manually in the app."
     },
-    "noticeBoardTitle": "Announcement from {authorName}"
+    "noticeBoardTitle": "Announcement from {authorName}",
+    "endShiftLockedTooltip": "The shift is locked for the first 8 hours.",
+    "confirmEndShift": {
+      "title": "End Shift?",
+      "description": "You have left the work zone. Do you want to end your shift now?",
+      "confirmButton": "Yes, End Shift",
+      "cancelButton": "No, I'm still working"
+    },
+    "autoEndShiftHome": {
+      "title": "Shift Ended Automatically",
+      "description": "We detected you've arrived home. Have a good rest!"
+    },
+    "exitWorkZoneLock": {
+      "title": "You have left the work zone",
+      "description": "Your shift is locked. Tracking continues."
+    },
+    "exitWorkZoneNotification": {
+      "title": "OM Suivi: Left Work Zone",
+      "body": "You have left your work zone but your shift is still running."
+    },
+    "autoEndShiftHomeNotification": {
+      "title": "OM Suivi: Shift Ended",
+      "body": "Shift ended automatically because you arrived home."
+    }
   },
   "ManualEntryDialog": {
     "title": "Add Manual Entry",

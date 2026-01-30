@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -54,6 +53,7 @@ import { useAd } from '@/context/AdContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import LeaveWelcomeDialog from '@/components/leave-welcome-dialog';
 import WelcomeDialog from '@/components/welcome-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
 
@@ -79,6 +79,7 @@ export default function TimeTrackingPage() {
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   const [activeTimer, setActiveTimer] = useState<NodeJS.Timeout | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const elapsedTimeRef = useRef(0);
   const [activeTimeEntryId, setActiveTimeEntryId] = useState<string | null>(null);
   
   const [isManualEntryOpen, setManualEntryOpen] = useState(false);
@@ -94,6 +95,7 @@ export default function TimeTrackingPage() {
   const [showLeaveWelcome, setShowLeaveWelcome] = useState(false);
   const [leaveWelcomeData, setLeaveWelcomeData] = useState<{ days: number; resumeDate: string; } | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showConfirmEndShift, setShowConfirmEndShift] = useState(false);
 
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -164,7 +166,11 @@ export default function TimeTrackingPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restoreShift]);
+  }, []); // Only run on initial mount
+
+  useEffect(() => {
+    elapsedTimeRef.current = elapsedTime;
+  }, [elapsedTime]);
 
   useEffect(() => {
     // Welcome message on first visit after login
@@ -486,7 +492,6 @@ export default function TimeTrackingPage() {
     }
   }, [isShiftActive, firestore, user, profile, startShift, globalSettings]);
 
-
   const handleGeofenceExit = useCallback(() => {
     if (!isShiftActive || !activeTimeEntryId || !user || !firestore || !profile) return;
     
@@ -503,22 +508,34 @@ export default function TimeTrackingPage() {
         return;
     }
     
-    // For all other professions, end the shift immediately.
-    handleEndShift();
-     if (Notification.permission === 'granted' && navigator.serviceWorker) {
-        navigator.serviceWorker.ready.then((registration) => {
-            registration.showNotification("OM Suivi: Service terminé", {
-                body: "Le service a été automatiquement arrêté car vous avez quitté la zone de travail.",
-                icon: '/icons/icon-192x192.png',
-            });
+    const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
+
+    // During the 8-hour lock
+    if (elapsedTimeRef.current < EIGHT_HOURS_IN_SECONDS) {
+        toast({
+            variant: "destructive",
+            title: t('exitWorkZoneLock.title'),
+            description: t('exitWorkZoneLock.description'),
         });
+        if (Notification.permission === 'granted' && navigator.serviceWorker) {
+            navigator.serviceWorker.ready.then((registration) => {
+                registration.showNotification(t('exitWorkZoneNotification.title'), {
+                    body: t('exitWorkZoneNotification.body'),
+                    icon: '/icons/icon-192x192.png',
+                });
+            });
+        }
+        return; // Do not end shift
     }
 
-  }, [isShiftActive, activeTimeEntryId, user, firestore, profile, t, toast, handleEndShift]);
+    // After the 8-hour lock, if not an exempt profession, ask user to confirm.
+    setShowConfirmEndShift(true);
+
+  }, [isShiftActive, activeTimeEntryId, user, firestore, profile, t, toast]);
 
 
   useEffect(() => {
-    if (!profile || !profile.workLatitude || !profile.workLongitude || !profile.workRadius || profile.profession === 'other') {
+    if (!profile || !profile.workLatitude || !profile.workLongitude || !globalSettings?.geofenceRadius || profile.profession === 'other') {
         setIsInWorkZone(null); // No workplace configured for user
         return;
     };
@@ -526,38 +543,61 @@ export default function TimeTrackingPage() {
     const monitorLocation = () => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (!profile.workLatitude || !profile.workLongitude || !profile.workRadius) return;
+                if (!profile.workLatitude || !profile.workLongitude || !globalSettings?.geofenceRadius) return;
 
-                const distance = getDistanceFromLatLonInKm(
+                const distanceToWork = getDistanceFromLatLonInKm(
                     position.coords.latitude,
                     position.coords.longitude,
                     profile.workLatitude,
                     profile.workLongitude
                 );
-                const currentlyInZone = distance * 1000 <= profile.workRadius;
+                const currentlyInWorkZone = distanceToWork * 1000 <= globalSettings.geofenceRadius;
 
                 // --- Geofence Transition Logic ---
-                if (isInWorkZone !== null && isInWorkZone !== currentlyInZone) {
-                    if (currentlyInZone) {
+                if (isInWorkZone !== null && isInWorkZone !== currentlyInWorkZone) {
+                    if (currentlyInWorkZone) {
                         handleGeofenceEnter();
                     } else if (isShiftActive) {
                         handleGeofenceExit();
                     }
                 }
-                setIsInWorkZone(currentlyInZone);
+                setIsInWorkZone(currentlyInWorkZone);
 
+                // --- Auto-stop when entering home zone ---
+                const EIGHT_HOURS_IN_SECONDS = 8 * 60 * 60;
+                if (isShiftActive && elapsedTimeRef.current > EIGHT_HOURS_IN_SECONDS && profile.homeLatitude && profile.homeLongitude && !currentlyInWorkZone) {
+                    const distanceToHome = getDistanceFromLatLonInKm(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        profile.homeLatitude,
+                        profile.homeLongitude
+                    );
+                    if (distanceToHome * 1000 <= globalSettings.geofenceRadius) {
+                        handleEndShift();
+                        toast({
+                            title: t('autoEndShiftHome.title'),
+                            description: t('autoEndShiftHome.description'),
+                        });
+                        if (Notification.permission === 'granted' && navigator.serviceWorker) {
+                            navigator.serviceWorker.ready.then((registration) => {
+                                registration.showNotification(t('autoEndShiftHomeNotification.title'), {
+                                    body: t('autoEndShiftHomeNotification.body'),
+                                    icon: '/icons/icon-192x192.png',
+                                });
+                            });
+                        }
+                    }
+                }
+                
                 // --- Logic for when a shift is ACTIVE ---
                 if (isShiftActive && activeTimeEntryId) {
-                    // Update local storage state with last seen time
                     const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
                     if (savedStateJSON) {
                         try {
                             const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
                             savedState.lastSeenISO = new Date().toISOString();
                             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
-                        } catch (e) {
-                            // Ignore if parsing fails, will be cleared on next cycle
-                        }
+                        } catch (e) { /* ignore */ }
                     }
                 }
             },
@@ -570,7 +610,7 @@ export default function TimeTrackingPage() {
     monitorLocation();
 
     return () => clearInterval(intervalId);
-  }, [profile, globalSettings, isShiftActive, isInWorkZone, activeTimeEntryId, handleGeofenceEnter, handleGeofenceExit]);
+  }, [profile, globalSettings, isShiftActive, isInWorkZone, activeTimeEntryId, handleGeofenceEnter, handleGeofenceExit, handleEndShift, t, toast]);
   
   
   const handleManualStart = async () => {
@@ -754,14 +794,27 @@ export default function TimeTrackingPage() {
                 {t('startShiftButton')}
             </Button>
         ) : (
-            <Button
-                className="w-full h-20 text-xl"
-                variant="destructive"
-                onClick={() => handleEndShift()}
-                disabled={!isShiftActive}
-            >
-                {t('endShiftButton')}
-            </Button>
+          <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="w-full">
+                        <Button
+                            className="w-full h-20 text-xl"
+                            variant="destructive"
+                            onClick={() => handleEndShift()}
+                            disabled={!isShiftActive || elapsedTime < (8*60*60)}
+                        >
+                            {t('endShiftButton')}
+                        </Button>
+                    </div>
+                </TooltipTrigger>
+                {elapsedTime < (8*60*60) && isShiftActive && (
+                    <TooltipContent>
+                        <p>{t('endShiftLockedTooltip')}</p>
+                    </TooltipContent>
+                )}
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 
@@ -869,6 +922,21 @@ export default function TimeTrackingPage() {
       )}
 
       <WelcomeDialog isOpen={showWelcome} onClose={() => setShowWelcome(false)} />
+
+      <AlertDialog open={showConfirmEndShift} onOpenChange={setShowConfirmEndShift}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>{t('confirmEndShift.title')}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      {t('confirmEndShift.description')}
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setShowConfirmEndShift(false)}>{t('confirmEndShift.cancelButton')}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => { handleEndShift(); setShowConfirmEndShift(false); }}>{t('confirmEndShift.confirmButton')}</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

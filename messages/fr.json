@@ -104,7 +104,30 @@
       "title": "OM Suivi: Limite de pause dépassée",
       "body": "Veuillez reprendre le service manuellement sur l'application."
     },
-    "noticeBoardTitle": "Annonce de {authorName}"
+    "noticeBoardTitle": "Annonce de {authorName}",
+    "endShiftLockedTooltip": "Le service est verrouillé pour les 8 premières heures.",
+    "confirmEndShift": {
+      "title": "Terminer le service ?",
+      "description": "Vous avez quitté la zone de travail. Voulez-vous terminer votre session maintenant ?",
+      "confirmButton": "Oui, terminer",
+      "cancelButton": "Non, je continue"
+    },
+    "autoEndShiftHome": {
+      "title": "Service terminé automatiquement",
+      "description": "Nous avons détecté que vous êtes rentré à la maison. Bon repos !"
+    },
+    "exitWorkZoneLock": {
+      "title": "Vous avez quitté la zone de travail",
+      "description": "Votre service est verrouillé. Le pointage continue."
+    },
+    "exitWorkZoneNotification": {
+      "title": "OM Suivi: Zone de travail quittée",
+      "body": "Vous avez quitté votre zone de travail mais votre service continue."
+    },
+    "autoEndShiftHomeNotification": {
+      "title": "OM Suivi: Service Terminé",
+      "body": "Service terminé automatiquement car vous êtes arrivé à la maison."
+    }
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
