@@ -26,6 +26,7 @@ import {
   LogOut,
   Shield,
   Newspaper,
+  HelpCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
@@ -77,6 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const secondaryNavItems = [
     { href: "/team", label: t('team'), icon: Users },
     { href: "/profile", label: t('settings'), icon: Settings },
+    { href: "/faq", label: t('faq'), icon: HelpCircle },
   ];
   const adminNavItems = [{ 
     href: "/admin", 
@@ -119,12 +121,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <SidebarMenu>
               {secondaryNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
+                  <SidebarMenuButton asChild isActive={pathname === item.href} onClick={() => {
+                    const sidebar = document.querySelector('[data-sidebar="sidebar"][data-mobile="true"]');
+                    if (sidebar) {
+                      const closeButton = sidebar.querySelector('button[aria-label="Close"]');
+                      if (closeButton instanceof HTMLElement) {
+                        closeButton.click();
+                      }
+                    }
+                  }}>
+                    <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
               {profile?.role === 'admin' && adminNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}><Link href={item.href}><item.icon /><span>{item.label}</span></Link></SidebarMenuButton>
+                   <SidebarMenuButton asChild isActive={pathname === item.href} onClick={() => {
+                    const sidebar = document.querySelector('[data-sidebar="sidebar"][data-mobile="true"]');
+                    if (sidebar) {
+                      const closeButton = sidebar.querySelector('button[aria-label="Close"]');
+                      if (closeButton instanceof HTMLElement) {
+                        closeButton.click();
+                      }
+                    }
+                  }}>
+                    <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
+                  </SidebarMenuButton>
                   {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
                 </SidebarMenuItem>
               ))}

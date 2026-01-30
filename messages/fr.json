@@ -43,7 +43,8 @@
     "settings": "Paramètres",
     "administration": "Administration",
     "signOut": "Se déconnecter",
-    "user": "Utilisateur"
+    "user": "Utilisateur",
+    "faq": "FAQ"
   },
   "TimeTrackingPage": {
     "title": "Suivi du Temps",
@@ -521,5 +522,26 @@
     "generateRequestButton": "Générer ma demande de congé",
     "noLeaveHistory": "Aucun historique de congé à afficher.",
     "year": "Année {year}"
+  },
+  "FaqPage": {
+    "title": "Foire Aux Questions",
+    "description": "Trouvez les réponses aux questions les plus fréquentes sur l'utilisation de l'application.",
+    "mainTitle": "FAQ",
+    "q1_question": "Comment le pointage automatique fonctionne-t-il ?",
+    "q1_answer": "L'application utilise la géolocalisation de votre téléphone. Quand vous entrez dans le rayon de votre lieu de travail (défini dans votre profil), le compteur démarre automatiquement pour le poste correspondant (matin, après-midi, nuit).",
+    "q2_question": "Pourquoi je ne peux pas arrêter mon service avant 8h15 ?",
+    "q2_answer": "C'est une mesure de sécurité pour garantir une durée de travail minimale, conformément aux règles de l'entreprise. Le bouton 'Fin de Service' est volontairement verrouillé pour éviter les arrêts accidentels. Après cette période, vous reprenez le contrôle.",
+    "q3_question": "Que se passe-t-il si je quitte la zone de travail ?",
+    "q3_answer": "Si vous êtes chauffeur, livreur ou magasinier, votre statut passe en 'Mode Mission' et le compteur continue. Pour les autres, si vous sortez de la zone après 8h15, l'application vous demandera de confirmer si vous avez terminé votre service. Si vous arrivez dans votre zone 'Domicile' après 8h, le service s'arrête automatiquement.",
+    "q4_question": "Comment les heures supplémentaires sont-elles calculées ?",
+    "q4_answer": "Toute minute travaillée au-delà de l'heure de fin de votre poste est considérée comme une heure supplémentaire. Les taux de majoration (nuit, dimanche, jours fériés) sont appliqués automatiquement. Vous pouvez voir le détail dans la section 'Rapports'.",
+    "q5_question": "Mon solde de congé semble incorrect. Pourquoi ?",
+    "q5_answer": "Vous accumulez 1,5 jour de congé par mois de travail. De plus, un bonus d'ancienneté s'ajoute après quelques années de service. Assurez-vous que votre 'Date d'embauche' et votre 'Date de début du cycle de congé' (après votre dernier congé) sont bien à jour dans votre profil.",
+    "q6_question": "Comment justifier une absence ?",
+    "q6_answer": "Dans la section 'Rapports', une alerte apparaîtra pour les jours d'absence. Cliquez sur le bouton 'Justifier', prenez en photo votre document (certificat médical, etc.) et envoyez-le. Un administrateur validera votre demande.",
+    "q7_question": "À quoi sert le 'Mode Mission' ?",
+    "q7_answer": "Ce mode est conçu pour les employés mobiles (chauffeurs, livreurs). Il permet au compteur de continuer à tourner même si vous quittez la zone de travail principale pour effectuer une livraison ou une course, garantissant que votre temps de travail est correctement enregistré.",
+    "q8_question": "J'ai oublié de pointer. Que faire ?",
+    "q8_answer": "Vous pouvez ajouter une 'Entrée Manuelle' depuis la page de suivi du temps. Vous devrez y spécifier la date, le poste, et vos heures de début et de fin. Ces entrées sont marquées comme manuelles pour l'administrateur."
   }
 }

@@ -46,6 +46,10 @@ export const pathnames = {
   '/admin': {
     en: '/admin',
     fr: '/admin'
+  },
+  '/faq': {
+    en: '/faq',
+    fr: '/faq'
   }
 };
 
