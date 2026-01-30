@@ -8,9 +8,17 @@ import { getMessages } from 'next-intl/server';
 import { ShiftProvider } from '@/context/ShiftContext';
 import { AdProvider } from '@/context/AdContext';
 import { ReactNode } from 'react';
+import '../globals.css';
+import { Poppins } from 'next/font/google';
+
+const poppins = Poppins({ 
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  weight: ['400', '500', '600', '700']
+});
 
 export const metadata: Metadata = {
-  title: 'Prima Dee-Lite',
+  title: 'OM Suivi',
   description: 'Une application pour le suivi des heures supplémentaires.',
 };
 
@@ -26,15 +34,23 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
-      <FirebaseClientProvider>
-        <AdProvider>
-          <ShiftProvider>
-            <AppShell>{children}</AppShell>
-          </ShiftProvider>
-        </AdProvider>
-        <Toaster />
-      </FirebaseClientProvider>
-    </NextIntlClientProvider>
+    <html lang={locale} suppressHydrationWarning className={poppins.variable}>
+       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
+      <body>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <FirebaseClientProvider>
+            <AdProvider>
+              <ShiftProvider>
+                <AppShell>{children}</AppShell>
+              </ShiftProvider>
+            </AdProvider>
+            <Toaster />
+          </FirebaseClientProvider>
+        </NextIntlClientProvider>
+      </body>
+    </html>
   );
 }
