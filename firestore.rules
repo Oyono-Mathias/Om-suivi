@@ -44,13 +44,11 @@ service cloud.firestore {
     // --------------------------------------------------------------------
 
     match /users/{userId} {
-      // This permissive rule allows a user to fully control their own document,
-      // and allows an admin to do the same for any user document.
-      // This fixes the profile update issue as requested.
       allow get, write: if isOwner(userId) || isAdmin();
+      allow list: if isSignedIn();
 
       match /timeEntries/{timeEntryId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && hasValidUserProfileIdOnCreate(userId);
         allow update: if isExistingOwner(userId) || isAdmin();
         allow delete: if isExistingOwner(userId) || isAdmin();
