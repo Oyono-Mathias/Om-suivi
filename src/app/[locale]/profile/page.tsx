@@ -34,16 +34,13 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { Loader2, MapPin, CalendarIcon, Paperclip } from "lucide-react";
+import { Loader2, MapPin, Paperclip } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { format, parse, parseISO, differenceInCalendarMonths, differenceInYears } from "date-fns";
+import { format, parseISO, differenceInCalendarMonths, differenceInYears } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAd } from "@/context/AdContext";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
 
 
 export default function ProfilePage() {
@@ -52,7 +49,6 @@ export default function ProfilePage() {
   const tGeo = useTranslations('TimeTrackingPage');
   const tLeave = useTranslations('LeaveRequestPage');
   const locale = useLocale();
-  const dateFnsLocale = locale === 'fr' ? fr : enUS;
   
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
