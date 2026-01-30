@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -168,6 +169,7 @@ export default function LeaveRequestPage() {
                                         mode="single"
                                         selected={startDate}
                                         onSelect={setStartDate}
+                                        defaultMonth={startDate || new Date()}
                                         initialFocus
                                         captionLayout="dropdown-buttons"
                                         fromYear={new Date().getFullYear() - 1}

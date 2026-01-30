@@ -179,6 +179,7 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) => date > new Date() || date < new Date("1980-01-01")}
+                        defaultMonth={field.value || new Date()}
                         initialFocus
                         captionLayout="dropdown-buttons"
                         fromYear={1980}

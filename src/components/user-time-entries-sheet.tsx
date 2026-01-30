@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -487,6 +488,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => date > new Date() || date < new Date("2020-01-01")}
+                          defaultMonth={field.value || new Date()}
                           initialFocus
                           captionLayout="dropdown-buttons"
                           fromYear={2020}
