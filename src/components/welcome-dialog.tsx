@@ -24,7 +24,7 @@ export default function WelcomeDialog({ isOpen, onClose }: WelcomeDialogProps) {
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex justify-center mb-4">
-            <Image src="/logo-om.png" alt="OM Suivi Logo" width={64} height={64} />
+            <Image src="/logo-prima.png" alt="Prima Dee-Lite Logo" width={64} height={64} className="rounded-full" />
           </div>
           <AlertDialogTitle className="text-center">{t('title')}</AlertDialogTitle>
           <AlertDialogDescription className="text-center pt-2">

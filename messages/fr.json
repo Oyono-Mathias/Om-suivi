@@ -1,7 +1,6 @@
-
 {
   "LoginPage": {
-    "title": "Bienvenue sur OM Suivi",
+    "title": "Bienvenue sur Prima Dee-Lite",
     "description": "Connectez-vous pour accéder à votre espace employé Prima Dee-Lite.",
     "loginTab": "Se connecter",
     "registerTab": "S'inscrire",
@@ -35,7 +34,7 @@
     "resetErrorDescription": "Impossible d'envoyer l'e-mail. Veuillez vérifier l'adresse."
   },
   "AppShell": {
-    "appName": "OM Suivi",
+    "appName": "Prima Dee-Lite",
     "timeTracking": "Suivi du Temps",
     "reports": "Rapports",
     "bulletin": "Bulletin de Paie",
@@ -102,7 +101,7 @@
     "resumeWorkButton": "Reprendre le Service",
     "manualResumeToast": "Service repris manuellement",
     "pauseLimitExceededNotification": {
-      "title": "OM Suivi: Limite de pause dépassée",
+      "title": "Prima Dee-Lite: Limite de pause dépassée",
       "body": "Veuillez reprendre le service manuellement sur l'application."
     },
     "noticeBoardTitle": "Annonce de {authorName}",
@@ -122,15 +121,15 @@
       "description": "Votre service est verrouillé. Le pointage continue."
     },
     "exitWorkZoneNotification": {
-      "title": "OM Suivi: Zone de travail quittée",
+      "title": "Prima Dee-Lite: Zone de travail quittée",
       "body": "Vous avez quitté votre zone de travail mais votre service continue."
     },
     "autoEndShiftHomeNotification": {
-      "title": "OM Suivi: Service Terminé",
+      "title": "Prima Dee-Lite: Service Terminé",
       "body": "Service terminé automatiquement car vous êtes arrivé à la maison."
     },
     "validation": {
-      "title": "OM Suivi: Activité en cours?",
+      "title": "Prima Dee-Lite: Activité en cours?",
       "body": "Votre service est actif depuis plus de 8h15. Validez pour continuer.",
       "dialogTitle": "Activité toujours en cours ?",
       "dialogDescription": "Vous êtes hors de votre zone de travail. Veuillez confirmer que vous êtes toujours en service pour continuer le pointage.",
@@ -270,7 +269,7 @@
     "title": "Exporter le Rapport",
     "description": "Preuve de travail pour la période du {reportMonth}.",
     "printButton": "Imprimer en PDF",
-    "appName": "OM Suivi",
+    "appName": "Prima Dee-Lite",
     "reportTitle": "Rapport de Feuille de Temps",
     "hourlyRateLabel": "Taux Horaire",
     "jobTitleLabel": "Profession",
@@ -408,7 +407,7 @@
   },
   "BulletinPage": {
     "title": "Bulletin de Paie",
-    "appName": "OM Suivi",
+    "appName": "Prima Dee-Lite",
     "description": "Détail de votre rémunération pour la période du {startDate} au {endDate}.",
     "printButton": "Imprimer le Bulletin",
     "periodLabel": "Période",
@@ -488,7 +487,7 @@
     "closeButton": "Compris"
   },
   "WelcomeDialog": {
-    "title": "Bienvenue sur OM-Suivi",
+    "title": "Bienvenue sur Prima Dee-Lite",
     "description": "Votre outil pour une paie transparente et une gestion juste de vos droits à Prima Dee-Lite.",
     "startButton": "Commencer"
   },

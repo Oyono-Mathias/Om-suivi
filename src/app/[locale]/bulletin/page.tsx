@@ -271,7 +271,7 @@ export default function BulletinPage() {
             <div className="print-container bg-card md:border md:rounded-lg md:p-6">
                  <header className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
-                        <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
+                        <Image src="/logo-prima.png" alt="Prima Dee-Lite Logo" width={48} height={48} className="rounded-full" />
                         <div>
                             <h2 className="text-lg font-bold">{t('appName')}</h2>
                             <p className="text-xs">BP: 1234, Douala</p>

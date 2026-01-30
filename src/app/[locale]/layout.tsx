@@ -10,7 +10,7 @@ import { AdProvider } from '@/context/AdContext';
 import { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'OM Suivi',
+  title: 'Prima Dee-Lite',
   description: 'Une application pour le suivi des heures supplémentaires.',
 };
 
