@@ -10,8 +10,8 @@ import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/l
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
-import { Link, useTranslations } from 'next-intl';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
 import { getPayrollCycle, cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -483,3 +483,5 @@ export default function BulletinPage() {
         </div>
     );
 }
+
+    
