@@ -45,15 +45,18 @@ import { Loader2, Briefcase, Megaphone, Palmtree } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
 import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
-import ManualEntryDialog from '@/components/manual-entry-dialog';
 import { getDistanceFromLatLonInKm, cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from '@/navigation';
 import { useAd } from '@/context/AdContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import LeaveWelcomeDialog from '@/components/leave-welcome-dialog';
-import WelcomeDialog from '@/components/welcome-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import dynamic from 'next/dynamic';
+
+const ManualEntryDialog = dynamic(() => import('@/components/manual-entry-dialog'), { ssr: false });
+const LeaveWelcomeDialog = dynamic(() => import('@/components/leave-welcome-dialog'), { ssr: false });
+const WelcomeDialog = dynamic(() => import('@/components/welcome-dialog'), { ssr: false });
+
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
 
