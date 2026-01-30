@@ -483,5 +483,3 @@ export default function BulletinPage() {
         </div>
     );
 }
-
-    

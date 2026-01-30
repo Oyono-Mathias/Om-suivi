@@ -42,7 +42,7 @@ import type { TimeEntry, Profile, Shift, GlobalSettings, Announcement } from '@/
 import { shifts } from '@/lib/shifts';
 import { format, parseISO, differenceInMinutes, addHours, differenceInHours, isSameDay, startOfDay, getDay, differenceInYears } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { Loader2, Briefcase, Megaphone } from 'lucide-react';
+import { Loader2, Briefcase, Megaphone, Palmtree } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
 import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
