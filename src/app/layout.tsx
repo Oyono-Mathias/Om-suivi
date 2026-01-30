@@ -9,14 +9,12 @@ const poppins = Poppins({
 });
 
 export default function RootLayout({
-  children,
-  params: { locale }
+  children
 }: {
   children: ReactNode;
-  params: { locale: string };
 }) {
   return (
-    <html lang={locale} suppressHydrationWarning className={poppins.variable}>
+    <html suppressHydrationWarning className={poppins.variable}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <link rel="manifest" href="/manifest.json" />
