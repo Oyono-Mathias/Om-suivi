@@ -374,6 +374,10 @@
     "cotisationSyndicaleLabel": "Cotisation Syndicale",
     "cacSurIRPPLabel": "CAC sur IRPP",
     "netToPayLabel": "NET A PAYER",
-    "paidSickLeaveLabel": "Congé Maladie Payé"
+    "paidSickLeaveLabel": "Congé Maladie Payé",
+    "acquiredRightsTitle": "Droits Acquis (Congés Payés)",
+    "accruedLeaveDaysLabel": "Jours de congé accumulés",
+    "estimatedLeavePayLabel": "Indemnité de congé estimée",
+    "leaveDaysUnit": "jours"
   }
 }

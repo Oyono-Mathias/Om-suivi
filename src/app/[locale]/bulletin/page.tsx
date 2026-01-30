@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, differenceInCalendarMonths } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
@@ -189,9 +188,9 @@ export default function BulletinPage() {
         if (profile.hireDate) {
             try {
                 const seniorityYears = differenceInYears(new Date(), parseISO(profile.hireDate));
-                if (seniorityYears >= 2) {
-                    const seniorityTiers = Math.floor(seniorityYears / 2);
-                    seniorityBonus = seniorityTiers * (baseSalary * 0.02);
+                if (seniorityYears > 0) {
+                    // 1.7% per year of service
+                    seniorityBonus = baseSalary * 0.017 * seniorityYears;
                 }
             } catch (e) {
                 console.error("Could not parse hireDate", profile.hireDate);
@@ -274,6 +273,26 @@ export default function BulletinPage() {
         };
 
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
+
+    const leaveData = useMemo(() => {
+        if (!profile?.leaveStartDate || !payrollData) {
+            return { accruedDays: 0, leavePayAllocation: 0 };
+        }
+        try {
+            const startDate = parseISO(profile.leaveStartDate);
+            const months = differenceInCalendarMonths(new Date(), startDate);
+            const accruedDays = months > 0 ? (months * 1.5) : 0;
+            
+            const taxableGross = payrollData.grossSalary;
+            const leavePayAllocation = (taxableGross / 30) * accruedDays;
+
+            return { accruedDays, leavePayAllocation };
+
+        } catch (e) {
+            console.error("Could not parse leaveStartDate", profile.leaveStartDate);
+            return { accruedDays: 0, leavePayAllocation: 0 };
+        }
+    }, [profile?.leaveStartDate, payrollData]);
     
     const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
 
@@ -288,9 +307,10 @@ export default function BulletinPage() {
         </div>);
     }
     
-    if (!profile || profile.monthlyBaseSalary === 0) {
-        return (<div className="flex flex-col justify-center items-center h-screen gap-4">
-            <p className="text-xl text-center">{tShared('pleaseCompleteProfile')}</p>
+    if (!profile || profile.monthlyBaseSalary === 0 || !profile.hireDate || !profile.leaveStartDate) {
+        return (<div className="flex flex-col justify-center items-center h-screen gap-4 text-center">
+            <p className="text-xl">{tShared('pleaseCompleteProfile')}</p>
+            <p className="text-muted-foreground max-w-sm">Assurez-vous que le salaire de base, la date d'embauche et la date de début du cycle de congé sont définis dans votre profil.</p>
             <Link href="/profile"><Button>{tShared('goToProfileButton')}</Button></Link>
         </div>);
     }
@@ -373,10 +393,17 @@ export default function BulletinPage() {
                             </div>
                         </CardContent>
                     </Card>
+                     <Card>
+                        <CardHeader><CardTitle>{t('acquiredRightsTitle')}</CardTitle></CardHeader>
+                        <CardContent className="space-y-2">
+                             <PaystubRow label={t('accruedLeaveDaysLabel')} value={`${leaveData.accruedDays.toFixed(1)} ${t('leaveDaysUnit')}`} />
+                             <PaystubRow label={t('estimatedLeavePayLabel')} value={`${formatCurrency(leaveData.leavePayAllocation)}`} />
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Print & Desktop View */}
-                <Card className="hidden md:block print-container print:shadow-none print:border-none">
+                 <Card className="hidden md:block print-container print:shadow-none print:border-none">
                     <CardContent className="p-6">
                          <header className="flex justify-between items-start mb-8 border-b pb-6">
                             <div className="flex items-center gap-4">
@@ -428,6 +455,13 @@ export default function BulletinPage() {
                             </div>
                         </div>
 
+                         <div className="mt-8 pt-4 border-t print:border-gray-300">
+                             <h3 className="font-bold mb-2 text-lg">{t('acquiredRightsTitle')}</h3>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                 <PaystubRow label={t('accruedLeaveDaysLabel')} value={`${leaveData.accruedDays.toFixed(1)} ${t('leaveDaysUnit')}`} />
+                                 <PaystubRow label={t('estimatedLeavePayLabel')} value={`${formatCurrency(leaveData.leavePayAllocation)}`} />
+                             </div>
+                         </div>
                     </CardContent>
                 </Card>
                 <p className="text-xs text-center text-muted-foreground pt-4 no-print">{t('footerText')}</p>

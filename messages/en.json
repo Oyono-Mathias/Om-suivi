@@ -374,6 +374,10 @@
     "cotisationSyndicaleLabel": "Union Dues",
     "cacSurIRPPLabel": "CAC on IRPP",
     "netToPayLabel": "NET PAY",
-    "paidSickLeaveLabel": "Paid Sick Leave"
+    "paidSickLeaveLabel": "Paid Sick Leave",
+    "acquiredRightsTitle": "Acquired Rights (Paid Leave)",
+    "accruedLeaveDaysLabel": "Accrued Leave Days",
+    "estimatedLeavePayLabel": "Estimated Leave Pay",
+    "leaveDaysUnit": "days"
   }
 }
