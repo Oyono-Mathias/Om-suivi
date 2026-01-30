@@ -14,17 +14,19 @@ export const metadata: Metadata = {
   description: 'Une application pour le suivi des heures supplémentaires.',
 };
 
+type Props = {
+  children: React.ReactNode;
+  params: {locale: string};
+};
+
 export default async function LocaleLayout({
   children,
-  params: { locale }
-}: {
-  children: ReactNode;
-  params: { locale: string };
-}) {
+  params
+}: Props) {
   const messages = await getMessages();
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider locale={params.locale} messages={messages}>
       <FirebaseClientProvider>
         <AdProvider>
           <ShiftProvider>
