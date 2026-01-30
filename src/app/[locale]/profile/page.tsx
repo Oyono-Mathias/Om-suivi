@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -240,8 +241,14 @@ export default function ProfilePage() {
 
   const leaveBalance = useMemo(() => {
     if (!profile?.leaveStartDate) return 0;
-    const months = differenceInCalendarMonths(new Date(), parseISO(profile.leaveStartDate));
-    return months > 0 ? (months * 1.5).toFixed(1) : 0;
+    try {
+        const startDate = parseISO(profile.leaveStartDate);
+        const months = differenceInCalendarMonths(new Date(), startDate);
+        return months > 0 ? (months * 1.5).toFixed(1) : '0.0';
+    } catch (e) {
+        console.error("Could not parse leaveStartDate", profile.leaveStartDate);
+        return 0;
+    }
   }, [profile?.leaveStartDate]);
 
   if (isUserLoading || isLoadingProfile) {
