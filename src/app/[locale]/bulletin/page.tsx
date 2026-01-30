@@ -342,11 +342,17 @@ export default function BulletinPage() {
         <div className="space-y-6 pb-28 print:p-0">
              <style jsx global>{`
                 @media print {
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    body { 
+                        -webkit-print-color-adjust: exact; 
+                        print-color-adjust: exact;
+                        background: white;
+                    }
                     .print-container {
-                        padding: 0 !important;
+                        padding: 1rem !important;
                         border: none !important;
                         box-shadow: none !important;
+                        width: 100%;
+                        display: block;
                     }
                     .print-primary { color: hsl(var(--primary)) !important; }
                     .print-muted { color: hsl(var(--muted-foreground)) !important; }
@@ -415,7 +421,7 @@ export default function BulletinPage() {
 
                 {/* Print & Desktop View */}
                  <Card className="hidden md:block print-container">
-                    <CardContent className="p-6 print:p-4">
+                    <CardContent className="p-6 print:p-0">
                          <header className="flex justify-between items-start mb-8 border-b pb-6">
                             <div className="flex items-center gap-4">
                                 <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
@@ -459,7 +465,7 @@ export default function BulletinPage() {
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-4 border-t-2 border-primary">
+                        <div className="mt-8 pt-4 border-t-2 border-primary break-inside-avoid">
                             <div className="flex justify-between items-center max-w-sm ml-auto">
                                 <span className="text-xl font-bold text-primary">{t('netToPayLabel')}</span>
                                 <span className="text-3xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>

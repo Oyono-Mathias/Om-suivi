@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -135,7 +136,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
             </div>
           </header>
-          <main className="flex-1 p-4 pb-32">{children}</main>
+          <main className="flex-1 p-4 pb-32 print:p-0">{children}</main>
           {user && <MobileBottomNav />}
         </div>
       </SidebarProvider>
