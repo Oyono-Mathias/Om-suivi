@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -54,6 +55,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useTranslations } from 'next-intl';
 import type { Profession } from '@/lib/types';
 import Image from 'next/image';
+import { format } from 'date-fns';
 
 
 export default function AuthPage() {
@@ -173,6 +175,7 @@ export default function AuthPage() {
         monthlyBaseSalary: 0,
         currency: 'FCFA',
         createdAt: serverTimestamp(),
+        hireDate: format(new Date(), 'yyyy-MM-dd'),
       });
       
       router.replace('/');

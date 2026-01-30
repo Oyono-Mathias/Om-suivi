@@ -2,18 +2,18 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, orderBy, setDoc, deleteDoc } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, HeartPulse } from 'lucide-react';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, orderBy, setDoc, deleteDoc, addDoc, where, getDocs } from 'firebase/firestore';
+import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, HeartPulse, History } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Profile, TimeEntry, GlobalSettings, OvertimeRates, AttendanceOverride } from '@/lib/types';
+import type { Profile, TimeEntry, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useTranslations, useLocale } from 'next-intl';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -23,7 +23,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { shifts } from '@/lib/shifts';
-import { format, parse, differenceInMinutes, parseISO, addDays, eachDayOfInterval, getDay } from 'date-fns';
+import { format, parse, differenceInMinutes, parseISO, addDays, eachDayOfInterval, getDay, startOfDay } from 'date-fns';
+import type { DateRange } from "react-day-picker"
 import { fr, enUS } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -31,6 +32,170 @@ import { cn, getPayrollCycle } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+
+function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+    const t = useTranslations('AdminPage');
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSaving, setIsSaving] = useState(false);
+
+    const backfillSchema = z.object({
+        dateRange: z.object({
+            from: z.date(),
+            to: z.date(),
+        }),
+        status: z.enum(['present', 'paid_leave']),
+    });
+
+    const form = useForm<z.infer<typeof backfillSchema>>({
+        resolver: zodResolver(backfillSchema),
+        defaultValues: {
+            status: 'present',
+        },
+    });
+
+    const handleBackfillSubmit = async (values: z.infer<typeof backfillSchema>) => {
+        setIsSaving(true);
+        const { dateRange, status } = values;
+        const daysToProcess = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+
+        const timeEntriesRef = collection(firestore, 'users', user.id, 'timeEntries');
+        const overridesRef = collection(firestore, 'users', user.id, 'attendanceOverrides');
+
+        try {
+            for (const day of daysToProcess) {
+                const isWorkDay = getDay(day) !== 0; // 0 = Sunday
+                if (!isWorkDay) continue;
+
+                const dayString = format(day, 'yyyy-MM-dd');
+
+                // Check if an entry already exists for this day
+                const entryQuery = query(timeEntriesRef, where('date', '==', dayString));
+                const entrySnapshot = await getDocs(entryQuery);
+
+                if (!entrySnapshot.empty) {
+                    continue; // Skip if user already has a time entry for this day
+                }
+
+                if (status === 'present') {
+                    const standardShift = shifts.find(s => s.id === 'morningB')!; // 8:00 - 16:15
+                    const newEntry: Omit<TimeEntry, 'id'> = {
+                        date: dayString,
+                        startTime: standardShift.startTime,
+                        endTime: standardShift.endTime,
+                        duration: 495, // 8h 15m
+                        overtimeDuration: 0,
+                        location: 'Régularisation Admin',
+                        shiftId: standardShift.id,
+                        userProfileId: user.id,
+                        profession: user.profession,
+                        modified_manually: true,
+                    };
+                    await addDoc(timeEntriesRef, newEntry);
+                } else if (status === 'paid_leave') {
+                    const overrideRef = doc(overridesRef, dayString);
+                    await setDoc(overrideRef, { status: 'sick_leave' });
+                }
+            }
+            toast({ title: t('backfillSuccess') });
+            onOpenChange(false);
+            form.reset();
+        } catch (error) {
+            console.error("Backfill failed:", error);
+            toast({ variant: 'destructive', title: t('backfillError') });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{t('backfillDialogTitle')}</DialogTitle>
+                    <DialogDescription>{t('backfillDialogDescription')}</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleBackfillSubmit)} className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="dateRange"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>{t('backfillDateRangeLabel')}</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn("justify-start text-left font-normal", !field.value?.from && "text-muted-foreground")}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {field.value?.from ? (
+                                                    field.value.to ? (
+                                                        <>
+                                                            {format(field.value.from, "LLL dd, y")} -{" "}
+                                                            {format(field.value.to, "LLL dd, y")}
+                                                        </>
+                                                    ) : (
+                                                        format(field.value.from, "LLL dd, y")
+                                                    )
+                                                ) : (
+                                                    <span>Choisir une période</span>
+                                                )}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                initialFocus
+                                                mode="range"
+                                                defaultMonth={field.value?.from}
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                numberOfMonths={2}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t('backfillStatusLabel')}</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="present">{t('backfillStatusPresent')}</SelectItem>
+                                            <SelectItem value="paid_leave">{t('backfillStatusPaidLeave')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">{t('deleteEntryCancel')}</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {t('deleteEntryConfirm')}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 
 function AccessDenied() {
@@ -56,6 +221,8 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
   
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<TimeEntry | null>(null);
+  const [isBackfillOpen, setIsBackfillOpen] = useState(false);
+
 
   const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
 
@@ -85,7 +252,6 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
       const end = parse(data.endTime, 'HH:mm', new Date());
       if (start.getTime() >= end.getTime()) {
           const associatedShift = editingEntry ? shifts.find(s => s.id === editingEntry.shiftId) : null;
-          // Allow end time to be before start time only for night shift
           return associatedShift?.id === 'night';
       }
       return true;
@@ -182,9 +348,15 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
       <Sheet open={!!user} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-3xl p-0">
             {user && (
-                  <SheetHeader className="p-6 border-b">
-                    <SheetTitle>{t('attendanceStatusTitle')} - {user.name}</SheetTitle>
-                    <SheetDescription>{user.email}</SheetDescription>
+                <SheetHeader className="p-6 border-b flex-row items-center justify-between">
+                    <div>
+                        <SheetTitle>{t('attendanceStatusTitle')} - {user.name}</SheetTitle>
+                        <SheetDescription>{user.email}</SheetDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setIsBackfillOpen(true)}>
+                        <History className="mr-2 h-4 w-4" />
+                        {t('backfillButton')}
+                    </Button>
                 </SheetHeader>
             )}
             <div className="p-6 overflow-y-auto h-[calc(100vh-80px)]">
@@ -207,6 +379,31 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
                                 const entryForDay = timeEntries?.find(e => e.date === dayString);
                                 const isWorkDay = getDay(day) !== 0; // 0 is Sunday
                                 const override = attendanceOverrides?.find(o => o.id === dayString);
+                                const hireDate = user?.hireDate ? parseISO(user.hireDate) : null;
+                                
+                                if (hireDate && day < startOfDay(hireDate)) {
+                                    return (
+                                        <TableRow key={dayString} className="bg-muted/20">
+                                            <TableCell>
+                                                <div className="font-medium">{format(day, 'PPP', { locale: dateFnsLocale })}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <TooltipProvider>
+                                                  <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                      <Badge variant="outline" className="border-dashed">{t('preHireAbsenceLabel')}</Badge>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                      <p>{t('preHireAbsenceTooltip')}</p>
+                                                    </TooltipContent>
+                                                  </Tooltip>
+                                                </TooltipProvider>
+                                            </TableCell>
+                                            <TableCell></TableCell>
+                                        </TableRow>
+                                    );
+                                }
+
 
                                 if (entryForDay) {
                                     return (
@@ -270,6 +467,8 @@ function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, on
             </div>
         </SheetContent>
       </Sheet>
+
+      {user && <BackfillDialog user={user} isOpen={isBackfillOpen} onOpenChange={setIsBackfillOpen} />}
 
       <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
         <DialogContent>
@@ -417,6 +616,7 @@ function GlobalSettingsForm() {
     }, [globalSettings, form]);
     
     const onSubmit = async (values: z.infer<typeof settingsSchema>) => {
+        if(!settingsRef) return;
         await setDoc(settingsRef, values, { merge: true });
         toast({ title: t('configUpdatedTitle'), description: t('configUpdatedDescription') });
     };

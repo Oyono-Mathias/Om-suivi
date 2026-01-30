@@ -303,7 +303,18 @@
     "dayHeader": "Jour",
     "statusHeader": "Statut",
     "actionHeader": "Action",
-    "absentLabel": "Absent"
+    "absentLabel": "Absent",
+    "backfillButton": "Régulariser l'historique",
+    "backfillDialogTitle": "Régulariser l'historique de présence",
+    "backfillDialogDescription": "Sélectionnez une période et assignez un statut pour tous les jours ouvrés sans pointage.",
+    "backfillDateRangeLabel": "Période à régulariser",
+    "backfillStatusLabel": "Statut à appliquer",
+    "backfillStatusPresent": "Présent (8h standard)",
+    "backfillStatusPaidLeave": "Congé Payé / Justifié",
+    "backfillSuccess": "Historique régularisé avec succès.",
+    "backfillError": "Erreur lors de la régularisation.",
+    "preHireAbsenceTooltip": "Cette journée est marquée absente car vous n'étiez pas encore inscrit. Contactez l'administrateur si vous travailliez déjà.",
+    "preHireAbsenceLabel": "Absent (Non-inscrit)"
   },
   "Shared": {
     "loading": "Chargement...",
