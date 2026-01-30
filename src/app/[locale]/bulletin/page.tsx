@@ -64,7 +64,7 @@ export default function BulletinPage() {
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
-    const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
+    const { start: cycleStart, end: cycleEnd } = useMemo(() => getPayrollCycle(new Date()), []);
 
     const timeEntriesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -199,7 +199,7 @@ export default function BulletinPage() {
         }
         
         const totalDaysWorked = workedDays.size + sickLeaveDays.size;
-        const proratedBaseSalary = (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked;
+        const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
         
         if (unjustifiedAbsenceCount > 0) {
             attendanceBonus = 0;
