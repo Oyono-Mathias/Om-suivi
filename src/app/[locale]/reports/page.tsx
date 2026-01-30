@@ -272,13 +272,17 @@ export default function ReportsPage() {
                 
                 if (overtimeToProcess > 0) {
                     const weeklyTier1CapInMinutes = 8 * 60;
-                    const remainingTier1Capacity = weeklyDaytimeOvertimeMinutes - weeklyTier1CapInMinutes;
+                    const remainingTier1Capacity = weeklyTier1CapInMinutes - weeklyDaytimeOvertimeMinutes;
                     const minutesForTier1 = Math.min(overtimeToProcess, remainingTier1Capacity);
                     
-                    if (minutesForTier1 > 0) breakdown.tier1.minutes += minutesForTier1;
+                    if (minutesForTier1 > 0) {
+                        breakdown.tier1.minutes += minutesForTier1;
+                    }
                     
                     const minutesForTier2 = overtimeToProcess - minutesForTier1;
-                    if (minutesForTier2 > 0) breakdown.tier2.minutes += minutesForTier2;
+                    if (minutesForTier2 > 0) {
+                        breakdown.tier2.minutes += minutesForTier2;
+                    }
                     
                     weeklyDaytimeOvertimeMinutes += overtimeToProcess;
                 }

@@ -45,15 +45,6 @@ export interface Profile {
   workRadius?: number;
 }
 
-export interface TeamMember {
-  id: string;
-  name: string;
-  avatarUrl: string;
-  avatarHint: string;
-  totalHours: number;
-  overtimeHours: number;
-}
-
 export interface OvertimeRates {
     tier1: number;
     tier2: number;
