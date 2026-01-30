@@ -65,15 +65,17 @@ export default function BulletinPage() {
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
     const { start: cycleStart, end: cycleEnd } = useMemo(() => getPayrollCycle(new Date()), []);
+    const cycleStartString = useMemo(() => format(cycleStart, 'yyyy-MM-dd'), [cycleStart]);
+    const cycleEndString = useMemo(() => format(cycleEnd, 'yyyy-MM-dd'), [cycleEnd]);
 
     const timeEntriesQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(
             collection(firestore, 'users', user.uid, 'timeEntries'),
-            where('date', '>=', format(cycleStart, 'yyyy-MM-dd')),
-            where('date', '<=', format(cycleEnd, 'yyyy-MM-dd'))
+            where('date', '>=', cycleStartString),
+            where('date', '<=', cycleEndString)
         );
-    }, [firestore, user, cycleStart, cycleEnd]);
+    }, [firestore, user, cycleStartString, cycleEndString]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
     const settingsRef = useMemoFirebase(() => (user ? doc(firestore, 'settings', 'global') : null), [firestore, user]);
@@ -82,10 +84,10 @@ export default function BulletinPage() {
     const overridesQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, 'users', user.uid, 'attendanceOverrides'),
-            where('__name__', '>=', format(cycleStart, 'yyyy-MM-dd')),
-            where('__name__', '<=', format(cycleEnd, 'yyyy-MM-dd'))
+            where('__name__', '>=', cycleStartString),
+            where('__name__', '<=', cycleEndString)
         );
-    }, [firestore, user, cycleStart, cycleEnd]);
+    }, [firestore, user, cycleStartString, cycleEndString]);
     const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
 
     const handlePrint = () => { window.print(); };
@@ -181,7 +183,6 @@ export default function BulletinPage() {
         let attendanceBonus = 3000;
         let performanceBonus = 4000;
         
-        const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
         const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
         const workedDays = new Set(timeEntries.map(e => e.date));
@@ -190,6 +191,7 @@ export default function BulletinPage() {
         let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
             const hireDate = parseISO(profile.hireDate);
+            const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
             for (const day of cycleWorkDays) {
                 const dayString = format(day, 'yyyy-MM-dd');
                 if (day >= startOfDay(hireDate) && !workedDays.has(dayString) && !sickLeaveDays.has(dayString)) {
@@ -292,42 +294,42 @@ export default function BulletinPage() {
                         <p>Ancienneté: {differenceInYears(new Date(), parseISO(profile.hireDate || ''))} ans</p>
                     </div>
                 </div>
-
-                <table className="print-table w-full text-sm font-sans mb-4">
-                    <thead>
-                        <tr className="bg-muted">
-                            <th className="w-2/5 px-2 py-1 text-left">{t('tableDesignation')}</th>
-                            <th className="w-1/5 px-2 py-1 text-center">{t('tableBase')} / Nombre</th>
-                            <th className="w-1/5 px-2 py-1 text-right">{t('tableRate')}</th>
-                            <th className="w-1/5 px-2 py-1 text-right">{t('tableGain')}</th>
-                            <th className="w-1/5 px-2 py-1 text-right">{t('tableDeduction')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {payrollData.baseSalary > 0 && <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />}
-                        {payrollData.seniorityBonus > 0 && <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />}
-                        {payrollData.attendanceBonus > 0 && <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />}
-                        {payrollData.performanceBonus > 0 && <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />}
-                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
-                            <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
-                        ))}
-                        {payrollData.transportBonus > 0 && <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />}
-                        {payrollData.housingBonus > 0 && <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />}
-                        <tr className="font-bold bg-muted/50">
-                            <td colSpan={3} className="px-2 py-1 text-right">{t('grossMonthlySalaryLabel')}</td>
-                            <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
-                            <td></td>
-                        </tr>
-                        <TableRowItem label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus - payrollData.housingBonus)} rate="4.20%" deduction={formatCurrency(payrollData.cnpsDeduction)} />
-                        <TableRowItem label={t('cacLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus)} rate="1.00%" deduction={formatCurrency(payrollData.cacDeduction)} />
-                        <TableRowItem label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
-                        {payrollData.cotisationSyndicale > 0 && <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />}
-                        <TableRowItem label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
-                        <TableRowItem label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10.00%" deduction={formatCurrency(payrollData.cacSurIRPP)} />
-                        <TableRowItem label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
-                    </tbody>
-                </table>
-                
+                <div className="overflow-x-auto">
+                    <table className="print-table w-full text-sm font-sans mb-4">
+                        <thead>
+                            <tr className="bg-muted">
+                                <th className="w-2/5 px-2 py-1 text-left">{t('tableDesignation')}</th>
+                                <th className="w-1/5 px-2 py-1 text-center">{t('tableBase')} / Nombre</th>
+                                <th className="w-1/5 px-2 py-1 text-right">{t('tableRate')}</th>
+                                <th className="w-1/5 px-2 py-1 text-right">{t('tableGain')}</th>
+                                <th className="w-1/5 px-2 py-1 text-right">{t('tableDeduction')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {payrollData.baseSalary > 0 && <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />}
+                            {payrollData.seniorityBonus > 0 && <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />}
+                            {payrollData.attendanceBonus > 0 && <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />}
+                            {payrollData.performanceBonus > 0 && <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />}
+                            {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                                <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
+                            ))}
+                            {payrollData.transportBonus > 0 && <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />}
+                            {payrollData.housingBonus > 0 && <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />}
+                            <tr className="font-bold bg-muted/50">
+                                <td colSpan={3} className="px-2 py-1 text-right">{t('grossMonthlySalaryLabel')}</td>
+                                <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
+                                <td></td>
+                            </tr>
+                            <TableRowItem label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus - payrollData.housingBonus)} rate="4.20%" deduction={formatCurrency(payrollData.cnpsDeduction)} />
+                            <TableRowItem label={t('cacLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus)} rate="1.00%" deduction={formatCurrency(payrollData.cacDeduction)} />
+                            <TableRowItem label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
+                            {payrollData.cotisationSyndicale > 0 && <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />}
+                            <TableRowItem label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
+                            <TableRowItem label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10.00%" deduction={formatCurrency(payrollData.cacSurIRPP)} />
+                            <TableRowItem label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
+                        </tbody>
+                    </table>
+                </div>
                 <div className="flex justify-end break-inside-avoid mt-4">
                     <div className="w-full max-w-xs space-y-1 text-sm">
                         <div className="flex justify-between">
