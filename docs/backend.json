@@ -361,6 +361,31 @@
             "longitude": {"type": "number"}
         },
         "required": ["userId", "eventType", "timestamp", "latitude", "longitude"]
+    },
+    "FaqItem": {
+      "title": "FAQ Item",
+      "description": "Represents a single question and answer pair for the FAQ page.",
+      "type": "object",
+      "properties": {
+        "question": {
+          "type": "string",
+          "description": "The question text."
+        },
+        "answer": {
+          "type": "string",
+          "description": "The answer text."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the FAQ item."
+        },
+        "locale": {
+          "type": "string",
+          "description": "The language of the content.",
+          "enum": ["fr", "en"]
+        }
+      },
+      "required": ["question", "answer", "order", "locale"]
     }
   },
   "auth": {
@@ -514,6 +539,22 @@
             {
               "name": "justificationId",
               "description": "The unique identifier for the justification."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/faq/{faqId}",
+        "definition": {
+          "entityName": "FaqItem",
+          "schema": {
+            "$ref": "#/backend/entities/FaqItem"
+          },
+          "description": "Stores individual FAQ items.",
+          "params": [
+            {
+              "name": "faqId",
+              "description": "The unique identifier for the FAQ item."
             }
           ]
         }

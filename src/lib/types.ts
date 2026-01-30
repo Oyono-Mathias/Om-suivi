@@ -102,3 +102,11 @@ export interface WorkplaceUpdateLog {
     latitude: number;
     longitude: number;
 }
+
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+  order: number;
+  locale: 'fr' | 'en';
+}

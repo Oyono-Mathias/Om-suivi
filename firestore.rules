@@ -117,5 +117,13 @@ service cloud.firestore {
       allow read, list, update: if isAdmin();
       allow delete: if false;
     }
+
+    // --------------------------------------------------------------------
+    // FAQ Collection
+    // --------------------------------------------------------------------
+    match /faq/{faqId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
