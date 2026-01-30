@@ -74,7 +74,13 @@ export default function LeaveRequestPage() {
 
     const resumeDate = useMemo(() => {
         if (!startDate || !leaveData) return null;
-        return addWorkingDays(parse(startDate, 'yyyy-MM-dd', new Date()), leaveData.totalDays);
+        try {
+            const parsedDate = parse(startDate, 'yyyy-MM-dd', new Date());
+            if (isNaN(parsedDate.getTime())) return null;
+            return addWorkingDays(parsedDate, leaveData.totalDays);
+        } catch (e) {
+            return null;
+        }
     }, [startDate, leaveData]);
     
     const handlePrint = () => {
