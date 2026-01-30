@@ -10,6 +10,10 @@ export const pathnames = {
     en: '/profile',
     fr: '/profil'
   },
+  '/leave': {
+    en: '/leave-request',
+    fr: '/demande-conge'
+  },
   '/reports': {
     en: '/reports',
     fr: '/rapports'

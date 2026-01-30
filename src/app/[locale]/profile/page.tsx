@@ -34,7 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { Loader2, MapPin, CalendarIcon } from "lucide-react";
+import { Loader2, MapPin, CalendarIcon, Paperclip } from "lucide-react";
 import type { Profile, Profession } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
@@ -50,6 +50,7 @@ export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
   const tShared = useTranslations('Shared');
   const tGeo = useTranslations('TimeTrackingPage');
+  const tLeave = useTranslations('LeaveRequestPage');
   const locale = useLocale();
   const dateFnsLocale = locale === 'fr' ? fr : enUS;
   
@@ -252,7 +253,7 @@ export default function ProfilePage() {
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
         if (seniorityYears >= 5) {
-            senioritySurplus = 2 + Math.floor((seniorityYears - 5) / 2) * 2;
+            senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
         }
 
         const totalDays = baseDays + senioritySurplus;
@@ -462,6 +463,9 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground mt-2">
                     Congé de base ({leaveData.baseDays}j) + Surplus Ancienneté ({leaveData.senioritySurplus}j)
                 </p>
+                <Link href="/leave" className="mt-4 inline-block">
+                    <Button><Paperclip className="mr-2 h-4 w-4" />{tLeave('goToLeaveRequest')}</Button>
+                </Link>
             </CardContent>
           </Card>
           

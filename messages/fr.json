@@ -170,7 +170,7 @@
     "hireDateLabel": "Date d'embauche",
     "leaveStartDateLabel": "Date de début du cycle de congé",
     "leaveBalanceTitle": "Mon Solde Congé",
-    "leaveBalanceDescription": "Jours de congé estimés accumulés pendant le cycle actuel.",
+    "leaveBalanceDescription": "Estimations de vos droits à congé pour le cycle actuel.",
     "leaveBalanceDays": "jours"
   },
   "ReportsPage": {
@@ -379,5 +379,30 @@
     "accruedLeaveDaysLabel": "Jours de congé accumulés",
     "estimatedLeavePayLabel": "Indemnité de congé estimée",
     "leaveDaysUnit": "jours"
+  },
+  "LeaveRequestPage": {
+    "title": "Demande de Congé Annuel",
+    "printButton": "Imprimer la Demande",
+    "documentTitle": "NOTE CIRCULAIRE",
+    "documentSubtitle": "DEMANDE DE CONGÉ ANNUEL",
+    "employeeInfo": "Informations sur l'Employé",
+    "nameLabel": "Nom",
+    "jobTitleLabel": "Poste",
+    "seniorityLabel": "Ancienneté",
+    "leaveDetails": "Détails du Congé",
+    "leaveStartDateLabel": "Date de départ en congé",
+    "pickStartDate": "Choisir une date de départ",
+    "leaveResumeDateLabel": "Date de reprise de service",
+    "requestText": "Conformément aux dispositions du Code du Travail, j'ai l'honneur de solliciter de votre haute bienveillance, l'autorisation de jouir de mon congé annuel pour l'année en cours.",
+    "leaveTableTitle": "Répartition des jours de congé",
+    "baseLeave": "Congé de base",
+    "senioritySurplus": "Surplus Ancienneté",
+    "totalLeave": "Total",
+    "daysUnit": "jours",
+    "signatures": "Signatures",
+    "employeeSignature": "L'Employé",
+    "managerSignature": "Le Responsable Hiérarchique",
+    "directorSignature": "La Direction",
+    "goToLeaveRequest": "Générer une demande de congé"
   }
 }

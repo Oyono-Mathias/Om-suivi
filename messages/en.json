@@ -379,5 +379,30 @@
     "accruedLeaveDaysLabel": "Accrued Leave Days",
     "estimatedLeavePayLabel": "Estimated Leave Pay",
     "leaveDaysUnit": "days"
+  },
+  "LeaveRequestPage": {
+    "title": "Annual Leave Request",
+    "printButton": "Print Request",
+    "documentTitle": "CIRCULAR NOTE",
+    "documentSubtitle": "ANNUAL LEAVE REQUEST",
+    "employeeInfo": "Employee Information",
+    "nameLabel": "Name",
+    "jobTitleLabel": "Job Title",
+    "seniorityLabel": "Seniority",
+    "leaveDetails": "Leave Details",
+    "leaveStartDateLabel": "Leave Start Date",
+    "pickStartDate": "Pick a start date",
+    "leaveResumeDateLabel": "Service Resume Date",
+    "requestText": "In accordance with the provisions of the Labor Code, I have the honor of requesting your authorization to take my annual leave for the current year.",
+    "leaveTableTitle": "Leave Days Breakdown",
+    "baseLeave": "Base Leave",
+    "senioritySurplus": "Seniority Surplus",
+    "totalLeave": "Total",
+    "daysUnit": "days",
+    "signatures": "Signatures",
+    "employeeSignature": "The Employee",
+    "managerSignature": "The Line Manager",
+    "directorSignature": "The Management",
+    "goToLeaveRequest": "Generate Leave Request"
   }
 }
