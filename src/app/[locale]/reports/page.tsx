@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
@@ -200,7 +201,7 @@ export default function ReportsPage() {
                 totalOvertimeHours: '0.00',
                 estimatedPayout: 0,
                 cnpsDeduction: 0,
-                netPayout: 0
+                netPayout: 0,
             };
         }
 
@@ -348,21 +349,15 @@ export default function ReportsPage() {
         const hireDate = parseISO(profile.hireDate);
         const cycleStartDate = parseISO(profile.leaveStartDate);
 
-        // Seniority calculation
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
         if (seniorityYears >= 5) {
             senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
         }
         
-        // Base days calculation (1.5 days per month)
-        // A cycle is from 26th to 25th. We add 1.5 days on the 26th.
-        // By subtracting 25 days, we shift the cycle to be from the 1st to the end of the month.
-        // Then we can use differenceInMonths.
         const monthsWorkedInCycle = differenceInMonths(subDays(now, 25), subDays(cycleStartDate, 25));
         const baseDays = monthsWorkedInCycle > 0 ? (monthsWorkedInCycle * 1.5) : 0;
 
-        // Total
         const totalDays = baseDays + senioritySurplus;
 
         return {
@@ -485,9 +480,9 @@ export default function ReportsPage() {
                         <CardTitle>{t('financialSummaryTitle')}</CardTitle>
                         <CardDescription>{t('financialSummaryDescription')}</CardDescription>
                     </div>
-                    <Link href="/reports/details-calcul">
-                         <Button variant="ghost" size="icon" aria-label={t('seeCalculationDetailsTooltip')}>
-                            <HelpCircle className="h-5 w-5" />
+                    <Link href="/reports/details-calcul" className="shrink-0 ml-2">
+                         <Button variant="link" className="text-sm px-0">
+                            {t('seeCalculationDetailsTooltip')}
                         </Button>
                     </Link>
                 </div>
@@ -574,3 +569,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+    

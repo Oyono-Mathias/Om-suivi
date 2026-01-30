@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -142,18 +141,23 @@ export default function TimeTrackingPage() {
 
   useEffect(() => {
     const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedStateJSON) {
-      const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
-      const now = new Date();
-      const lastSeen = new Date(savedState.lastSeenISO);
-      const diffSeconds = (now.getTime() - lastSeen.getTime()) / 1000;
+    if (savedStateJSON && savedStateJSON.trim() !== '') {
+      try {
+        const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
+        const now = new Date();
+        const lastSeen = new Date(savedState.lastSeenISO);
+        const diffSeconds = (now.getTime() - lastSeen.getTime()) / 1000;
 
-      // If the page was reloaded or tab was closed for a very short time, auto-recover.
-      if (diffSeconds < 20) {
-        restoreShift(savedState);
-      } else {
-        // Otherwise, it was a longer disconnection, so ask the user what to do.
-        setRecoveryData(savedState);
+        // If the page was reloaded or tab was closed for a very short time, auto-recover.
+        if (diffSeconds < 20) {
+          restoreShift(savedState);
+        } else {
+          // Otherwise, it was a longer disconnection, so ask the user what to do.
+          setRecoveryData(savedState);
+        }
+      } catch (error) {
+        console.error('Failed to parse active shift state from localStorage:', error);
+        clearActiveShiftFromLocal();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -535,9 +539,13 @@ export default function TimeTrackingPage() {
                     // Update local storage state with last seen time
                     const savedStateJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
                     if (savedStateJSON) {
-                        const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
-                        savedState.lastSeenISO = new Date().toISOString();
-                        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
+                        try {
+                            const savedState: ActiveShiftState = JSON.parse(savedStateJSON);
+                            savedState.lastSeenISO = new Date().toISOString();
+                            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedState));
+                        } catch (e) {
+                            // Ignore if parsing fails, will be cleared on next cycle
+                        }
                     }
                 }
             },
