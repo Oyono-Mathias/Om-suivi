@@ -217,7 +217,6 @@ export default function ProfilePage() {
       });
       tryShowAd();
     } catch (error) {
-      console.error("Profile update failed:", error);
       toast({
         variant: "destructive",
         title: "Erreur de sauvegarde",
@@ -272,7 +271,6 @@ export default function ProfilePage() {
             totalDays
         };
     } catch (e) {
-        console.error("Could not parse date for leave calculation", e);
         return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     }
   }, [profile?.leaveStartDate, profile?.hireDate]);

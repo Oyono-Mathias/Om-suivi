@@ -73,7 +73,6 @@ export default function LeaveRequestPage() {
                 seniorityYears
             };
         } catch (e) {
-            console.error("Could not parse date for leave calculation", e);
             return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0 };
         }
     }, [profile?.hireDate]);
@@ -121,7 +120,6 @@ export default function LeaveRequestPage() {
             });
             window.print();
         } catch(error) {
-            console.error("Failed to save leave request:", error);
             toast({
                 variant: "destructive",
                 title: "Erreur de sauvegarde",

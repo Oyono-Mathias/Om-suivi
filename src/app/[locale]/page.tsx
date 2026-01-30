@@ -249,7 +249,6 @@ export default function TimeTrackingPage() {
           setRecoveryData(savedState);
         }
       } catch (error) {
-        console.error('Failed to parse active shift state from localStorage:', error);
         clearActiveShiftFromLocal();
       }
     }
@@ -359,7 +358,7 @@ export default function TimeTrackingPage() {
           });
         }
       } catch (e) {
-        console.error("Could not process leave start date check:", e);
+        /* empty */
       }
     };
 
@@ -379,14 +378,12 @@ export default function TimeTrackingPage() {
             const data = await response.json();
             setCurrentLocationAddress(data.display_name);
           } catch (error) {
-            console.error("Reverse geocoding failed:", error);
             setCurrentLocationAddress(t('locationUnavailable'));
           } finally {
             setIsFetchingLocation(false);
           }
         },
         (error) => {
-          console.error("Geolocation error:", error);
           toast({ variant: 'destructive', title: t('geoFailedTitle'), description: t('geoFailedDescription') });
           setCurrentLocationAddress(t('locationUnavailable'));
           setIsFetchingLocation(false);
@@ -448,7 +445,6 @@ export default function TimeTrackingPage() {
         tryShowAd();
         return docRef.id;
     } catch (error) {
-        console.error("Failed to start shift:", error);
         return null;
     }
   }, [user, firestore, profile, t, toast, tShared, tryShowAd, startTimer]);
@@ -626,7 +622,7 @@ export default function TimeTrackingPage() {
                     }
                 }
             },
-            (error) => { console.warn("Periodic location check failed. This can happen temporarily and is often not a critical issue.", error); },
+            (error) => { /* empty */ },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     };
@@ -672,7 +668,6 @@ export default function TimeTrackingPage() {
         setShowLocationConfirm(true);
 
     } catch (error) {
-        console.error("AI suggestion failed:", error);
         toast({ variant: 'destructive', title: t('geoSuggestErrorTitle'), description: t('geoSuggestErrorDescription') });
         const shift = shifts.find(s => s.id === shiftIdToUse);
         if (shift) {

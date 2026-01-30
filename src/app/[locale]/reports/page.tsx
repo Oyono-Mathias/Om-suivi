@@ -135,7 +135,6 @@ export default function ReportsPage() {
         toast({ title: "Justificatif envoyé", description: "Votre document a été soumis pour approbation." });
     
       } catch (error) {
-        console.error("Upload failed", error);
         toast({ variant: 'destructive', title: "Échec de l'envoi" });
       } finally {
         setIsJustifying(false);
@@ -378,7 +377,6 @@ export default function ReportsPage() {
             totalDays: baseDays + senioritySurplus,
         };
     } catch (e) {
-        console.error("Could not parse date for leave calculation", e);
         return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     }
   }, [profile?.leaveStartDate, profile?.hireDate]);

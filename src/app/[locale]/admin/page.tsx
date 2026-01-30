@@ -290,7 +290,6 @@ function JustificationsTab() {
 
       toast({ title: "Justificatif approuvé", description: `L'absence de ${justification.userName} pour le ${justification.absenceDate} est marquée comme maladie.`});
     } catch (error) {
-        console.error("Approval failed:", error);
         toast({ variant: 'destructive', title: "Erreur d'approbation" });
     } finally {
         setIsApproving(null);

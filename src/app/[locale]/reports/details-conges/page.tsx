@@ -186,7 +186,6 @@ export default function DetailCongesScreen() {
             }).filter(Boolean).reverse();
 
         } catch (e) {
-            console.error("Could not parse date for leave calculation", e);
             return [];
         }
     }, [profile, leaveAnnouncements, allTimeEntries, allOverrides, globalSettings, t]);

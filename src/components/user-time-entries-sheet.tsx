@@ -96,7 +96,6 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
             onOpenChange(false);
             form.reset();
         } catch (error) {
-            console.error("Backfill failed:", error);
             toast({ variant: 'destructive', title: t('backfillError') });
         } finally {
             setIsSaving(false);

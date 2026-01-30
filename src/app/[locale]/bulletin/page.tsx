@@ -177,7 +177,7 @@ export default function BulletinPage() {
                 if (seniorityYears > 0) {
                     seniorityBonus = baseSalary * 0.017 * seniorityYears;
                 }
-            } catch (e) { console.error("Could not parse hireDate", profile.hireDate); }
+            } catch (e) { /* empty */ }
         }
 
         let attendanceBonus = 3000;
