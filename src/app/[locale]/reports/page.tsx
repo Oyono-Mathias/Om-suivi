@@ -350,8 +350,10 @@ export default function ReportsPage() {
         const seniorityYears = differenceInYears(now, hireDate);
         let senioritySurplus = 0;
         
-        if (seniorityYears >= 3) {
+        if (seniorityYears >= 5) {
             senioritySurplus = 4;
+        } else if (seniorityYears > 0) {
+            senioritySurplus = 2;
         }
         
         let cycleStartDate;

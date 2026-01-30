@@ -22,8 +22,9 @@ const addWorkingDays = (startDate: Date, daysToAdd: number): Date => {
     let daysAdded = 0;
     while (daysAdded < daysToAdd) {
         currentDate.setDate(currentDate.getDate() + 1);
-        // getDay() returns 0 for Sunday
-        if (getDay(currentDate) !== 0) {
+        const dayOfWeek = getDay(currentDate);
+        // getDay() returns 0 for Sunday and 6 for Saturday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
             daysAdded++;
         }
     }
@@ -49,15 +50,18 @@ export default function LeaveRequestPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     const leaveData = useMemo(() => {
-        if (!profile?.leaveStartDate || !profile?.hireDate) return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0 };
+        if (!profile?.hireDate) return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0 };
         try {
             const hireDate = parseISO(profile.hireDate);
             const now = new Date();
 
             const seniorityYears = differenceInYears(now, hireDate);
             let senioritySurplus = 0;
-            if (seniorityYears >= 3) {
+            
+            if (seniorityYears >= 5) {
                 senioritySurplus = 4;
+            } else if (seniorityYears > 0) { // From 1 to 4 years
+                senioritySurplus = 2;
             }
 
             const totalDays = 18 + senioritySurplus;
@@ -72,7 +76,7 @@ export default function LeaveRequestPage() {
             console.error("Could not parse date for leave calculation", e);
             return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0 };
         }
-    }, [profile?.leaveStartDate, profile?.hireDate]);
+    }, [profile?.hireDate]);
 
     const resumeDate = useMemo(() => {
         if (!startDate || !leaveData) return null;

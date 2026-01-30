@@ -25,7 +25,7 @@ export default function WeeklyHoursChart({ chartData, chartConfig }: WeeklyHours
   const t = useTranslations('ReportsPage');
 
   return (
-    <div className="w-full overflow-x-hidden">
+    <div className="w-full overflow-x-auto">
       <ChartContainer config={chartConfig} className="h-64 min-w-[300px]">
         <BarChart data={chartData} accessibilityLayer>
           <CartesianGrid vertical={false} />
