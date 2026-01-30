@@ -40,8 +40,9 @@ function GlobalSettingsForm() {
     const t = useTranslations('AdminPage');
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { user } = useUser();
 
-    const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
+    const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
     const settingsSchema = z.object({

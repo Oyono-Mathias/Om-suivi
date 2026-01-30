@@ -47,7 +47,7 @@ export default function ExportReportPage() {
     }, [firestore, user]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
-    const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
+    const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
     const reportId = useMemo(() => `REP-${Date.now()}-${user?.uid.slice(0, 4)}`, [user]);

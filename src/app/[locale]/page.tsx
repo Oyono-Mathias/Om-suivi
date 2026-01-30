@@ -97,7 +97,7 @@ export default function TimeTrackingPage() {
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
-  const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
+  const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
   const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
 
   const timeEntriesQuery = useMemoFirebase(
