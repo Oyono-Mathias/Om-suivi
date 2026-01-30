@@ -36,12 +36,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, orderBy, limit, where, getDocs } from 'firebase/firestore';
-import type { TimeEntry, Profile, Shift, GlobalSettings } from '@/lib/types';
+import { doc, collection, query, orderBy, limit, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import type { TimeEntry, Profile, Shift, GlobalSettings, Announcement } from '@/lib/types';
 import { shifts } from '@/lib/shifts';
 import { format, parseISO, differenceInMinutes, addHours, differenceInHours } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { Loader2, Briefcase } from 'lucide-react';
+import { Loader2, Briefcase, Megaphone } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
 import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
@@ -50,6 +50,7 @@ import { getDistanceFromLatLonInKm, cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from '@/navigation';
 import { useAd } from '@/context/AdContext';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const LOCAL_STORAGE_KEY = 'activeShiftState_v2';
 
@@ -100,6 +101,13 @@ export default function TimeTrackingPage() {
     [firestore, user]
   );
   const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+  
+  const announcementsQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'announcements'), orderBy('createdAt', 'desc'), limit(1)) : null,
+    [firestore, user]
+  );
+  const { data: announcements, isLoading: isLoadingAnnouncements } = useCollection<Announcement>(announcementsQuery);
+  const latestAnnouncement = announcements?.[0];
 
 
   // --- Local Storage and Recovery Logic ---
@@ -544,7 +552,7 @@ export default function TimeTrackingPage() {
     }
   }, [status, t]);
 
-  const isLoading = isUserLoading || isLoadingProfile || isLoadingSettings;
+  const isLoading = isUserLoading || isLoadingProfile || isLoadingSettings || isLoadingAnnouncements;
   if (isLoading) {
       return (
           <div className="space-y-6">
@@ -594,6 +602,13 @@ export default function TimeTrackingPage() {
 
   return (
     <div className="space-y-6">
+       {latestAnnouncement && (
+        <Alert>
+          <Megaphone className="h-4 w-4" />
+          <AlertTitle>{t('noticeBoardTitle', {authorName: latestAnnouncement.authorName})}</AlertTitle>
+          <AlertDescription>{latestAnnouncement.message}</AlertDescription>
+        </Alert>
+      )}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>

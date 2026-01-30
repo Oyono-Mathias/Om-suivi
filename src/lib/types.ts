@@ -73,3 +73,10 @@ export interface AttendanceOverride {
   id: string; // The date 'YYYY-MM-DD'
   status: 'unjustified_absence' | 'sick_leave';
 }
+
+export interface Announcement {
+  id: string;
+  message: string;
+  authorName: string;
+  createdAt: any; // serverTimestamp
+}

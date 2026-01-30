@@ -102,7 +102,8 @@
     "pauseLimitExceededNotification": {
       "title": "OM Suivi: Limite de pause dépassée",
       "body": "Veuillez reprendre le service manuellement sur l'application."
-    }
+    },
+    "noticeBoardTitle": "Annonce de {authorName}"
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
@@ -255,7 +256,13 @@
     "noUsersFound": "Aucun employé trouvé.",
     "statusOnline": "En ligne",
     "statusOffline": "Hors ligne",
-    "lastSeen": "Vu à {time}"
+    "lastSeen": "Vu à {time}",
+    "sendAnnouncement": "Envoyer une Annonce",
+    "announcementDialogTitle": "Envoyer une annonce à l'équipe",
+    "announcementDialogDescription": "Ce message sera affiché sur le tableau de bord de tous les utilisateurs.",
+    "messageLabel": "Votre message",
+    "sendButton": "Envoyer",
+    "announcementSentSuccess": "Annonce envoyée."
   },
   "AdminPage": {
     "title": "Administration",

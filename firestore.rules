@@ -85,5 +85,14 @@ service cloud.firestore {
         allow get: if isSignedIn();
         allow write: if isAdmin();
     }
+
+    // --------------------------------------------------------------------
+    // Announcements Collection
+    // --------------------------------------------------------------------
+
+    match /announcements/{announcementId} {
+      allow list, get: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }

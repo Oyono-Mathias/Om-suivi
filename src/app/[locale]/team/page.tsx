@@ -1,19 +1,28 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
-import type { Profile, TimeEntry } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import type { Profile, TimeEntry, Announcement } from '@/lib/types';
+import { Loader2, Send } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { useTranslations, useLocale } from 'next-intl';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { doc } from 'firebase/firestore';
 import { format, parse } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
 
 // WhatsApp Icon Component
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -24,7 +33,7 @@ const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 
-function UserStatusCard({ user }: { user: Profile }) {
+function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void }) {
   const t = useTranslations('TeamPage');
   const tProfile = useTranslations('ProfilePage');
   const locale = useLocale();
@@ -71,7 +80,7 @@ function UserStatusCard({ user }: { user: Profile }) {
   }
 
   return (
-    <Card className="flex items-center p-4 gap-4">
+    <Card onClick={onClick} className={cn("flex items-center p-4 gap-4", onClick && "cursor-pointer hover:bg-muted/50 transition-colors")}>
       <div className="relative">
         <Avatar className="h-12 w-12">
           <AvatarFallback>{user.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
@@ -86,9 +95,11 @@ function UserStatusCard({ user }: { user: Profile }) {
         <p className="text-sm text-muted-foreground">{professionLabel}</p>
         <p className={cn("text-xs", statusInfo.isOnline ? 'text-green-400' : 'text-muted-foreground')}>{statusInfo.label}</p>
       </div>
-      <a href={`mailto:${user.email}`} aria-label={`Contact ${user.name}`} className="text-muted-foreground hover:text-primary transition-colors">
-        <WhatsAppIcon className="h-7 w-7 fill-current" />
-      </a>
+      {user.email && 
+        <a href={`mailto:${user.email}`} aria-label={`Contact ${user.name}`} className="text-muted-foreground hover:text-primary transition-colors">
+            <WhatsAppIcon className="h-7 w-7 fill-current" />
+        </a>
+      }
     </Card>
   );
 }
@@ -97,13 +108,48 @@ function UserStatusCard({ user }: { user: Profile }) {
 export default function TeamPage() {
   const t = useTranslations('TeamPage');
   const tShared = useTranslations('Shared');
-  const { user, isUserLoading } = useUser();
+  const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
+  const [managingUser, setManagingUser] = useState<Profile | null>(null);
+
+  const currentUserProfileRef = useMemoFirebase(() => {
+    if (!authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+  const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<Profile>(currentUserProfileRef);
 
   const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('name')), [firestore]);
   const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<Profile>(allProfilesQuery);
 
-  const isLoading = isUserLoading || isLoadingProfiles;
+  const isAdmin = currentUserProfile?.role === 'admin';
+
+  const announcementSchema = z.object({
+    message: z.string().min(1, { message: "Message cannot be empty." }),
+  });
+
+  const form = useForm<z.infer<typeof announcementSchema>>({
+    resolver: zodResolver(announcementSchema),
+    defaultValues: { message: '' },
+  });
+
+  const handleSendAnnouncement = async (values: z.infer<typeof announcementSchema>) => {
+    if (!isAdmin || !currentUserProfile) return;
+
+    const newAnnouncement: Omit<Announcement, 'id'> = {
+      message: values.message,
+      authorName: currentUserProfile.name,
+      createdAt: serverTimestamp(),
+    };
+    await addDocumentNonBlocking(collection(firestore, 'announcements'), newAnnouncement);
+    toast({ title: t('announcementSentSuccess') });
+    setIsAnnouncementOpen(false);
+    form.reset();
+  };
+
+  const isLoading = isUserLoading || isLoadingProfiles || isLoadingCurrentUserProfile;
 
   if (isLoading) {
     return (
@@ -113,7 +159,7 @@ export default function TeamPage() {
     );
   }
 
-  if (!user) {
+  if (!authUser) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
         <p className="text-xl">{tShared('pleaseLogin')}</p>
@@ -125,11 +171,20 @@ export default function TeamPage() {
   }
 
   return (
+    <>
     <div className="space-y-6">
-      <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
-      <p className="text-muted-foreground">
-        {t('description')}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
+            <p className="text-muted-foreground">{t('description')}</p>
+        </div>
+        {isAdmin && (
+            <Button onClick={() => setIsAnnouncementOpen(true)}>
+                <Send className="mr-2 h-4 w-4" />
+                {t('sendAnnouncement')}
+            </Button>
+        )}
+      </div>
 
       <Card>
         <CardHeader>
@@ -141,7 +196,11 @@ export default function TeamPage() {
               {allProfiles && allProfiles.length > 0 ? (
                 allProfiles
                   .map((profile) => (
-                    <UserStatusCard key={profile.id} user={profile} />
+                    <UserStatusCard 
+                        key={profile.id} 
+                        user={profile} 
+                        onClick={isAdmin ? () => setManagingUser(profile) : undefined}
+                    />
                 ))
               ) : (
                 <div className="text-center h-24 flex items-center justify-center">
@@ -152,5 +211,48 @@ export default function TeamPage() {
         </CardContent>
       </Card>
     </div>
+    
+    {isAdmin && (
+        <UserTimeEntriesSheet 
+            user={managingUser}
+            onOpenChange={(open) => !open && setManagingUser(null)}
+        />
+    )}
+
+    <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('announcementDialogTitle')}</DialogTitle>
+          <DialogDescription>{t('announcementDialogDescription')}</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSendAnnouncement)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="message"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('messageLabel')}</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Votre message ici..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">{t("AdminPage.deleteEntryCancel")}</Button>
+              </DialogClose>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t('sendButton')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

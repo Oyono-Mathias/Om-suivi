@@ -102,7 +102,8 @@
     "pauseLimitExceededNotification": {
       "title": "OM Suivi: Pause limit exceeded",
       "body": "Please resume your shift manually in the app."
-    }
+    },
+    "noticeBoardTitle": "Announcement from {authorName}"
   },
   "ManualEntryDialog": {
     "title": "Add Manual Entry",
@@ -255,7 +256,13 @@
     "noUsersFound": "No users found.",
     "statusOnline": "Online",
     "statusOffline": "Offline",
-    "lastSeen": "Last seen at {time}"
+    "lastSeen": "Last seen at {time}",
+    "sendAnnouncement": "Send Announcement",
+    "announcementDialogTitle": "Send an announcement to the team",
+    "announcementDialogDescription": "This message will be displayed on the dashboard of all users.",
+    "messageLabel": "Your message",
+    "sendButton": "Send",
+    "announcementSentSuccess": "Announcement sent."
   },
   "AdminPage": {
     "title": "Administration",
