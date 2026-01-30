@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /justifications/{userId}/{allPaths=**} {
+      // A user can upload and read their own justification files.
+      // Admin access for reading is handled via download URLs retrieved from Firestore.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
