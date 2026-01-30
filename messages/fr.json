@@ -454,6 +454,8 @@
     "status": "Statut",
     "baseLeave": "Jours de base",
     "seniorityBonus": "Jours d'ancienneté",
+    "baseLabel": "Base",
+    "seniorityLabel": "Ancienneté",
     "totalDays": "Total jours",
     "annualGrossFormula": "Cumul annuel brut / 16",
     "statusTaken": "Pris",

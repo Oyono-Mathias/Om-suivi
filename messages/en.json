@@ -454,6 +454,8 @@
     "status": "Status",
     "baseLeave": "Base Days",
     "seniorityBonus": "Seniority Bonus",
+    "baseLabel": "Base",
+    "seniorityLabel": "Seniority",
     "totalDays": "Total Days",
     "annualGrossFormula": "Annual Gross Total / 16",
     "statusTaken": "Taken",

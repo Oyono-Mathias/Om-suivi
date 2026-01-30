@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 export default function DetailCongesScreen() {
     const t = useTranslations('DetailsCongesPage');
     const tShared = useTranslations('Shared');
+    const tLeaveRequest = useTranslations('LeaveRequestPage');
     const locale = useLocale();
     const dateFnsLocale = locale === 'fr' ? fr : enUS;
 
@@ -52,11 +53,14 @@ export default function DetailCongesScreen() {
 
                 const seniorityYears = differenceInYears(referencePeriodEnd, hireDate);
                 let senioritySurplus = 0;
-                if (seniorityYears >= 5) senioritySurplus = 2;
-                if (seniorityYears >= 10) senioritySurplus = 4;
-                if (seniorityYears >= 15) senioritySurplus = 6;
+                if (seniorityYears >= 1 && seniorityYears <= 4) {
+                    senioritySurplus = 2;
+                } else if (seniorityYears >= 6) {
+                    senioritySurplus = 4;
+                }
 
-                const totalDays = 18 + senioritySurplus;
+                const baseDays = 18;
+                const totalDays = baseDays + senioritySurplus;
                 
                 // Simplified payout calculation using current base salary
                 const annualGrossSalary = profile.monthlyBaseSalary * 12;
@@ -72,7 +76,7 @@ export default function DetailCongesScreen() {
                     year: year,
                     referencePeriod: `${format(referencePeriodStart, 'dd/MM/yyyy')} - ${format(referencePeriodEnd, 'dd/MM/yyyy')}`,
                     days: {
-                        base: 18,
+                        base: baseDays,
                         seniority: senioritySurplus,
                         total: totalDays,
                     },
@@ -113,13 +117,11 @@ export default function DetailCongesScreen() {
                                 <Card>
                                     <CardHeader><CardTitle className="text-base">{t('daysSectionTitle')}</CardTitle></CardHeader>
                                     <CardContent>
-                                        <Table>
-                                            <TableBody>
-                                                <TableRow><TableCell>{t('baseLeave')}</TableCell><TableCell className="text-right font-mono">{data.days.base} jours</TableCell></TableRow>
-                                                <TableRow><TableCell>{t('seniorityBonus')}</TableCell><TableCell className="text-right font-mono">{data.days.seniority} jours</TableCell></TableRow>
-                                                <TableRow className="font-bold text-primary bg-primary/5"><TableCell>{t('totalDays')}</TableCell><TableCell className="text-right font-mono text-lg">{data.days.total} jours</TableCell></TableRow>
-                                            </TableBody>
-                                        </Table>
+                                        <div className="p-4 bg-muted/50 rounded-md text-center">
+                                            <p className="text-lg">
+                                                {data.days.base} ({t('baseLabel')}) + {data.days.seniority} ({t('seniorityLabel')}) = <span className="font-bold text-primary text-xl">{data.days.total} {tLeaveRequest('daysUnit')}</span>
+                                            </p>
+                                        </div>
                                     </CardContent>
                                 </Card>
 
