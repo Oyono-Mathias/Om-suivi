@@ -10,14 +10,8 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartConfig,
-} from "@/components/ui/chart";
+import { type ChartConfig } from "@/components/ui/chart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import {
   eachDayOfInterval,
   format,
@@ -49,6 +43,14 @@ import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
 import { getPayrollCycle } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const WeeklyHoursChart = dynamic(() => import('@/components/weekly-hours-chart'), {
+  loading: () => <Skeleton className="h-64 w-full min-w-[300px]" />,
+  ssr: false,
+});
+
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -553,29 +555,7 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="w-full overflow-x-auto">
-            <ChartContainer config={chartConfig} className="h-64 min-w-[300px]">
-              <BarChart data={weeklyChartData} accessibilityLayer>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={10}
-                  unit={t('hourUnit')}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend />
-                <Bar dataKey="regular" fill="var(--color-regular)" radius={4} stackId="a" />
-                <Bar dataKey="overtime" fill="var(--color-overtime)" radius={4} stackId="a" />
-              </BarChart>
-            </ChartContainer>
-          </div>
+          <WeeklyHoursChart chartData={weeklyChartData} chartConfig={chartConfig} />
         </CardContent>
       </Card>
     </div>
