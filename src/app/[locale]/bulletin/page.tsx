@@ -28,10 +28,8 @@ const DEFAULT_OVERTIME_RATES = {
 const calculateIRPP = (grossSalary: number, transportBonus: number, housingBonus: number, cnpsDeduction: number) => {
     if (grossSalary <= 0) return 0;
     
-    // The IRPP base is Gross Salary minus specific non-taxable allowances like transport.
     const netImposable = grossSalary - transportBonus; 
     
-    // Professional expenses abatement (30%) on (Net Imposable - CNPS)
     const taxableBase = (netImposable - cnpsDeduction) * 0.7;
     
     const annualTaxable = taxableBase * 12;
@@ -169,15 +167,54 @@ export default function BulletinPage() {
         
         const totalOvertimePayout = Object.values(breakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
+        // --- Seniority Bonus ---
+        let seniorityBonus = 0;
+        if (profile.hireDate) {
+            try {
+                const seniorityYears = differenceInYears(new Date(), parseISO(profile.hireDate));
+                const seniorityTiers = Math.floor(seniorityYears / 2);
+                if (seniorityTiers > 0) {
+                    seniorityBonus = seniorityTiers * (baseSalary * 0.02);
+                }
+            } catch (e) {
+                console.error("Could not parse hireDate for seniority calculation", profile.hireDate);
+            }
+        }
+
+        // --- Absences and Attendance/Performance Bonuses ---
+        let attendanceBonus = 3000;
+        let performanceBonus = 4000;
+        let absenceDeduction = 0;
+        let absenceCount = 0;
+        
+        if (profile.hireDate) {
+            const absenceCheckStart = max([cycleStart, parseISO(profile.hireDate)]);
+            const absenceCheckEnd = min([cycleEnd, new Date()]);
+
+            if (absenceCheckStart < absenceCheckEnd) {
+                const daysInCycleToCheck = eachDayOfInterval({ start: absenceCheckStart, end: absenceCheckEnd });
+                const workDays = daysInCycleToCheck.filter(day => getDay(day) !== 0); // Mon-Sat
+                const workedDays = new Set(cycleEntries.map(e => e.date));
+                
+                absenceCount = workDays.filter(day => !workedDays.has(format(day, 'yyyy-MM-dd'))).length;
+            }
+
+            if (absenceCount > 0) {
+                attendanceBonus = 0;
+                performanceBonus = 0;
+                const dailySalary = baseSalary / 26;
+                const dailyTransport = 18325 / 26;
+                absenceDeduction = absenceCount * (dailySalary + dailyTransport);
+            }
+        }
+
+
         // --- Fixed Bonuses ---
         const transportBonus = 18325;
-        const housingBonus = baseSalary * 0.1; // 10% of base salary
+        const housingBonus = baseSalary * 0.1;
 
-        // Per the user's latest provided physical paystub, we are simplifying the logic
-        // and removing seniority, attendance, performance, and absence deductions for now
-        // to align with the provided document.
-        const grossSalary = baseSalary + totalOvertimePayout + transportBonus + housingBonus;
-
+        const grossSalary = baseSalary + totalOvertimePayout + seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus;
+        
         // Deductions
         const cnpsBase = grossSalary - transportBonus - housingBonus;
         const cnpsDeduction = cnpsBase * 0.042;
@@ -186,12 +223,12 @@ export default function BulletinPage() {
         const cacDeduction = cacBase * 0.01;
         
         const irppDeduction = calculateIRPP(grossSalary, transportBonus, housingBonus, cnpsDeduction);
-        const cacSurIRPP = irppDeduction * 0.1; // 10% of IRPP
-        const redevanceCRTV = 1950; // Fixed from payslip
-        const cotisationSyndicale = baseSalary * 0.01; // 1% of base salary
-        const taxeCommunale = 270; // Fixed from payslip
+        const cacSurIRPP = irppDeduction * 0.1;
+        const redevanceCRTV = 1950;
+        const cotisationSyndicale = baseSalary * 0.01;
+        const taxeCommunale = 270;
 
-        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
+        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale + absenceDeduction;
         const netPay = grossSalary - totalDeductions;
         
         const totalHours = cycleEntries.reduce((acc, e) => acc + e.duration, 0) / 60;
@@ -199,6 +236,8 @@ export default function BulletinPage() {
 
         return {
             cycleStart, cycleEnd, baseSalary, transportBonus, housingBonus,
+            seniorityBonus, attendanceBonus, performanceBonus,
+            absenceCount, absenceDeduction,
             overtimeBreakdown: breakdown, hourlyRate, totalOvertimePayout, grossSalary,
             cnpsDeduction, cnpsBase, cacDeduction, cacBase, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
             totalDeductions, netPay, totalHours, totalOvertimeHours
@@ -284,6 +323,9 @@ export default function BulletinPage() {
                     <CardContent>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between"><span>{t('baseSalaryLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.baseSalary)}</span></div>
+                            {payrollData.seniorityBonus > 0 && <div className="flex justify-between"><span>{t('seniorityBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.seniorityBonus)}</span></div>}
+                            {payrollData.attendanceBonus > 0 && <div className="flex justify-between"><span>{t('attendanceBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.attendanceBonus)}</span></div>}
+                            {payrollData.performanceBonus > 0 && <div className="flex justify-between"><span>{t('performanceBonusLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.performanceBonus)}</span></div>}
                              {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) =>
                                 <div className="flex justify-between" key={`gain-mob-${key}`}>
                                     <span>{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})}</span>
@@ -300,6 +342,7 @@ export default function BulletinPage() {
                     <CardHeader><CardTitle>{t('deductionsSectionTitle')}</CardTitle></CardHeader>
                     <CardContent>
                          <div className="space-y-2 text-sm">
+                            {payrollData.absenceDeduction > 0 && <div className="flex justify-between text-destructive"><span>{t('absenceDeductionLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.absenceDeduction)}</span></div>}
                             <div className="flex justify-between"><span>{t('cnpsLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cnpsDeduction)}</span></div>
                             <div className="flex justify-between"><span>{t('cacLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.cacDeduction)}</span></div>
                             <div className="flex justify-between"><span>{t('redevanceCRTVLabel')}</span> <span className="font-mono">{formatCurrency(payrollData.redevanceCRTV)}</span></div>
@@ -344,6 +387,10 @@ export default function BulletinPage() {
                             </TableHeader>
                             <TableBody>
                                 {renderRow(t('baseSalaryLabel'), "30,00", (payrollData.baseSalary / 30).toFixed(2), null, payrollData.baseSalary, null)}
+                                {payrollData.seniorityBonus > 0 && renderRow(t('seniorityBonusLabel'), null, null, null, payrollData.seniorityBonus, null)}
+                                {payrollData.attendanceBonus > 0 && renderRow(t('attendanceBonusLabel'), null, null, null, payrollData.attendanceBonus, null)}
+                                {payrollData.performanceBonus > 0 && renderRow(t('performanceBonusLabel'), null, null, null, payrollData.performanceBonus, null)}
+                                
                                 {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) =>
                                    React.cloneElement(
                                         renderRow(t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)}), (tier.minutes/60).toFixed(2), payrollData.hourlyRate, tier.rate*100, tier.payout, null),
@@ -358,6 +405,7 @@ export default function BulletinPage() {
                                 
                                 <TableRow><TableCell colSpan={6} className="h-4"></TableCell></TableRow>
 
+                                {payrollData.absenceDeduction > 0 && renderRow(t('absenceDeductionLabel'), payrollData.absenceCount, null, null, null, payrollData.absenceDeduction)}
                                 {renderRow(t('cnpsLabel'), payrollData.cnpsBase, '4.200', null, null, payrollData.cnpsDeduction)}
                                 {renderRow(t('cacLabel'), payrollData.cacBase, '1.000', null, null, payrollData.cacDeduction)}
                                 {renderRow(t('redevanceCRTVLabel'), null, null, null, null, payrollData.redevanceCRTV)}
