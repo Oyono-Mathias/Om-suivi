@@ -1,7 +1,7 @@
 {
   "LoginPage": {
-    "title": "Welcome to Prima Dee-Lite",
-    "description": "Log in to access your Prima Dee-Lite employee dashboard.",
+    "title": "Welcome to OM Suivi",
+    "description": "Log in to access your OM Suivi employee dashboard.",
     "loginTab": "Log In",
     "registerTab": "Sign Up",
     "emailLabel": "Email",
@@ -34,7 +34,7 @@
     "resetErrorDescription": "Could not send reset email. Please check the address."
   },
   "AppShell": {
-    "appName": "Prima Dee-Lite",
+    "appName": "OM Suivi",
     "timeTracking": "Time Tracking",
     "reports": "Reports",
     "bulletin": "Paystub",
@@ -101,7 +101,7 @@
     "resumeWorkButton": "Resume Work",
     "manualResumeToast": "Shift resumed manually",
     "pauseLimitExceededNotification": {
-      "title": "Prima Dee-Lite: Pause limit exceeded",
+      "title": "OM Suivi: Pause limit exceeded",
       "body": "Please resume your shift manually in the app."
     },
     "noticeBoardTitle": "Announcement from {authorName}",
@@ -121,15 +121,15 @@
       "description": "Your shift is locked. Tracking continues."
     },
     "exitWorkZoneNotification": {
-      "title": "Prima Dee-Lite: Left Work Zone",
+      "title": "OM Suivi: Left Work Zone",
       "body": "You have left your work zone but your shift is still running."
     },
     "autoEndShiftHomeNotification": {
-      "title": "Prima Dee-Lite: Shift Ended",
+      "title": "OM Suivi: Shift Ended",
       "body": "Shift ended automatically because you arrived home."
     },
     "validation": {
-      "title": "Prima Dee-Lite: Still working?",
+      "title": "OM Suivi: Still working?",
       "body": "Your shift has been active for over 8h15. Please validate to continue.",
       "dialogTitle": "Still working?",
       "dialogDescription": "You are outside your work zone. Please confirm you are still on shift to continue tracking.",
@@ -269,7 +269,7 @@
     "title": "Export Report",
     "description": "Proof of work for the period of {reportMonth}.",
     "printButton": "Print to PDF",
-    "appName": "Prima Dee-Lite",
+    "appName": "OM Suivi",
     "reportTitle": "Timesheet Report",
     "hourlyRateLabel": "Hourly Rate",
     "jobTitleLabel": "Job Title",
@@ -407,7 +407,7 @@
   },
   "BulletinPage": {
     "title": "Paystub",
-    "appName": "Prima Dee-Lite",
+    "appName": "OM Suivi",
     "description": "Your compensation details for the period from {startDate} to {endDate}.",
     "printButton": "Print Paystub",
     "periodLabel": "Period",
@@ -487,8 +487,8 @@
     "closeButton": "Got it"
   },
   "WelcomeDialog": {
-    "title": "Welcome to Prima Dee-Lite",
-    "description": "Your tool for transparent payroll and fair management of your rights at Prima Dee-Lite.",
+    "title": "Welcome to OM Suivi",
+    "description": "Your tool for transparent payroll and fair management of your rights at OM Suivi.",
     "startButton": "Get Started"
   },
   "DetailsCalculPage": {

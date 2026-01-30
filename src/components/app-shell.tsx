@@ -185,7 +185,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar className="no-print">
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-3">
-            <Image src="/logo-prima.png" alt="Prima Dee-Lite Logo" width={32} height={32} className="rounded-full" />
+            <Image src="/logo-omsuivi.png" alt="OM Suivi Logo" width={32} height={32} className="rounded-full" />
             <div className="flex flex-col">
               <span className="text-lg font-headline font-semibold text-sidebar-foreground">{t('appName')}</span>
             </div>
