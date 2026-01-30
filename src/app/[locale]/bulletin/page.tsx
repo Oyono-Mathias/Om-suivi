@@ -2,7 +2,6 @@
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, differenceInCalendarMonths } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
@@ -12,7 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { getPayrollCycle, cn } from '@/lib/utils';
+import { getPayrollCycle } from '@/lib/utils';
 import Image from 'next/image';
 
 const DEFAULT_OVERTIME_RATES = {
@@ -25,17 +24,11 @@ const DEFAULT_OVERTIME_RATES = {
 
 const calculateIRPP = (grossSalary: number, transportBonus: number, housingBonus: number, cnpsDeduction: number) => {
     if (grossSalary <= 0) return 0;
-    
-    // Net imposable is gross earnings minus transport allowance.
     const netImposable = grossSalary - transportBonus; 
-    
-    // Taxable base is 70% of (net imposable minus CNPS deduction).
     const taxableBase = (netImposable - cnpsDeduction) * 0.7;
-    
     const annualTaxable = taxableBase * 12;
     let annualIRPP = 0;
 
-    // Progressive tax brackets for Cameroon
     if (annualTaxable <= 2000000) {
         annualIRPP = annualTaxable * 0.1;
     } else if (annualTaxable <= 3000000) {
@@ -45,18 +38,18 @@ const calculateIRPP = (grossSalary: number, transportBonus: number, housingBonus
     } else {
         annualIRPP = ((annualTaxable - 5000000) * 0.35) + 850000;
     }
-
     return Math.round(annualIRPP / 12);
 }
 
-// Reusable component for paystub line items
-const PaystubRow = ({ label, value, isAbsence, isTotal }: { label: string; value: string; isAbsence?: boolean; isTotal?: boolean; }) => (
-    <div className={cn("flex justify-between items-center text-sm", isTotal && "font-bold pt-2 border-t mt-2 border-muted-foreground/20")}>
-        <span className={cn("text-card-foreground/80", isAbsence && "text-destructive" )}>{label}</span>
-        <span className={cn("font-mono tabular-nums", isAbsence ? "text-destructive" : "text-card-foreground")}>{value}</span>
-    </div>
+const TableRowItem = ({ label, base, rate, gain, deduction }: { label: string; base?: string | number; rate?: string | number; gain?: string | number; deduction?: string | number; }) => (
+    <tr>
+        <td className="px-2 py-1">{label}</td>
+        <td className="px-2 py-1 text-center">{base ?? ''}</td>
+        <td className="px-2 py-1 text-right">{rate ?? ''}</td>
+        <td className="px-2 py-1 text-right font-mono tabular-nums">{gain ?? ''}</td>
+        <td className="px-2 py-1 text-right font-mono tabular-nums">{deduction ?? ''}</td>
+    </tr>
 );
-
 
 export default function BulletinPage() {
     const t = useTranslations('BulletinPage');
@@ -72,7 +65,6 @@ export default function BulletinPage() {
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
 
     const { start: cycleStart, end: cycleEnd } = getPayrollCycle(new Date());
-
     const cycleStartString = useMemo(() => format(cycleStart, 'yyyy-MM-dd'), [cycleStart]);
     const cycleEndString = useMemo(() => format(cycleEnd, 'yyyy-MM-dd'), [cycleEnd]);
 
@@ -86,7 +78,7 @@ export default function BulletinPage() {
     }, [firestore, user, cycleStartString, cycleEndString]);
     const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
 
-    const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
+    const settingsRef = useMemoFirebase(() => (user ? doc(firestore, 'settings', 'global') : null), [firestore, user]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
     const overridesQuery = useMemoFirebase(() => {
@@ -98,14 +90,10 @@ export default function BulletinPage() {
     }, [firestore, user, cycleStartString, cycleEndString]);
     const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
 
-    const handlePrint = () => {
-        window.print();
-    };
+    const handlePrint = () => { window.print(); };
 
     const payrollData = useMemo(() => {
-        if (!timeEntries || !profile || !globalSettings || !attendanceOverrides) {
-            return null;
-        }
+        if (!timeEntries || !profile || !globalSettings || !attendanceOverrides) return null;
         
         const rates = globalSettings.overtimeRates || DEFAULT_OVERTIME_RATES;
         const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
@@ -182,79 +170,56 @@ export default function BulletinPage() {
         overtimeBreakdown.sunday.payout = (overtimeBreakdown.sunday.minutes / 60) * hourlyRate * rates.sunday;
         overtimeBreakdown.holiday.payout = (overtimeBreakdown.holiday.minutes / 60) * hourlyRate * rates.holiday;
         
-        const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
-
         let seniorityBonus = 0;
         if (profile.hireDate) {
             try {
                 const seniorityYears = differenceInYears(new Date(), parseISO(profile.hireDate));
                 if (seniorityYears > 0) {
-                    // 1.7% per year of service
                     seniorityBonus = baseSalary * 0.017 * seniorityYears;
                 }
-            } catch (e) {
-                console.error("Could not parse hireDate", profile.hireDate);
-            }
+            } catch (e) { console.error("Could not parse hireDate", profile.hireDate); }
         }
 
         let attendanceBonus = 3000;
         let performanceBonus = 4000;
-        let absenceDeduction = 0;
-        let unjustifiedAbsenceCount = 0;
-        let sickLeaveCount = 0;
-        let preRegistrationAbsenceCount = 0;
+        let salaryDeduction = 0;
         
         if (profile.hireDate) {
             const hireDate = parseISO(profile.hireDate);
-            const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) })
-              .filter(d => getDay(d) !== 0); // Mon-Sat are work days
-            
+            const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
             const workedDays = new Set(timeEntries.map(e => e.date));
             const overridesMap = new Map(attendanceOverrides.map(o => [o.id, o.status]));
+            
+            let unjustifiedAbsenceCount = 0;
+            let preRegistrationAbsenceCount = 0;
 
             for (const day of cycleWorkDays) {
                 const dayString = format(day, 'yyyy-MM-dd');
-                
                 if (day < startOfDay(hireDate)) {
                     preRegistrationAbsenceCount++;
-                } else {
-                    if (!workedDays.has(dayString)) {
-                        const status = overridesMap.get(dayString);
-                        if (status === 'sick_leave') {
-                            sickLeaveCount++;
-                        } else {
-                            unjustifiedAbsenceCount++;
-                        }
-                    }
+                } else if (!workedDays.has(dayString) && overridesMap.get(dayString) !== 'sick_leave') {
+                    unjustifiedAbsenceCount++;
                 }
+            }
+            const totalAbsenceForDeduction = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
+            salaryDeduction = totalAbsenceForDeduction * (3360 + 705); // Salary + Transport
+            if (unjustifiedAbsenceCount > 0) {
+                attendanceBonus = 0;
+                performanceBonus = 0;
             }
         }
         
-        const totalAbsenceForDeduction = unjustifiedAbsenceCount + preRegistrationAbsenceCount;
-        const salaryDeduction = totalAbsenceForDeduction * 3360;
-        const transportDeduction = totalAbsenceForDeduction * 705;
-        absenceDeduction = salaryDeduction + transportDeduction;
-
-
-        if (unjustifiedAbsenceCount > 0) {
-            attendanceBonus = 0;
-            performanceBonus = 0;
-        }
-        
-        const transportBonus = 18325;
+        const proratedBaseSalary = baseSalary - (salaryDeduction > 0 ? (unjustifiedAbsenceCount + preRegistrationAbsenceCount) * 3360 : 0);
+        const transportBonus = 18325 - (salaryDeduction > 0 ? (unjustifiedAbsenceCount + preRegistrationAbsenceCount) * 705 : 0);
         const housingBonus = baseSalary * 0.1;
+        const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
-        const proratedBaseSalary = baseSalary - salaryDeduction;
-
-        const totalEarnings = baseSalary + totalOvertimePayout + seniorityBonus + attendanceBonus + performanceBonus + transportBonus + housingBonus;
-        const grossSalary = totalEarnings - absenceDeduction;
+        const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + totalOvertimePayout + transportBonus + housingBonus;
         
         const cnpsBase = totalEarnings - transportBonus - housingBonus;
         const cnpsDeduction = cnpsBase * 0.042;
-        
         const cacBase = totalEarnings - transportBonus;
         const cacDeduction = cacBase * 0.01;
-        
         const irppDeduction = calculateIRPP(totalEarnings, transportBonus, housingBonus, cnpsDeduction);
         const cacSurIRPP = irppDeduction * 0.1;
         const redevanceCRTV = 1950;
@@ -262,180 +227,179 @@ export default function BulletinPage() {
         const taxeCommunale = 270;
 
         const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
-        const netPay = grossSalary - totalDeductions;
+        const netPay = totalEarnings - totalDeductions;
+
+        let accruedLeaveDays = 0;
+        if (profile.leaveStartDate) {
+            try {
+                const leaveCycleStart = parseISO(profile.leaveStartDate);
+                const monthsInCycle = differenceInCalendarMonths(new Date(), leaveCycleStart);
+                if (monthsInCycle > 0) accruedLeaveDays = monthsInCycle * 1.5;
+            } catch (e) { console.error("Could not parse leaveStartDate", profile.leaveStartDate); }
+        }
+
+        let senioritySurplusLeave = 0;
+        if (profile.hireDate) {
+            try {
+                const seniorityYrs = differenceInYears(new Date(), parseISO(profile.hireDate));
+                if (seniorityYrs >= 5) senioritySurplusLeave = 2 + Math.floor(Math.max(0, seniorityYrs - 5) / 2) * 2;
+            } catch(e) { console.error("Could not parse hireDate for leave surplus", profile.hireDate); }
+        }
+
+        const totalLeaveDays = accruedLeaveDays + senioritySurplusLeave;
+        const estimatedLeavePay = totalLeaveDays * (baseSalary / 24);
 
         return {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
             transportBonus, housingBonus,
             seniorityBonus, attendanceBonus, performanceBonus,
-            unjustifiedAbsenceCount, sickLeaveCount, grossSalary,
-            overtimeBreakdown, totalOvertimePayout,
+            overtimeBreakdown,
+            grossSalary: totalEarnings,
             cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
-            totalDeductions, netPay
+            totalDeductions, netPay,
+            accruedLeaveDays, senioritySurplusLeave, totalLeaveDays, estimatedLeavePay
         };
-
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
     
     const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
 
-    if (isLoading) {
-        return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
-    }
-    
-    if (!user) {
-        return (<div className="flex flex-col justify-center items-center h-screen gap-4">
-            <p className="text-xl">{tShared('pleaseLogin')}</p>
-            <Link href="/login"><Button>{tShared('loginButton')}</Button></Link>
-        </div>);
-    }
-    
-    if (!profile || profile.monthlyBaseSalary === 0 || !profile.hireDate || !profile.leaveStartDate) {
-        return (<div className="flex flex-col justify-center items-center h-screen gap-4 text-center">
-            <p className="text-xl">{tShared('pleaseCompleteProfile')}</p>
-            <p className="text-muted-foreground max-w-sm">Assurez-vous que le salaire de base, la date d'embauche et la date de début du cycle de congé sont définis dans votre profil.</p>
-            <Link href="/profile"><Button>{tShared('goToProfileButton')}</Button></Link>
-        </div>);
-    }
-    
-    if (!payrollData) {
-        return (
-            <div className="space-y-6 pb-28">
-                <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
-                <p className="text-muted-foreground">{t('noData')}</p>
-            </div>
-        );
-    }
+    if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
+    if (!user) return <div className="flex flex-col justify-center items-center h-screen gap-4"><p className="text-xl">{tShared('pleaseLogin')}</p><Link href="/login"><Button>{tShared('loginButton')}</Button></Link></div>;
+    if (!profile || profile.monthlyBaseSalary === 0 || !profile.hireDate || !profile.leaveStartDate) return <div className="flex flex-col justify-center items-center h-screen gap-4 text-center"><p className="text-xl">{tShared('pleaseCompleteProfile')}</p><p className="text-muted-foreground max-w-sm">Assurez-vous que le salaire de base, la date d'embauche et la date de début du cycle de congé sont définis dans votre profil.</p><Link href="/profile"><Button>{tShared('goToProfileButton')}</Button></Link></div>;
+    if (!payrollData) return <div className="space-y-6 pb-28"><h1 className="text-3xl font-headline font-bold">{t('title')}</h1><p className="text-muted-foreground">{t('noData')}</p></div>;
     
     const formatCurrency = (amount: number) => Math.round(amount).toLocaleString('fr-FR');
     
     return (
-        <div className="space-y-6 pb-28 print:p-0">
+        <div className="space-y-6">
              <style jsx global>{`
                 @media print {
-                    body { 
-                        -webkit-print-color-adjust: exact; 
-                        print-color-adjust: exact;
-                        background: white;
-                    }
-                    .print-container {
-                        padding: 1rem !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        width: 100%;
-                        display: block;
-                    }
-                    .print-primary { color: hsl(var(--primary)) !important; }
-                    .print-muted { color: hsl(var(--muted-foreground)) !important; }
+                    body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    main { padding: 0 !important; margin: 0 !important; }
+                    .no-print { display: none !important; }
+                    .print-container { width: 100%; border: 1px solid black; padding: 1.5rem; margin: 0; box-shadow: none; }
+                    .print-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+                    .print-table th, .print-table td { border: 1px solid black; padding: 4px; }
+                    .print-table th { background-color: #f2f2f2 !important; font-weight: bold; text-align: center; }
+                    .break-inside-avoid { break-inside: avoid; }
                 }
             `}</style>
 
             <div className="flex flex-wrap items-center justify-between gap-4 no-print">
                 <div>
                     <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
-                    <p className="text-muted-foreground">{t('description', {
-                        startDate: format(payrollData.cycleStart, 'd MMMM', { locale: dateFnsLocale }),
-                        endDate: format(payrollData.cycleEnd, 'd MMMM yyyy', { locale: dateFnsLocale })
-                    })}</p>
+                    <p className="text-muted-foreground">{t('description', { startDate: format(payrollData.cycleStart, 'd MMMM', { locale: dateFnsLocale }), endDate: format(payrollData.cycleEnd, 'd MMMM yyyy', { locale: dateFnsLocale })})}</p>
                 </div>
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
             
-            <div className="space-y-6">
-                {/* Mobile View */}
-                <div className="space-y-4 md:hidden no-print">
-                    <Card>
-                        <CardHeader><CardTitle>{t('gainsSectionTitle')}</CardTitle></CardHeader>
-                        <CardContent className="space-y-2">
-                             <PaystubRow label={t('baseSalaryLabel')} value={formatCurrency(payrollData.baseSalary)} />
-                            {payrollData.seniorityBonus > 0 && <PaystubRow label={t('seniorityBonusLabel')} value={formatCurrency(payrollData.seniorityBonus)} />}
-                            {payrollData.attendanceBonus > 0 && <PaystubRow label={t('attendanceBonusLabel')} value={formatCurrency(payrollData.attendanceBonus)} />}
-                            {payrollData.performanceBonus > 0 && <PaystubRow label={t('performanceBonusLabel')} value={formatCurrency(payrollData.performanceBonus)} />}
-                            {payrollData.totalOvertimePayout > 0 && <PaystubRow label={t('overtimeLabel')} value={formatCurrency(payrollData.totalOvertimePayout)} />}
-                            <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />
-                            <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />
-                             {payrollData.sickLeaveCount > 0 && <PaystubRow label={t('paidSickLeaveLabel')} value={`${payrollData.sickLeaveCount} jours`} />}
-                            <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary)} isTotal />
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader><CardTitle>{t('deductionsSectionTitle')}</CardTitle></CardHeader>
-                        <CardContent className="space-y-2">
-                            <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
-                            <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
-                            <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
-                            {payrollData.cotisationSyndicale > 0 && <PaystubRow label={t('cotisationSyndicaleLabel')} value={formatCurrency(payrollData.cotisationSyndicale)} />}
-                            <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
-                            <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
-                            <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
-                             <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
-                        </CardContent>
-                    </Card>
-                     <Card className="border-primary">
-                        <CardContent className="p-4">
-                             <div className="flex justify-between items-center">
-                                <span className="text-lg font-bold text-primary">{t('netPayableLabel')}</span>
-                                <span className="text-2xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
+            <div className="print-container bg-card md:border md:rounded-lg md:p-6">
+                 <header className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                        <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
+                        <div>
+                            <h2 className="text-lg font-bold">{t('appName')}</h2>
+                            <p className="text-xs">BP: 1234, Douala</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <h1 className="text-xl font-bold">BULLETIN DE PAIE</h1>
+                        <p className="text-sm">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yyyy')} au {format(payrollData.cycleEnd, 'dd/MM/yyyy')}</p>
+                    </div>
+                </header>
+                
+                <div className="border-y-2 border-black my-4 py-2 px-2 text-sm grid grid-cols-2">
+                    <div>
+                        <p><strong>{profile.name}</strong></p>
+                        <p>{profile.profession ? tProfile(`professions.${profile.profession}`) : ''}</p>
+                    </div>
+                    <div className="text-right">
+                        <p>Matricule: 00123</p>
+                        <p>Ancienneté: {differenceInYears(new Date(), parseISO(profile.hireDate || ''))} ans</p>
+                    </div>
                 </div>
 
-                {/* Print & Desktop View */}
-                 <Card className="hidden md:block print-container">
-                    <CardContent className="p-6 print:p-0">
-                         <header className="flex justify-between items-start mb-8 border-b pb-6">
-                            <div className="flex items-center gap-4">
-                                <Image src="/logo-om.png" alt="OM Suivi Logo" width={48} height={48} className="rounded-md" />
-                                <div>
-                                    <h2 className="text-2xl font-bold text-primary print-primary">{t('appName')}</h2>
-                                    <p className="text-sm print-muted">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yy')} - {format(payrollData.cycleEnd, 'dd/MM/yy')}</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="font-semibold">{t('employeeLabel')}: {profile.name}</p>
-                                <p className="text-sm text-muted-foreground">{t('jobTitleLabel')}: {profile.profession ? tProfile(`professions.${profile.profession}`) : ''}</p>
-                            </div>
-                        </header>
-                        
-                        <div className="grid grid-cols-5 gap-4 text-sm">
-                            <div className="col-span-3">
-                                <h3 className="font-bold mb-2 border-b pb-1">{t('gainsSectionTitle')}</h3>
-                                {payrollData.baseSalary > 0 && <PaystubRow label={t('baseSalaryLabel')} value={formatCurrency(payrollData.baseSalary)} />}
-                                {payrollData.seniorityBonus > 0 && <PaystubRow label={t('seniorityBonusLabel')} value={formatCurrency(payrollData.seniorityBonus)} />}
-                                {payrollData.attendanceBonus > 0 && <PaystubRow label={t('attendanceBonusLabel')} value={formatCurrency(payrollData.attendanceBonus)} />}
-                                {payrollData.performanceBonus > 0 && <PaystubRow label={t('performanceBonusLabel')} value={formatCurrency(payrollData.performanceBonus)} />}
-                                {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
-                                    <PaystubRow key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} value={formatCurrency(tier.payout)} />
-                                ))}
-                                {payrollData.transportBonus > 0 && <PaystubRow label={t('transportBonusLabel')} value={formatCurrency(payrollData.transportBonus)} />}
-                                {payrollData.housingBonus > 0 && <PaystubRow label={t('housingBonusLabel')} value={formatCurrency(payrollData.housingBonus)} />}
-                                 {payrollData.sickLeaveCount > 0 && <PaystubRow label={t('paidSickLeaveLabel')} value={`${payrollData.sickLeaveCount} jours`} />}
-                                <PaystubRow label={t('grossSalaryLabel')} value={formatCurrency(payrollData.grossSalary)} isTotal />
-                            </div>
-                            <div className="col-span-2">
-                                <h3 className="font-bold mb-2 border-b pb-1">{t('deductionsSectionTitle')}</h3>
-                                <PaystubRow label={t('cnpsLabel')} value={formatCurrency(payrollData.cnpsDeduction)} />
-                                <PaystubRow label={t('cacLabel')} value={formatCurrency(payrollData.cacDeduction)} />
-                                <PaystubRow label={t('redevanceCRTVLabel')} value={formatCurrency(payrollData.redevanceCRTV)} />
-                                {payrollData.cotisationSyndicale > 0 && <PaystubRow label={t('cotisationSyndicaleLabel')} value={formatCurrency(payrollData.cotisationSyndicale)} />}
-                                <PaystubRow label={t('irppLabel')} value={formatCurrency(payrollData.irppDeduction)} />
-                                <PaystubRow label={t('cacSurIRPPLabel')} value={formatCurrency(payrollData.cacSurIRPP)} />
-                                <PaystubRow label={t('communalTaxLabel')} value={formatCurrency(payrollData.taxeCommunale)} />
-                                <PaystubRow label={t('totalDeductionsLabel')} value={formatCurrency(payrollData.totalDeductions)} isTotal />
-                            </div>
-                        </div>
+                <table className="print-table w-full text-sm font-sans mb-4">
+                    <thead>
+                        <tr className="bg-muted">
+                            <th className="w-2/5 px-2 py-1 text-left">{t('tableDesignation')}</th>
+                            <th className="w-1/5 px-2 py-1 text-center">{t('tableBase')} / Nombre</th>
+                            <th className="w-1/5 px-2 py-1 text-right">{t('tableRate')}</th>
+                            <th className="w-1/5 px-2 py-1 text-right">{t('tableGain')}</th>
+                            <th className="w-1/5 px-2 py-1 text-right">{t('tableDeduction')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {payrollData.baseSalary > 0 && <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />}
+                        {payrollData.seniorityBonus > 0 && <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />}
+                        {payrollData.attendanceBonus > 0 && <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />}
+                        {payrollData.performanceBonus > 0 && <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />}
+                        {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                            <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
+                        ))}
+                        {payrollData.transportBonus > 0 && <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />}
+                        {payrollData.housingBonus > 0 && <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />}
+                        <tr className="font-bold bg-muted/50">
+                            <td colSpan={3} className="px-2 py-1 text-right">{t('grossMonthlySalaryLabel')}</td>
+                            <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
+                            <td></td>
+                        </tr>
+                        <TableRowItem label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus - payrollData.housingBonus)} rate="4.20%" deduction={formatCurrency(payrollData.cnpsDeduction)} />
+                        <TableRowItem label={t('cacLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus)} rate="1.00%" deduction={formatCurrency(payrollData.cacDeduction)} />
+                        <TableRowItem label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
+                        {payrollData.cotisationSyndicale > 0 && <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />}
+                        <TableRowItem label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
+                        <TableRowItem label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10.00%" deduction={formatCurrency(payrollData.cacSurIRPP)} />
+                        <TableRowItem label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
+                    </tbody>
+                </table>
+                
+                <div className="flex justify-end break-inside-avoid">
+                    <div className="w-full max-w-sm">
+                        <table className="print-table w-full text-sm">
+                           <tbody>
+                                <tr>
+                                    <td className="px-2 py-1 font-bold">{t('grossSalaryLabel')}</td>
+                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
+                                </tr>
+                                <tr>
+                                    <td className="px-2 py-1 font-bold">{t('totalDeductionsLabel')}</td>
+                                    <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.totalDeductions)}</td>
+                                </tr>
+                                <tr className="bg-primary/10 text-primary-foreground">
+                                    <td className="p-2 font-bold text-lg">{t('netToPayLabel')}</td>
+                                    <td className="p-2 text-right font-bold text-xl font-mono tabular-nums">{formatCurrency(payrollData.netPay)}</td>
+                                </tr>
+                           </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                        <div className="mt-8 pt-4 border-t-2 border-primary break-inside-avoid">
-                            <div className="flex justify-between items-center max-w-sm ml-auto">
-                                <span className="text-xl font-bold text-primary">{t('netToPayLabel')}</span>
-                                <span className="text-3xl font-bold text-primary font-mono tabular-nums">{formatCurrency(payrollData.netPay)} {profile.currency}</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <p className="text-xs text-center text-muted-foreground pt-4 no-print">{t('footerText')}</p>
+                <div className="mt-8 pt-4 border-t break-inside-avoid">
+                    <h3 className="font-bold text-sm mb-2">{t('acquiredRightsTitle')}</h3>
+                    <table className="print-table w-full max-w-xs text-xs">
+                        <thead>
+                            <tr className="bg-muted">
+                                <th className="px-2 py-1 text-left">Compteur</th>
+                                <th className="px-2 py-1 text-right">Acquis</th>
+                                <th className="px-2 py-1 text-right">Pris</th>
+                                <th className="px-2 py-1 text-right">Solde</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td className="px-2 py-1">Congés payés (jours)</td>
+                                <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
+                                <td className="px-2 py-1 text-right font-mono tabular-nums">0.00</td>
+                                <td className="px-2 py-1 text-right font-mono tabular-nums">{payrollData.totalLeaveDays.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
+            <p className="text-xs text-center text-muted-foreground pt-4 no-print">{t('footerText')}</p>
         </div>
     );
 }
