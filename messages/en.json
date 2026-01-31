@@ -148,6 +148,10 @@
       "manual": "Manual",
       "mission_ended": "Mission Ended",
       "admin_edit": "Admin Edit"
+    },
+    "offlineModeWarning": {
+      "title": "Offline Mode",
+      "description": "Automatic reminder notifications are currently under maintenance. Please remember to clock out manually."
     }
   },
   "ManualEntryDialog": {

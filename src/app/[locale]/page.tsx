@@ -41,7 +41,7 @@ import type { TimeEntry, Profile, Shift, GlobalSettings, Announcement } from '@/
 import { shifts } from '@/lib/shifts';
 import { format, parseISO, differenceInMinutes, addHours, differenceInHours, isSameDay, startOfDay, getDay, differenceInYears } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { Loader2, Briefcase, Megaphone, Palmtree } from 'lucide-react';
+import { Loader2, Briefcase, Megaphone, Palmtree, BellOff } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
 import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
@@ -791,6 +791,12 @@ export default function TimeTrackingPage() {
           </Button>
         </div>
       </div>
+
+      <Alert variant="default" className="bg-orange-950/50 border-orange-500/50 text-orange-300">
+        <BellOff className="h-4 w-4 text-orange-400" />
+        <AlertTitle>{t('offlineModeWarning.title')}</AlertTitle>
+        <AlertDescription>{t('offlineModeWarning.description')}</AlertDescription>
+      </Alert>
 
       <Card className="text-center p-6">
         <CardContent className="p-0">

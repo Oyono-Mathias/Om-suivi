@@ -148,6 +148,10 @@
       "manual": "Manuel",
       "mission_ended": "Fin de mission",
       "admin_edit": "Modif. Admin"
+    },
+    "offlineModeWarning": {
+      "title": "Mode hors-ligne",
+      "description": "Les notifications de rappel automatique sont en cours de maintenance. Pensez à valider vos heures manuellement."
     }
   },
   "ManualEntryDialog": {
