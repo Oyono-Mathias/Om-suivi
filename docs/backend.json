@@ -78,6 +78,10 @@
           "type": "string",
           "format": "date",
           "description": "The start date of the user's current annual leave cycle."
+        },
+        "fcmToken": {
+            "type": "string",
+            "description": "The Firebase Cloud Messaging token for push notifications."
         }
       },
       "required": [

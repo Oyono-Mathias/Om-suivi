@@ -25,12 +25,13 @@ export const metadata: Metadata = {
 
 type Props = {
   children: ReactNode;
+  params: {locale: string};
 };
 
 export default async function LocaleLayout({
   children,
+  params: { locale }
 }: Props) {
-  const locale = await getLocale();
   const messages = await getMessages();
 
   return (

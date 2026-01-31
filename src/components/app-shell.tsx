@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Image from "next/image";
 import { usePathname, Link } from "@/navigation";
 import {
@@ -39,6 +39,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MobileBottomNav from "./mobile-bottom-nav";
 import { Skeleton } from "./ui/skeleton";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { requestNotificationPermission } from "@/lib/firebase-messaging";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -54,6 +55,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [firestore, user]);
 
   const { data: profile } = useDoc<Profile>(userProfileRef);
+
+  useEffect(() => {
+    if (user && firestore) {
+      // Once the user is logged in, request permission and save the token
+      requestNotificationPermission(user.uid, firestore);
+    }
+  }, [user, firestore]);
 
   const userAvatar = PlaceHolderImages.find(p => p.id === 'mathias-oyono');
 

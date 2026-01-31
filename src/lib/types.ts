@@ -44,6 +44,7 @@ export interface Profile {
   workLongitude?: number;
   homeLatitude?: number;
   homeLongitude?: number;
+  fcmToken?: string;
 }
 
 export interface OvertimeRates {
