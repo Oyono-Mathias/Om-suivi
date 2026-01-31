@@ -58,7 +58,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      // The firebase-messaging-sw.js file is in the public directory, so the path is correct.
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then(registration => {
           console.log('FCM Service Worker registered successfully:', registration.scope);
@@ -70,7 +69,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user && firestore) {
-      // Once the user is logged in, request permission and save the token
       requestNotificationPermission(user.uid, firestore);
     }
   }, [user, firestore]);
@@ -91,7 +89,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
   
-  // Define all possible navigation items
   const mainNavItems = [
     { href: "/", label: t('timeTracking'), icon: Clock },
     { href: "/reports", label: t('reports'), icon: BarChart3 },
@@ -109,22 +106,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     badge: pendingCount > 0 ? pendingCount : undefined
   }];
 
-  // Pages without the main shell
   if (pathname.includes('/login') || pathname.includes('/reports/export') || pathname.includes('/leave')) {
     return <>{children}</>;
   }
 
-  // Loading skeleton
   if (isMobile === undefined) {
     return <Skeleton className="w-full h-screen" />;
   }
 
-  // Mobile Layout
   if (isMobile) {
     return (
       <SidebarProvider>
         <Sidebar className="no-print">
-          {/* Mobile Drawer Content */}
           <SidebarHeader className="p-4 border-b">
             {user && (
               <div className="flex items-center gap-3">
@@ -180,11 +173,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
 
-        {/* Main Content Area for Mobile */}
         <div className="flex flex-col min-h-screen bg-background">
           <header className="flex h-14 items-center justify-between border-b bg-background px-4 no-print">
             <div className="flex items-center gap-2">
-              <SidebarTrigger /> {/* Hamburger Menu to open the drawer */}
+              <SidebarTrigger />
               <Image src="/logo-omsuivi.png" alt="OM Suivi Logo" width={32} height={32} className="rounded-full" />
             </div>
              <div className="flex items-center gap-2">
@@ -203,7 +195,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Desktop Layout
   return (
     <SidebarProvider>
       <Sidebar className="no-print">
