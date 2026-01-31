@@ -449,26 +449,6 @@
         "totalDays",
         "generatedAt"
       ]
-    },
-    "SalaryGrid": {
-      "title": "Salary Grid",
-      "description": "Represents the official salary grid.",
-      "type": "object",
-      "properties": {
-        "entries": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "category": { "type": "string" },
-              "echelon": { "type": "string" },
-              "sm": { "type": "number" }
-            },
-            "required": ["category", "echelon", "sm"]
-          }
-        }
-      },
-      "required": ["entries"]
     }
   },
   "auth": {
@@ -594,20 +574,6 @@
             {
               "name": "settingId",
               "description": "The unique identifier for the settings document, should be 'global'."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/salaryGrids/{gridId}",
-        "definition": {
-          "entityName": "SalaryGrid",
-          "schema": { "$ref": "#/backend/entities/SalaryGrid" },
-          "description": "Stores official salary grids. The document ID 'current' holds the active grid.",
-          "params": [
-            {
-              "name": "gridId",
-              "description": "The unique ID for the salary grid document, e.g., 'current'."
             }
           ]
         }
