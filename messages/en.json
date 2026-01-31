@@ -152,7 +152,8 @@
     "offlineModeWarning": {
       "title": "Offline Mode",
       "description": "Automatic reminder notifications are currently under maintenance. Please remember to clock out manually."
-    }
+    },
+    "addToCalendar": "Add to Calendar"
   },
   "ManualEntryDialog": {
     "title": "Add Manual Entry",

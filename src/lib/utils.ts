@@ -43,3 +43,23 @@ export const getPayrollCycle = (date: Date) => {
 export const formatCurrency = (amount: number) => {
   return (Math.round(amount / 100) * 100).toLocaleString('fr-FR');
 };
+
+export const generateGoogleCalendarUrl = (
+  title: string,
+  startTime: Date,
+  endTime: Date
+) => {
+  const baseUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE";
+
+  const toGoogleCalendarString = (date: Date) => {
+    return date.toISOString().replace(/[-:.]/g, "").slice(0, 15) + "Z";
+  };
+
+  const params = new URLSearchParams({
+    text: title,
+    dates: `${toGoogleCalendarString(startTime)}/${toGoogleCalendarString(endTime)}`,
+    details: "Récapitulatif de session enregistré via l'application OM-Suivi.",
+  });
+
+  return `${baseUrl}&${params.toString()}`;
+};

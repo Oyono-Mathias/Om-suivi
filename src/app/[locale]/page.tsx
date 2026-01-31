@@ -41,16 +41,17 @@ import type { TimeEntry, Profile, Shift, GlobalSettings, Announcement } from '@/
 import { shifts } from '@/lib/shifts';
 import { format, parseISO, differenceInMinutes, addHours, differenceInHours, isSameDay, startOfDay, getDay, differenceInYears } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { Loader2, Briefcase, Megaphone, Palmtree, BellOff } from 'lucide-react';
+import { Loader2, Briefcase, Megaphone, Palmtree, BellOff, CalendarPlus } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
 import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
-import { getDistanceFromLatLonInKm, cn } from '@/lib/utils';
+import { getDistanceFromLatLonInKm, cn, generateGoogleCalendarUrl } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from '@/navigation';
 import { useAd } from '@/context/AdContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ToastAction } from '@/components/ui/toast';
 import dynamic from 'next/dynamic';
 
 const ManualEntryDialog = dynamic(() => import('@/components/manual-entry-dialog'), { ssr: false });
@@ -186,7 +187,27 @@ export default function TimeTrackingPage() {
       stopContext,
     });
   
-    toast({ title: t('timerStoppedTitle'), description: t('timerStoppedDescription', {duration: totalDuration}) });
+    const googleCalendarUrl = generateGoogleCalendarUrl(
+      `Service OM-Suivi - ${shift.name}`,
+      startDateTime,
+      effectiveEndTime
+    );
+
+    toast({
+      title: t('timerStoppedTitle'),
+      description: t('timerStoppedDescription', { duration: totalDuration }),
+      duration: 10000,
+      action: (
+        <ToastAction
+          altText={t('addToCalendar')}
+          onClick={() => window.open(googleCalendarUrl, '_blank')}
+          className="bg-blue-600 hover:bg-blue-700 border-blue-700 text-white"
+        >
+          <CalendarPlus className="mr-2" />
+          {t('addToCalendar')}
+        </ToastAction>
+      ),
+    });
 
     if (shift.id === 'night') {
         localStorage.setItem('nightShiftJustEnded', new Date().toISOString());

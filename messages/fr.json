@@ -152,7 +152,8 @@
     "offlineModeWarning": {
       "title": "Mode hors-ligne",
       "description": "Les notifications de rappel automatique sont en cours de maintenance. Pensez à valider vos heures manuellement."
-    }
+    },
+    "addToCalendar": "Ajouter à l'agenda"
   },
   "ManualEntryDialog": {
     "title": "Ajouter une entrée manuelle",
