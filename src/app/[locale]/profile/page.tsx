@@ -100,6 +100,9 @@ export default function ProfilePage() {
       reminders: { enabled: false, time: '17:00' },
     }
   });
+
+  const category = form.watch('category');
+  const echelon = form.watch('echelon');
   
   useEffect(() => {
     if (profile) {
@@ -389,7 +392,7 @@ export default function ProfilePage() {
                       </FormControl>
                     ) : (
                         <Select
-                            value={form.getValues('monthlyBaseSalary')?.toString()}
+                            value={category && echelon ? `${category}-${echelon}` : ""}
                             onValueChange={(value) => {
                                 if (value === 'custom') {
                                     setIsCustomSalary(true);
@@ -398,7 +401,8 @@ export default function ProfilePage() {
                                     form.setValue('echelon', undefined);
                                     setSalaryInfo(null);
                                 } else {
-                                    const selectedSalary = salaryGrid.find(s => s.sm === parseFloat(value));
+                                    const [cat, ech] = value.split('-');
+                                    const selectedSalary = salaryGrid.find(s => s.category === cat && s.echelon === ech);
                                     if (selectedSalary) {
                                         form.setValue('monthlyBaseSalary', selectedSalary.sm);
                                         form.setValue('category', selectedSalary.category);
@@ -416,7 +420,7 @@ export default function ProfilePage() {
                             <SelectContent>
                               <ScrollArea className="h-72">
                                 {[...salaryGrid].sort((a, b) => a.sm - b.sm).map(s => (
-                                    <SelectItem key={`${s.category}-${s.echelon}`} value={s.sm.toString()}>
+                                    <SelectItem key={`${s.category}-${s.echelon}`} value={`${s.category}-${s.echelon}`}>
                                     {s.sm.toLocaleString('fr-FR')} FCFA (Cat: {s.category}, Ech: {s.echelon})
                                     </SelectItem>
                                 ))}
