@@ -44,8 +44,10 @@ service cloud.firestore {
     // --------------------------------------------------------------------
 
     match /users/{userId} {
-      allow get, write: if isOwner(userId) || isAdmin();
-      allow list: if isSignedIn();
+      // Any signed-in user can list or get user profiles. This is required for the Team page and to resolve the isAdmin() recursion.
+      // Write access is restricted to the owner or an admin.
+      allow get, list: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
 
       match /timeEntries/{timeEntryId} {
         allow read, list: if isOwner(userId) || isAdmin();
