@@ -4,8 +4,9 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { getApp } from 'firebase/app';
 import { doc, setDoc, Firestore } from 'firebase/firestore';
 
-// IMPORTANT: Replace this with your actual VAPID key from the Firebase console
-const VAPID_KEY = 'YOUR_VAPID_PUBLIC_KEY';
+// CRITICAL: This key MUST be replaced with your actual VAPID key from the Firebase Console.
+// Go to Project Settings > Cloud Messaging > Web configuration and generate a key pair.
+const VAPID_KEY = ''; // <-- PASTE YOUR VAPID KEY HERE
 
 export const requestNotificationPermission = async (userId: string, firestore: Firestore) => {
   if (typeof window === 'undefined' || !('Notification' in window) || !navigator.serviceWorker) {
