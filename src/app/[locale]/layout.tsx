@@ -9,6 +9,7 @@ import { AdProvider } from '@/context/AdContext';
 import { ReactNode } from 'react';
 import '../globals.css';
 import { Poppins } from 'next/font/google';
+import { PwaInstallProvider } from '@/context/PwaInstallContext';
 
 const poppins = Poppins({ 
   subsets: ['latin'],
@@ -19,6 +20,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'OM Suivi',
   description: 'Une application pour le suivi des heures supplémentaires.',
+  manifest: '/manifest.json',
 };
 
 type Props = {
@@ -35,18 +37,22 @@ export default async function LocaleLayout({
     <html lang={locale} suppressHydrationWarning className={poppins.variable}>
        <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <FirebaseClientProvider>
-            <AdProvider>
-              <ShiftProvider>
-                <AppShell>{children}</AppShell>
-              </ShiftProvider>
-            </AdProvider>
-            <Toaster />
-          </FirebaseClientProvider>
+          <PwaInstallProvider>
+            <FirebaseClientProvider>
+              <AdProvider>
+                <ShiftProvider>
+                  <AppShell>{children}</AppShell>
+                </ShiftProvider>
+              </AdProvider>
+              <Toaster />
+            </FirebaseClientProvider>
+          </PwaInstallProvider>
         </NextIntlClientProvider>
       </body>
     </html>
