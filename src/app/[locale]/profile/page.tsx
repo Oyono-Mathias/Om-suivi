@@ -415,7 +415,7 @@ export default function ProfilePage() {
                             </FormControl>
                             <SelectContent>
                               <ScrollArea className="h-72">
-                                {salaryGrid.map(s => (
+                                {[...salaryGrid].sort((a, b) => a.sm - b.sm).map(s => (
                                     <SelectItem key={`${s.category}-${s.echelon}`} value={s.sm.toString()}>
                                     {s.sm.toLocaleString('fr-FR')} FCFA (Cat: {s.category}, Ech: {s.echelon})
                                     </SelectItem>
