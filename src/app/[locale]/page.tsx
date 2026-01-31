@@ -188,7 +188,8 @@ export default function TimeTrackingPage() {
     });
   
     const googleCalendarUrl = generateGoogleCalendarUrl(
-      `Service OM-Suivi - ${shift.name}`,
+      shift.name,
+      profile.name,
       startDateTime,
       effectiveEndTime
     );

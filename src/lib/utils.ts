@@ -45,7 +45,8 @@ export const formatCurrency = (amount: number) => {
 };
 
 export const generateGoogleCalendarUrl = (
-  title: string,
+  taskName: string,
+  userName: string | null | undefined,
   startTime: Date,
   endTime: Date
 ) => {
@@ -54,9 +55,11 @@ export const generateGoogleCalendarUrl = (
   const toGoogleCalendarString = (date: Date) => {
     return date.toISOString().replace(/[-:.]/g, "").slice(0, 15) + "Z";
   };
+  
+  const eventTitle = `${userName || 'Employé'} - OM-Suivi: ${taskName}`;
 
   const params = new URLSearchParams({
-    text: title,
+    text: eventTitle,
     dates: `${toGoogleCalendarString(startTime)}/${toGoogleCalendarString(endTime)}`,
     details: "Récapitulatif de session enregistré via l'application OM-Suivi.",
   });
