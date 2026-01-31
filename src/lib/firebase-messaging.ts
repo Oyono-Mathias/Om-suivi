@@ -15,7 +15,7 @@ import { doc, setDoc, Firestore } from 'firebase/firestore';
 //  3. Dans la section "Web configuration", cliquez sur "Generate key pair" (Générer une paire de clés).
 //  4. Copiez la clé publique et collez-la ici.
 // ====================================================================================
-const VAPID_KEY = 'YOUR_VAPID_KEY_HERE';
+const VAPID_KEY = 'BOOp-bRY1VT8ilFhAVeUlfdyamulhYah7Uyb6bE6KVTVo7I42L0IDFCnESnxOg3Z7rrklMLu2zNCr3pHCU8AiOI';
 
 export const requestNotificationPermission = async (userId: string, firestore: Firestore) => {
   if (typeof window === 'undefined' || !('Notification' in window) || !navigator.serviceWorker) {
