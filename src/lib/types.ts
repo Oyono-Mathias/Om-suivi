@@ -36,6 +36,8 @@ export interface Profile {
   createdAt: any; // serverTimestamp
   hireDate?: string; // YYYY-MM-DD
   leaveStartDate?: string; // YYYY-MM-DD
+  category?: string; // e.g., 'III'
+  echelon?: string; // e.g., 'A'
   reminders?: {
     enabled: boolean;
     time: string; // e.g., "17:00"
