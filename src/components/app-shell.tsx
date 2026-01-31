@@ -57,6 +57,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { data: profile } = useDoc<Profile>(userProfileRef);
 
   useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      // The firebase-messaging-sw.js file is in the public directory, so the path is correct.
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then(registration => {
+          console.log('FCM Service Worker registered successfully:', registration.scope);
+        }).catch(err => {
+          console.error('FCM Service Worker registration failed:', err);
+        });
+    }
+  }, []);
+
+  useEffect(() => {
     if (user && firestore) {
       // Once the user is logged in, request permission and save the token
       requestNotificationPermission(user.uid, firestore);
