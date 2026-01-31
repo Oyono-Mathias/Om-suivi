@@ -775,6 +775,11 @@ export default function TimeTrackingPage() {
           <AlertDescription>{latestAnnouncement.message}</AlertDescription>
         </Alert>
       )}
+      <Alert variant="default" className="bg-orange-950/50 border-orange-500/50 text-orange-300">
+        <BellOff className="h-4 w-4 text-orange-400" />
+        <AlertTitle>{t('offlineModeWarning.title')}</AlertTitle>
+        <AlertDescription>{t('offlineModeWarning.description')}</AlertDescription>
+      </Alert>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
@@ -791,12 +796,6 @@ export default function TimeTrackingPage() {
           </Button>
         </div>
       </div>
-
-      <Alert variant="default" className="bg-orange-950/50 border-orange-500/50 text-orange-300">
-        <BellOff className="h-4 w-4 text-orange-400" />
-        <AlertTitle>{t('offlineModeWarning.title')}</AlertTitle>
-        <AlertDescription>{t('offlineModeWarning.description')}</AlertDescription>
-      </Alert>
 
       <Card className="text-center p-6">
         <CardContent className="p-0">
