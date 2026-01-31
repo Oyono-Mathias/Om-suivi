@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -40,8 +41,9 @@ import { useTranslations, useLocale } from "next-intl";
 import { format, parseISO, differenceInMonths, differenceInYears } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import { useAd } from "@/context/AdContext";
-import { salaryGrid } from "@/lib/salary-grid";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSalaryGrid } from "@/hooks/useSalaryGrid";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export default function ProfilePage() {
@@ -58,6 +60,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isCustomSalary, setIsCustomSalary] = useState(false);
   const [salaryInfo, setSalaryInfo] = useState<string | null>(null);
+  
+  const { grid: salaryGrid, isLoading: isLoadingGrid, error: gridError } = useSalaryGrid();
   
   const profileSchema = z.object({
     name: z.string().min(2, { message: t('nameMinLengthError') }),
@@ -105,7 +109,7 @@ export default function ProfilePage() {
   const echelon = form.watch('echelon');
   
   useEffect(() => {
-    if (profile) {
+    if (profile && salaryGrid.length > 0) {
       const salaryInGrid = salaryGrid.find(s => s.sm === profile.monthlyBaseSalary);
       if (!salaryInGrid && profile.monthlyBaseSalary > 0) {
         setIsCustomSalary(true);
@@ -135,7 +139,7 @@ export default function ProfilePage() {
         name: user.displayName || '',
       });
     }
-  }, [profile, user, form]);
+  }, [profile, user, form, salaryGrid]);
 
   const handleSetLocation = (type: 'work' | 'home') => {
     if (navigator.geolocation) {
@@ -373,65 +377,73 @@ export default function ProfilePage() {
                 )}
               />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                 <FormItem>
-                    <FormLabel>{t('salaryLabel')}</FormLabel>
-                    {isCustomSalary ? (
-                      <FormControl>
-                        <Input 
-                            type="number" 
-                            placeholder={t('salaryPlaceholder')} 
-                            value={form.getValues('monthlyBaseSalary')}
-                            onChange={(e) => {
-                                const value = parseFloat(e.target.value);
-                                form.setValue('monthlyBaseSalary', isNaN(value) ? 0 : value);
-                                form.setValue('category', undefined);
-                                form.setValue('echelon', undefined);
-                                setSalaryInfo('Catégorie et échelon non déterminés pour ce salaire.');
-                            }}
-                        />
-                      </FormControl>
-                    ) : (
-                        <Select
-                            value={category && echelon ? `${category}-${echelon}` : ""}
-                            onValueChange={(value) => {
-                                if (value === 'custom') {
-                                    setIsCustomSalary(true);
-                                    form.setValue('monthlyBaseSalary', 0);
+                 {isLoadingGrid ? (
+                    <FormItem>
+                        <FormLabel>{t('salaryLabel')}</FormLabel>
+                        <Skeleton className="h-10 w-full" />
+                    </FormItem>
+                 ) : (
+                    <FormItem>
+                        <FormLabel>{t('salaryLabel')}</FormLabel>
+                        {isCustomSalary || salaryGrid.length === 0 ? (
+                        <FormControl>
+                            <Input 
+                                type="number" 
+                                placeholder={t('salaryPlaceholder')} 
+                                value={form.getValues('monthlyBaseSalary')}
+                                onChange={(e) => {
+                                    const value = parseFloat(e.target.value);
+                                    form.setValue('monthlyBaseSalary', isNaN(value) ? 0 : value);
                                     form.setValue('category', undefined);
                                     form.setValue('echelon', undefined);
-                                    setSalaryInfo(null);
-                                } else {
-                                    const [cat, ech] = value.split('-');
-                                    const selectedSalary = salaryGrid.find(s => s.category === cat && s.echelon === ech);
-                                    if (selectedSalary) {
-                                        form.setValue('monthlyBaseSalary', selectedSalary.sm);
-                                        form.setValue('category', selectedSalary.category);
-                                        form.setValue('echelon', selectedSalary.echelon);
-                                        setSalaryInfo(`Correspond à la Catégorie ${selectedSalary.category}, Échelon ${selectedSalary.echelon}`);
+                                    setSalaryInfo('Catégorie et échelon non déterminés pour ce salaire.');
+                                }}
+                            />
+                        </FormControl>
+                        ) : (
+                            <Select
+                                value={category && echelon ? `${category}-${echelon}` : ""}
+                                onValueChange={(value) => {
+                                    if (value === 'custom') {
+                                        setIsCustomSalary(true);
+                                        form.setValue('monthlyBaseSalary', 0);
+                                        form.setValue('category', undefined);
+                                        form.setValue('echelon', undefined);
+                                        setSalaryInfo(null);
+                                    } else {
+                                        const [cat, ech] = value.split('-');
+                                        const selectedSalary = salaryGrid.find(s => s.category === cat && s.echelon === ech);
+                                        if (selectedSalary) {
+                                            form.setValue('monthlyBaseSalary', selectedSalary.sm);
+                                            form.setValue('category', selectedSalary.category);
+                                            form.setValue('echelon', selectedSalary.echelon);
+                                            setSalaryInfo(`Correspond à la Catégorie ${selectedSalary.category}, Échelon ${selectedSalary.echelon}`);
+                                        }
                                     }
-                                }
-                            }}
-                        >
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Sélectionnez un salaire de base" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <ScrollArea className="h-72">
-                                {[...salaryGrid].sort((a, b) => a.sm - b.sm).map(s => (
-                                    <SelectItem key={`${s.category}-${s.echelon}`} value={`${s.category}-${s.echelon}`}>
-                                    {s.sm.toLocaleString('fr-FR')} FCFA (Cat: {s.category}, Ech: {s.echelon})
-                                    </SelectItem>
-                                ))}
-                                <SelectItem value="custom">Autre (montant manuel)</SelectItem>
-                              </ScrollArea>
-                            </SelectContent>
-                        </Select>
-                    )}
-                    {salaryInfo && <FormDescription className="text-primary flex items-center gap-1"><CheckCircle className="h-4 w-4" /> {salaryInfo}</FormDescription>}
-                    <FormMessage>{form.formState.errors.monthlyBaseSalary?.message}</FormMessage>
-                </FormItem>
+                                }}
+                            >
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionnez un salaire de base" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                <ScrollArea className="h-72">
+                                    {[...salaryGrid].sort((a, b) => a.sm - b.sm).map(s => (
+                                        <SelectItem key={`${s.category}-${s.echelon}`} value={`${s.category}-${s.echelon}`}>
+                                        {s.sm.toLocaleString('fr-FR')} FCFA (Cat: {s.category}, Ech: {s.echelon})
+                                        </SelectItem>
+                                    ))}
+                                    <SelectItem value="custom">Autre (montant manuel)</SelectItem>
+                                </ScrollArea>
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {salaryInfo && <FormDescription className="text-primary flex items-center gap-1"><CheckCircle className="h-4 w-4" /> {salaryInfo}</FormDescription>}
+                        {gridError && <FormDescription className="text-destructive">Erreur: Impossible de charger la grille salariale.</FormDescription>}
+                        <FormMessage>{form.formState.errors.monthlyBaseSalary?.message}</FormMessage>
+                    </FormItem>
+                 )}
                  <FormField
                   control={form.control}
                   name="currency"
