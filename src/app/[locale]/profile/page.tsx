@@ -227,10 +227,17 @@ export default function ProfilePage() {
 
   async function onSubmit(values: z.infer<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
-    
+
     setIsSaving(true);
     try {
-      await setDoc(userProfileRef, values, { merge: true });
+      const dataToSave = { ...values };
+      Object.keys(dataToSave).forEach(key => {
+        if (dataToSave[key as keyof typeof dataToSave] === undefined) {
+          delete dataToSave[key as keyof typeof dataToSave];
+        }
+      });
+      
+      await setDoc(userProfileRef, dataToSave, { merge: true });
       toast({
         title: t('settingsUpdatedTitle'),
         description: t('settingsUpdatedDescription'),
