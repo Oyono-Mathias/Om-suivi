@@ -1,23 +1,28 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useUser, useAuth, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, collection, setDoc, query, where, collectionGroup } from 'firebase/firestore';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut, Briefcase } from 'lucide-react';
-import type { Profile, GlobalSettings, TimeEntry } from '@/lib/types';
+import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut } from 'lucide-react';
+import type { Profile, GlobalSettings, Announcement } from '@/lib/types';
 import { salaryGrid as staticSalaryGrid } from '@/lib/salary-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 
 function SalaryGridModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
@@ -116,15 +121,91 @@ function SalaryGridModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChan
     );
 }
 
+function AlertCenterDialog({ isOpen, onOpenChange, profile }: { isOpen: boolean, onOpenChange: (open: boolean) => void, profile: Profile | null }) {
+    const tTeam = useTranslations('TeamPage');
+    const tAdmin = useTranslations('AdminPage');
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const announcementSchema = z.object({
+        message: z.string().min(1, { message: "Le message ne peut pas être vide." }),
+    });
+
+    const form = useForm<z.infer<typeof announcementSchema>>({
+        resolver: zodResolver(announcementSchema),
+        defaultValues: { message: '' },
+    });
+
+    useEffect(() => {
+        if (!isOpen) {
+            form.reset();
+        }
+    }, [isOpen, form]);
+
+    const handleSendAnnouncement = async (values: z.infer<typeof announcementSchema>) => {
+        if (!profile) return;
+
+        const newAnnouncement: Omit<Announcement, 'id'> = {
+            message: values.message,
+            authorName: profile.name,
+            createdAt: serverTimestamp(),
+        };
+        await addDocumentNonBlocking(collection(firestore, 'announcements'), newAnnouncement);
+        toast({ title: tTeam('announcementSentSuccess') });
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{tTeam('announcementDialogTitle')}</DialogTitle>
+                    <DialogDescription>{tTeam('announcementDialogDescription')}</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSendAnnouncement)} className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="message"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{tTeam('messageLabel')}</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Votre message ici..." {...field} rows={5} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">{tAdmin('deleteEntryCancel')}</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {tTeam('sendButton')}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 
 export default function AdminDashboardPage() {
     const t = useTranslations('AdminDashboardPage');
     const { user, isUserLoading } = useUser();
     const auth = useAuth();
     const firestore = useFirestore();
-    const [isSalaryGridOpen, setIsSalaryGridOpen] = useState(false);
+
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
     
-    // Placeholder for active employees until a performant query can be established
+    const [isSalaryGridOpen, setIsSalaryGridOpen] = useState(false);
+    const [isAlertCenterOpen, setIsAlertCenterOpen] = useState(false);
+    
     const activeEmployees = 0; 
     
     const adminCards = [
@@ -133,15 +214,15 @@ export default function AdminDashboardPage() {
         { title: t('reportsPdfTitle'), description: t('reportsPdfDescription'), href: '#', icon: FileText, color: 'text-purple-500', bgColor: 'bg-purple-950' },
         { title: t('payrollCalculationTitle'), description: t('payrollCalculationDescription'), href: '#', icon: Wallet, color: 'text-yellow-500', bgColor: 'bg-yellow-950' },
         { title: t('salaryGridTitle'), description: t('salaryGridDescription'), action: () => setIsSalaryGridOpen(true), icon: Settings, color: 'text-gray-500', bgColor: 'bg-gray-950' },
-        { title: t('alertCenterTitle'), description: t('alertCenterDescription'), href: '#', icon: Bell, color: 'text-orange-500', bgColor: 'bg-orange-950' },
+        { title: t('alertCenterTitle'), description: t('alertCenterDescription'), action: () => setIsAlertCenterOpen(true), icon: Bell, color: 'text-orange-500', bgColor: 'bg-orange-950' },
     ];
     
-    if (isUserLoading) {
+    const isLoading = isUserLoading || isLoadingProfile;
+    if (isLoading) {
         return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin" /></div>;
     }
     
     if (!user) {
-        // This should be handled by the AppShell, but as a fallback
         return <div className="flex h-screen w-full items-center justify-center"><p>Please log in.</p></div>;
     }
     
@@ -184,6 +265,7 @@ export default function AdminDashboardPage() {
             </div>
             
             <SalaryGridModal isOpen={isSalaryGridOpen} onOpenChange={setIsSalaryGridOpen} />
+            <AlertCenterDialog isOpen={isAlertCenterOpen} onOpenChange={setIsAlertCenterOpen} profile={profile} />
         </div>
     );
 }
