@@ -425,7 +425,10 @@
     "title": "Admin Reports",
     "description": "View consolidated reports and export company data.",
     "comingSoonTitle": "Coming Soon",
-    "comingSoonDescription": "This section is under development. Soon you will be able to generate consolidated reports for all employees, filter by period, and export PDFs."
+    "comingSoonDescription": "This section is under development. Soon you will be able to generate consolidated reports for all employees, filter by period, and export PDFs.",
+    "selectUserTitle": "Select an employee",
+    "selectUserDescription": "Click on an employee to generate their monthly timesheet report.",
+    "noUsersFound": "No employees found."
   },
   "AdminPayrollPage": {
     "title": "Payroll Calculation",

@@ -425,7 +425,10 @@
     "title": "Rapports Administratifs",
     "description": "Consultez les rapports consolidés et exportez les données de l'entreprise.",
     "comingSoonTitle": "Bientôt disponible",
-    "comingSoonDescription": "Cette section est en cours de développement. Vous pourrez bientôt y générer des rapports consolidés pour tous les employés, filtrer par période et exporter des PDF."
+    "comingSoonDescription": "Cette section est en cours de développement. Vous pourrez bientôt y générer des rapports consolidés pour tous les employés, filtrer par période et exporter des PDF.",
+    "selectUserTitle": "Sélectionner un employé",
+    "selectUserDescription": "Cliquez sur un employé pour générer son rapport de pointage mensuel.",
+    "noUsersFound": "Aucun employé trouvé."
   },
   "AdminPayrollPage": {
     "title": "Calcul de la Paie",
