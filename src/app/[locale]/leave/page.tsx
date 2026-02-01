@@ -58,9 +58,11 @@ export default function LeaveRequestPage() {
             const seniorityYears = differenceInYears(now, hireDate);
             let senioritySurplus = 0;
             
-            if (seniorityYears >= 5) {
+            if (seniorityYears >= 15) {
+                senioritySurplus = 6;
+            } else if (seniorityYears >= 10) {
                 senioritySurplus = 4;
-            } else if (seniorityYears > 0) { // From 1 to 4 years
+            } else if (seniorityYears >= 5) {
                 senioritySurplus = 2;
             }
 

@@ -154,9 +154,12 @@ export default function DetailCongesScreen() {
 
                 const seniorityYears = differenceInYears(referencePeriodEnd, hireDate);
                 let senioritySurplus = 0;
-                if (seniorityYears >= 5) {
+                
+                if (seniorityYears >= 15) {
+                    senioritySurplus = 6;
+                } else if (seniorityYears >= 10) {
                     senioritySurplus = 4;
-                } else if (seniorityYears >= 1) {
+                } else if (seniorityYears >= 5) {
                     senioritySurplus = 2;
                 }
 
