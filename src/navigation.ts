@@ -54,6 +54,10 @@ export const pathnames = {
     en: '/admin/live-tracking',
     fr: '/admin/suivi-direct'
   },
+  '/admin/reports': {
+    en: '/admin/reports',
+    fr: '/admin/rapports'
+  },
   '/faq': {
     en: '/faq',
     fr: '/faq'

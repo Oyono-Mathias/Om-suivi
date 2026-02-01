@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, setDoc, query, where, orderBy } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search } from 'lucide-react';
+import { Loader2, User, ShieldCheck, Search } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,21 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Profile } from '@/lib/types';
 import { useTranslations } from 'next-intl';
 import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
-
-
-function AccessDenied() {
-  const t = useTranslations('Shared');
-  return (
-    <div className="flex flex-col justify-center items-center h-screen text-center gap-4">
-      <ShieldX className="w-16 h-16 text-destructive" />
-      <h1 className="text-3xl font-bold">{t('accessDenied')}</h1>
-      <p className="text-muted-foreground">{t('accessDeniedDescription')}</p>
-      <Link href="/">
-        <Button variant="outline">Retour à l'accueil</Button>
-      </Link>
-    </div>
-  );
-}
+import { AdminAccessDenied } from '@/components/admin-access-denied';
 
 
 export default function AdminUsersPage() {
@@ -80,7 +66,7 @@ export default function AdminUsersPage() {
   }
 
   if (profile?.role !== 'admin') {
-    return <AccessDenied />;
+    return <AdminAccessDenied />;
   }
 
   return (

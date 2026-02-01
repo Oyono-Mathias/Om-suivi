@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { AdminAccessDenied } from '@/components/admin-access-denied';
 
 // Copied from team/page.tsx
 const avatarPlaceholders = PlaceHolderImages.filter(p => p.description.includes('Avatar'));
@@ -106,22 +107,6 @@ function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void
   );
 }
 
-// Copied from admin/users/page.tsx
-function AccessDenied() {
-  const t = useTranslations('Shared');
-  return (
-    <div className="flex flex-col justify-center items-center h-screen text-center gap-4">
-      <ShieldX className="w-16 h-16 text-destructive" />
-      <h1 className="text-3xl font-bold">{t('accessDenied')}</h1>
-      <p className="text-muted-foreground">{t('accessDeniedDescription')}</p>
-      <Link href="/">
-        <Button variant="outline">Retour à l'accueil</Button>
-      </Link>
-    </div>
-  );
-}
-
-
 export default function LiveTrackingPage() {
   const t = useTranslations('LiveTrackingPage');
   const tTeam = useTranslations('TeamPage');
@@ -171,7 +156,7 @@ export default function LiveTrackingPage() {
   }
 
   if (!isAdmin) {
-      return <AccessDenied />;
+      return <AdminAccessDenied />;
   }
 
   return (

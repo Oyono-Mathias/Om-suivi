@@ -421,6 +421,12 @@
     "gridUpdateSuccess": "Grille salariale mise à jour avec succès.",
     "gridUpdateError": "Erreur lors de la mise à jour de la grille."
   },
+  "AdminReportsPage": {
+    "title": "Rapports Administratifs",
+    "description": "Consultez les rapports consolidés et exportez les données de l'entreprise.",
+    "comingSoonTitle": "Bientôt disponible",
+    "comingSoonDescription": "Cette section est en cours de développement. Vous pourrez bientôt y générer des rapports consolidés pour tous les employés, filtrer par période et exporter des PDF."
+  },
   "LiveTrackingPage": {
     "title": "Suivi en Direct",
     "description": "Voyez le statut en temps réel de tous les employés."

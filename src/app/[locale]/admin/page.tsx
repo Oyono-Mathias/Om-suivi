@@ -211,7 +211,7 @@ export default function AdminDashboardPage() {
     const adminCards = [
         { title: t('personnelManagementTitle'), description: t('personnelManagementDescription'), href: '/admin/users', icon: Users, color: 'text-blue-500', bgColor: 'bg-blue-950' },
         { title: t('liveTrackingTitle'), description: t('liveTrackingDescription'), href: '/admin/live', icon: Activity, color: 'text-green-500', bgColor: 'bg-green-950' },
-        { title: t('reportsPdfTitle'), description: t('reportsPdfDescription'), href: '#', icon: FileText, color: 'text-purple-500', bgColor: 'bg-purple-950' },
+        { title: t('reportsPdfTitle'), description: t('reportsPdfDescription'), href: '/admin/reports', icon: FileText, color: 'text-purple-500', bgColor: 'bg-purple-950' },
         { title: t('payrollCalculationTitle'), description: t('payrollCalculationDescription'), href: '#', icon: Wallet, color: 'text-yellow-500', bgColor: 'bg-yellow-950' },
         { title: t('salaryGridTitle'), description: t('salaryGridDescription'), action: () => setIsSalaryGridOpen(true), icon: Settings, color: 'text-gray-500', bgColor: 'bg-gray-950' },
         { title: t('alertCenterTitle'), description: t('alertCenterDescription'), action: () => setIsAlertCenterOpen(true), icon: Bell, color: 'text-orange-500', bgColor: 'bg-orange-950' },
