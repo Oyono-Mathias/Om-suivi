@@ -213,7 +213,6 @@
     "workplaceSetSuccess": "Workplace location updated.",
     "radiusLabel": "Clock-in Radius (meters)",
     "radiusDescription": "The distance around your workplace for automatic clock-in.",
-    "radiusMinError": "Radius must be at least 10 meters.",
     "latitudeLabel": "Latitude",
     "longitudeLabel": "Longitude",
     "undefinedPlaceholder": "Not set",
@@ -268,7 +267,7 @@
     "leaveTableBase": "Base Leave",
     "leaveTableSeniority": "Seniority Surplus",
     "leaveRequestButton": "Generate Leave Request",
-    "leaveAccrualTooltip": "Did you know? You earn 1.5 leave days per month. After 5 years, you are entitled to surplus days."
+    "leaveAccrualTooltip": "Did you know? You earn 1.5 leave days per month. After 3 years, you are entitled to 2 surplus days and your base salary increases by one echelon."
   },
   "ExportReportPage": {
     "title": "Export Report",

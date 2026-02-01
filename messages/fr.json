@@ -213,7 +213,6 @@
     "workplaceSetSuccess": "Lieu de travail mis à jour.",
     "radiusLabel": "Rayon de pointage (mètres)",
     "radiusDescription": "La distance autour de votre lieu de travail pour le pointage automatique.",
-    "radiusMinError": "Le rayon doit être d'au moins 10 mètres.",
     "latitudeLabel": "Latitude",
     "longitudeLabel": "Longitude",
     "undefinedPlaceholder": "Non défini",
@@ -268,7 +267,7 @@
     "leaveTableBase": "Congé de base",
     "leaveTableSeniority": "Surplus Ancienneté",
     "leaveRequestButton": "Générer une demande de congé",
-    "leaveAccrualTooltip": "Le saviez-vous ? Vous gagnez 1,5 jour de congé par mois. Après 5 ans, vous avez droit à des jours de surplus."
+    "leaveAccrualTooltip": "Le saviez-vous ? Vous gagnez 1.5 jour de congé par mois. Après 3 ans, vous avez droit à 2 jours de surplus et votre salaire de base progresse d'un échelon."
   },
   "ExportReportPage": {
     "title": "Exporter le Rapport",
