@@ -512,7 +512,7 @@ export default function TimeTrackingPage() {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) return;
 
-      const newEntryId = await startShift(shiftToStart, 'Usine');
+      const newEntryId = await startShift(shiftToStart, globalSettings?.workplaceName || 'Usine');
       if (newEntryId && Notification.permission === 'granted' && navigator.serviceWorker) {
           navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification('OM Suivi: Pointage Automatique', {
@@ -598,12 +598,12 @@ export default function TimeTrackingPage() {
                 }
                 
                 let currentlyInWorkZone = null;
-                if(profile.workLatitude && profile.workLongitude) {
+                if(globalSettings.workLatitude && globalSettings.workLongitude) {
                     const distanceToWork = getDistanceFromLatLonInKm(
                         position.coords.latitude,
                         position.coords.longitude,
-                        profile.workLatitude,
-                        profile.workLongitude
+                        globalSettings.workLatitude,
+                        globalSettings.workLongitude
                     );
                     currentlyInWorkZone = distanceToWork * 1000 <= globalSettings.geofenceRadius;
                 }

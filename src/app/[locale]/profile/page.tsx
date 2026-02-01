@@ -75,8 +75,6 @@ export default function ProfilePage() {
       enabled: z.boolean(),
       time: z.string(),
     }),
-    workLatitude: z.number().optional(),
-    workLongitude: z.number().optional(),
     homeLatitude: z.number().optional(),
     homeLongitude: z.number().optional(),
   });
@@ -127,8 +125,6 @@ export default function ProfilePage() {
         hireDate: profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
         leaveStartDate: profile.leaveStartDate || profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
         reminders: profile.reminders || { enabled: false, time: '17:00' },
-        workLatitude: profile.workLatitude,
-        workLongitude: profile.workLongitude,
         homeLatitude: profile.homeLatitude,
         homeLongitude: profile.homeLongitude,
       });
@@ -140,16 +136,12 @@ export default function ProfilePage() {
     }
   }, [profile, user, form]);
 
-  const handleSetLocation = (type: 'work' | 'home') => {
+  const handleSetLocation = (type: 'home') => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          if (type === 'work') {
-            form.setValue('workLatitude', latitude);
-            form.setValue('workLongitude', longitude);
-            toast({ title: t('workplaceSetSuccess'), description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}` });
-          } else {
+          if (type === 'home') {
             form.setValue('homeLatitude', latitude);
             form.setValue('homeLongitude', longitude);
             toast({ title: t('homeLocationSetSuccessTitle'), description: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}` });
@@ -561,46 +553,30 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle>{t('workplaceSettingsTitle')}</CardTitle>
-              <CardDescription>{t('workplaceSettingsDescription')}</CardDescription>
+              <CardDescription>{"Votre zone de travail est définie par l'administrateur."}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-               <Button type="button" variant="outline" className="w-full" onClick={() => handleSetLocation('work')}>
-                  <MapPin className="mr-2 h-4 w-4" />
-                  {t('setWorkplaceButton')}
-                </Button>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <FormField
-                    control={form.control}
-                    name="workLatitude"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>{t('latitudeLabel')}</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder={t('undefinedPlaceholder')} {...field} value={field.value ?? ''} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="workLongitude"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>{t('longitudeLabel')}</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder={t('undefinedPlaceholder')} {...field} value={field.value ?? ''} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </div>
-                 <FormItem>
-                    <FormLabel>{t('radiusLabel')}</FormLabel>
-                    <Input value={globalSettings?.geofenceRadius || 50} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
-                    <FormDescription>Le rayon est défini par un administrateur.</FormDescription>
-                </FormItem>
+              {globalSettings?.workLatitude && globalSettings?.workLongitude ? (
+                <>
+                  <p className="font-semibold">{globalSettings.workplaceName || 'Lieu de travail principal'}</p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormItem>
+                      <FormLabel>{t('latitudeLabel')}</FormLabel>
+                      <Input value={globalSettings.workLatitude.toFixed(6)} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>{t('longitudeLabel')}</FormLabel>
+                      <Input value={globalSettings.workLongitude.toFixed(6)} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
+                    </FormItem>
+                  </div>
+                   <FormItem>
+                      <FormLabel>{t('radiusLabel')}</FormLabel>
+                      <Input value={globalSettings?.geofenceRadius || ''} readOnly className="text-muted-foreground focus:ring-0 focus:ring-offset-0 cursor-default" />
+                  </FormItem>
+                </>
+              ) : (
+                <p className="text-muted-foreground">Le lieu de travail n'a pas encore été défini par un administrateur.</p>
+              )}
             </CardContent>
           </Card>
           

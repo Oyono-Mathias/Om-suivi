@@ -208,7 +208,7 @@
     "settingsUpdatedTitle": "Settings updated",
     "settingsUpdatedDescription": "Your information has been saved successfully.",
     "workplaceSettingsTitle": "Workplace Configuration",
-    "workplaceSettingsDescription": "Define your primary work zone for automatic clock-in.",
+    "workplaceSettingsDescription": "Your primary work zone is defined by the administrator.",
     "setWorkplaceButton": "Set my current location as workplace",
     "workplaceSetSuccess": "Workplace location updated.",
     "radiusLabel": "Clock-in Radius (meters)",
@@ -393,7 +393,16 @@
       "manual": "Manual",
       "mission_ended": "Mission Ended",
       "admin_edit": "Admin Edit"
-    }
+    },
+    "workplaceSettingsTitle": "Workplace Configuration",
+    "workplaceNameLabel": "Workplace Name",
+    "workplaceNamePlaceholder": "e.g. Yassa Warehouse",
+    "setWorkplaceButton": "Set current location as factory",
+    "workplaceSetSuccess": "Factory location updated.",
+    "latitudeLabel": "Latitude",
+    "longitudeLabel": "Longitude",
+    "radiusLabel": "Geofence Radius (meters)",
+    "radiusDescription": "The distance around the workplace to trigger automatic clock-in."
   },
   "AdminDashboardPage": {
     "title": "Admin Dashboard",
@@ -419,7 +428,8 @@
     "saveButton": "Save Changes",
     "cancelButton": "Cancel",
     "gridUpdateSuccess": "Salary grid updated successfully.",
-    "gridUpdateError": "Error updating salary grid."
+    "gridUpdateError": "Error updating salary grid.",
+    "configTab": "Factory Config"
   },
   "AdminReportsPage": {
     "title": "Admin Reports",

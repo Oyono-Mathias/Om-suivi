@@ -42,8 +42,6 @@ export interface Profile {
     enabled: boolean;
     time: string; // e.g., "17:00"
   };
-  workLatitude?: number;
-  workLongitude?: number;
   homeLatitude?: number;
   homeLongitude?: number;
   fcmToken?: string;
@@ -65,6 +63,9 @@ export interface GlobalSettings {
     absencePenaltyAmount?: number;
     defaultHourlyRate?: number;
     geofenceRadius?: number;
+    workLatitude?: number;
+    workLongitude?: number;
+    workplaceName?: string;
 }
 
 export interface AttendanceOverride {

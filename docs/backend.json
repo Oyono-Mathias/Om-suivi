@@ -53,14 +53,6 @@
           "format": "date-time",
           "description": "The timestamp when the user profile was created."
         },
-        "workLatitude": {
-          "type": "number",
-          "description": "The latitude of the user's primary work location."
-        },
-        "workLongitude": {
-          "type": "number",
-          "description": "The longitude of the user's primary work location."
-        },
         "homeLatitude": {
             "type": "number",
             "description": "The latitude of the user's home location."
@@ -227,6 +219,18 @@
         "geofenceRadius": {
             "type": "number",
             "description": "The radius in meters for geofencing work and home locations."
+        },
+        "workLatitude": {
+            "type": "number",
+            "description": "The latitude of the global work location."
+        },
+        "workLongitude": {
+            "type": "number",
+            "description": "The longitude of the global work location."
+        },
+        "workplaceName": {
+            "type": "string",
+            "description": "The name of the global work location (e.g., 'Usine', 'Entrepôt')."
         },
         "salaryGrid": {
             "type": "array",

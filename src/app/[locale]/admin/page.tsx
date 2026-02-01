@@ -16,13 +16,14 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut } from 'lucide-react';
+import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut, Building, MapPin } from 'lucide-react';
 import type { Profile, GlobalSettings, Announcement } from '@/lib/types';
 import { salaryGrid as staticSalaryGrid } from '@/lib/salary-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Switch } from '@/components/ui/switch';
 
 
 function SalaryGridModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
@@ -193,6 +194,142 @@ function AlertCenterDialog({ isOpen, onOpenChange, profile }: { isOpen: boolean,
     );
 }
 
+function ConfigurationModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+    const t = useTranslations('AdminPage');
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    
+    const configSchema = z.object({
+        workplaceName: z.string().optional(),
+        workLatitude: z.number().optional(),
+        workLongitude: z.number().optional(),
+        geofenceRadius: z.coerce.number().min(10),
+        autoClockInEnabled: z.boolean(),
+        breakDuration: z.coerce.number().min(0),
+        tier1Rate: z.coerce.number().min(1),
+        tier2Rate: z.coerce.number().min(1),
+        nightRate: z.coerce.number().min(1),
+        sundayRate: z.coerce.number().min(1),
+        holidayRate: z.coerce.number().min(1),
+        absencePenaltyAmount: z.coerce.number().min(0),
+        defaultHourlyRate: z.coerce.number().min(0),
+    });
+
+    const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
+    const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
+    
+    const form = useForm<z.infer<typeof configSchema>>({
+        resolver: zodResolver(configSchema),
+    });
+    
+    useEffect(() => {
+        if(globalSettings) {
+            form.reset({
+                workplaceName: globalSettings.workplaceName || '',
+                workLatitude: globalSettings.workLatitude,
+                workLongitude: globalSettings.workLongitude,
+                geofenceRadius: globalSettings.geofenceRadius || 100,
+                autoClockInEnabled: globalSettings.autoClockInEnabled || false,
+                breakDuration: globalSettings.breakDuration || 0,
+                tier1Rate: globalSettings.overtimeRates?.tier1 || 1.2,
+                tier2Rate: globalSettings.overtimeRates?.tier2 || 1.3,
+                nightRate: globalSettings.overtimeRates?.night || 1.4,
+                sundayRate: globalSettings.overtimeRates?.sunday || 1.5,
+                holidayRate: globalSettings.overtimeRates?.holiday || 1.5,
+                absencePenaltyAmount: globalSettings.absencePenaltyAmount || 2426,
+                defaultHourlyRate: globalSettings.defaultHourlyRate || 0,
+            });
+        }
+    }, [globalSettings, form]);
+
+    const handleSetLocation = () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords;
+              form.setValue('workLatitude', latitude);
+              form.setValue('workLongitude', longitude);
+              toast({ title: t('workplaceSetSuccess') });
+            },
+            () => toast({ variant: 'destructive', title: "Erreur de géolocalisation" })
+          );
+        }
+    };
+    
+    const handleSaveChanges = async (values: z.infer<typeof configSchema>) => {
+        const { tier1Rate, tier2Rate, nightRate, sundayRate, holidayRate, ...otherValues } = values;
+        const dataToSave = {
+            ...otherValues,
+            overtimeRates: {
+                tier1: tier1Rate,
+                tier2: tier2Rate,
+                night: nightRate,
+                sunday: sundayRate,
+                holiday: holidayRate,
+            }
+        };
+        await setDoc(settingsRef, dataToSave, { merge: true });
+        toast({ title: t('configUpdatedTitle'), description: t('configUpdatedDescription') });
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>{t('configTab')}</DialogTitle>
+                    <DialogDescription>{t('configDescription')}</DialogDescription>
+                </DialogHeader>
+                {isLoadingSettings ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-6 flex-1 overflow-y-auto pr-6 pl-1">
+                            <Card>
+                                <CardHeader><CardTitle>{t('workplaceSettingsTitle')}</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                     <FormField control={form.control} name="workplaceName" render={({ field }) => (<FormItem><FormLabel>{t('workplaceNameLabel')}</FormLabel><FormControl><Input {...field} placeholder={t('workplaceNamePlaceholder')} /></FormControl><FormMessage /></FormItem>)} />
+                                     <Button type="button" variant="outline" className="w-full" onClick={handleSetLocation}><MapPin className="mr-2 h-4 w-4" />{t('setWorkplaceButton')}</Button>
+                                     <div className="grid grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="workLatitude" render={({ field }) => (<FormItem><FormLabel>{t('latitudeLabel')}</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} readOnly /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="workLongitude" render={({ field }) => (<FormItem><FormLabel>{t('longitudeLabel')}</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} readOnly/></FormControl><FormMessage /></FormItem>)} />
+                                     </div>
+                                     <FormField control={form.control} name="geofenceRadius" render={({ field }) => (<FormItem><FormLabel>{t('radiusLabel')}</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>{t('radiusDescription')}</FormDescription><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>{t('rulesTitle')}</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                    <FormField control={form.control} name="autoClockInEnabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel>{t('autoClockInLabel')}</FormLabel><FormDescription>{t('autoClockInDescription')}</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                                    <FormField control={form.control} name="breakDuration" render={({ field }) => (<FormItem><FormLabel>{t('breakDurationLabel')}</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>{t('breakDurationDescription')}</FormDescription><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>{t('overtimeRulesTitle')}</CardTitle><CardDescription>{t('overtimeRulesDescription')}</CardDescription></CardHeader>
+                                <CardContent className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="tier1Rate" render={({ field }) => (<FormItem><FormLabel>{t('tier1RateLabel')}</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="tier2Rate" render={({ field }) => (<FormItem><FormLabel>{t('tier2RateLabel')}</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="nightRate" render={({ field }) => (<FormItem><FormLabel>{t('nightRateLabel')}</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="sundayRate" render={({ field }) => (<FormItem><FormLabel>{t('sundayRateLabel')}</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="holidayRate" render={({ field }) => (<FormItem><FormLabel>{t('holidayRateLabel')}</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>{t('payrollSettingsTitle')}</CardTitle><CardDescription>{t('payrollSettingsDescription')}</CardDescription></CardHeader>
+                                <CardContent className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="absencePenaltyAmount" render={({ field }) => (<FormItem><FormLabel>{t('absencePenaltyAmountLabel')}</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>{t('absencePenaltyAmountDescription')}</FormDescription><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="defaultHourlyRate" render={({ field }) => (<FormItem><FormLabel>{t('defaultHourlyRateLabel')}</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>{t('defaultHourlyRateDescription')}</FormDescription><FormMessage /></FormItem>)} />
+                                </CardContent>
+                            </Card>
+                            <DialogFooter className="sticky bottom-0 bg-background py-4">
+                                <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>{t('cancelButton')}</Button>
+                                <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t('saveConfigButton')}</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export default function AdminDashboardPage() {
     const t = useTranslations('AdminDashboardPage');
@@ -205,6 +342,7 @@ export default function AdminDashboardPage() {
     
     const [isSalaryGridOpen, setIsSalaryGridOpen] = useState(false);
     const [isAlertCenterOpen, setIsAlertCenterOpen] = useState(false);
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
     
     const activeEmployees = 0; 
     
@@ -215,6 +353,7 @@ export default function AdminDashboardPage() {
         { title: t('payrollCalculationTitle'), description: t('payrollCalculationDescription'), href: '/admin/payroll', icon: Wallet, color: 'text-yellow-500', bgColor: 'bg-yellow-950' },
         { title: t('salaryGridTitle'), description: t('salaryGridDescription'), action: () => setIsSalaryGridOpen(true), icon: Settings, color: 'text-gray-500', bgColor: 'bg-gray-950' },
         { title: t('alertCenterTitle'), description: t('alertCenterDescription'), action: () => setIsAlertCenterOpen(true), icon: Bell, color: 'text-orange-500', bgColor: 'bg-orange-950' },
+        { title: t('configTab'), description: t('configDescription'), action: () => setIsConfigOpen(true), icon: Building, color: 'text-pink-500', bgColor: 'bg-pink-950' },
     ];
     
     const isLoading = isUserLoading || isLoadingProfile;
@@ -266,6 +405,7 @@ export default function AdminDashboardPage() {
             
             <SalaryGridModal isOpen={isSalaryGridOpen} onOpenChange={setIsSalaryGridOpen} />
             <AlertCenterDialog isOpen={isAlertCenterOpen} onOpenChange={setIsAlertCenterOpen} profile={profile} />
+            <ConfigurationModal isOpen={isConfigOpen} onOpenChange={setIsConfigOpen} />
         </div>
     );
 }

@@ -208,7 +208,7 @@
     "settingsUpdatedTitle": "Paramètres mis à jour",
     "settingsUpdatedDescription": "Vos informations ont été enregistrées avec succès.",
     "workplaceSettingsTitle": "Configuration du lieu de travail",
-    "workplaceSettingsDescription": "Définissez votre zone de travail principale pour le pointage automatique.",
+    "workplaceSettingsDescription": "Votre zone de travail principale est définie par l'administrateur.",
     "setWorkplaceButton": "Définir ma position actuelle comme lieu de travail",
     "workplaceSetSuccess": "Lieu de travail mis à jour.",
     "radiusLabel": "Rayon de pointage (mètres)",
@@ -393,7 +393,16 @@
       "manual": "Manuel",
       "mission_ended": "Fin de mission",
       "admin_edit": "Modif. Admin"
-    }
+    },
+    "workplaceSettingsTitle": "Configuration du lieu de travail",
+    "workplaceNameLabel": "Nom du lieu de travail",
+    "workplaceNamePlaceholder": "ex: Entrepôt Yassa",
+    "setWorkplaceButton": "Définir l'emplacement actuel de l'usine",
+    "workplaceSetSuccess": "Emplacement de l'usine mis à jour.",
+    "latitudeLabel": "Latitude",
+    "longitudeLabel": "Longitude",
+    "radiusLabel": "Rayon de Géorepérage (mètres)",
+    "radiusDescription": "La distance autour du lieu de travail pour déclencher le pointage automatique."
   },
   "AdminDashboardPage": {
     "title": "Espace Administrateur",
@@ -419,7 +428,8 @@
     "saveButton": "Enregistrer",
     "cancelButton": "Annuler",
     "gridUpdateSuccess": "Grille salariale mise à jour avec succès.",
-    "gridUpdateError": "Erreur lors de la mise à jour de la grille."
+    "gridUpdateError": "Erreur lors de la mise à jour de la grille.",
+    "configTab": "Config. Usine"
   },
   "AdminReportsPage": {
     "title": "Rapports Administratifs",
