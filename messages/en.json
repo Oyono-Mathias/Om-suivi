@@ -421,6 +421,10 @@
     "gridUpdateSuccess": "Salary grid updated successfully.",
     "gridUpdateError": "Error updating salary grid."
   },
+  "LiveTrackingPage": {
+    "title": "Live Tracking",
+    "description": "See the real-time status of all employees."
+  },
   "Shared": {
     "loading": "Loading...",
     "pleaseLogin": "Please log in to continue.",

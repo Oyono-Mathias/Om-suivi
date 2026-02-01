@@ -421,6 +421,10 @@
     "gridUpdateSuccess": "Grille salariale mise à jour avec succès.",
     "gridUpdateError": "Erreur lors de la mise à jour de la grille."
   },
+  "LiveTrackingPage": {
+    "title": "Suivi en Direct",
+    "description": "Voyez le statut en temps réel de tous les employés."
+  },
   "Shared": {
     "loading": "Chargement...",
     "pleaseLogin": "Veuillez vous connecter pour continuer.",
