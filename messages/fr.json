@@ -427,6 +427,12 @@
     "comingSoonTitle": "Bientôt disponible",
     "comingSoonDescription": "Cette section est en cours de développement. Vous pourrez bientôt y générer des rapports consolidés pour tous les employés, filtrer par période et exporter des PDF."
   },
+  "AdminPayrollPage": {
+    "title": "Calcul de la Paie",
+    "description": "Générez et consultez les bulletins de paie des employés.",
+    "comingSoonTitle": "Bientôt disponible",
+    "comingSoonDescription": "Cette section est en cours de développement. Vous pourrez bientôt y calculer la paie mensuelle pour chaque employé, générer des bulletins de paie détaillés et exporter les données pour la comptabilité."
+  },
   "LiveTrackingPage": {
     "title": "Suivi en Direct",
     "description": "Voyez le statut en temps réel de tous les employés."

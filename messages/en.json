@@ -427,6 +427,12 @@
     "comingSoonTitle": "Coming Soon",
     "comingSoonDescription": "This section is under development. Soon you will be able to generate consolidated reports for all employees, filter by period, and export PDFs."
   },
+  "AdminPayrollPage": {
+    "title": "Payroll Calculation",
+    "description": "Generate and view employee payslips.",
+    "comingSoonTitle": "Coming Soon",
+    "comingSoonDescription": "This section is under development. You will soon be able to calculate monthly pay for each employee, generate detailed payslips, and export data for accounting."
+  },
   "LiveTrackingPage": {
     "title": "Live Tracking",
     "description": "See the real-time status of all employees."
