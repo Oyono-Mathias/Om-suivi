@@ -343,7 +343,7 @@
     "autoClockInLabel": "Pointage Automatique",
     "autoClockInDescription": "Activez ou désactivez globalement le démarrage automatique du service par géolocalisation.",
     "breakDurationLabel": "Durée de la Pause (minutes)",
-    "breakDurationDescription": "Cette fonctionnalité n'est pas encore entièrement implémentée.",
+    "breakDurationDescription": "Durée de la pause non payée (en minutes), déduite automatiquement pour les services de plus de 6 heures.",
     "saveConfigButton": "Mettre à jour la configuration",
     "configUpdatedTitle": "Configuration Mise à Jour",
     "configUpdatedDescription": "Les paramètres globaux ont été enregistrés avec succès.",

@@ -343,7 +343,7 @@
     "autoClockInLabel": "Automatic Clock-In",
     "autoClockInDescription": "Globally enable or disable automatic shift start via geofence.",
     "breakDurationLabel": "Break Duration (minutes)",
-    "breakDurationDescription": "This feature is not yet fully implemented.",
+    "breakDurationDescription": "Unpaid break duration (in minutes), automatically deducted for shifts longer than 6 hours.",
     "saveConfigButton": "Update Configuration",
     "configUpdatedTitle": "Configuration Updated",
     "configUpdatedDescription": "Global settings have been saved successfully.",

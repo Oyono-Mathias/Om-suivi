@@ -202,6 +202,9 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
   );
   const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(attendanceOverridesQuery);
 
+  const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
+  const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
+
   const daysInCycle = useMemo(() => {
     if (!user) return [];
     return eachDayOfInterval({ start: cycleStart, end: cycleEnd });
@@ -262,6 +265,12 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
 
     const totalDuration = differenceInMinutes(endDateTime, startDateTime);
 
+    const breakDuration = globalSettings?.breakDuration ?? 0;
+    let payableDuration = totalDuration;
+    if (totalDuration > 6 * 60 && breakDuration > 0) {
+      payableDuration -= breakDuration;
+    }
+
     let shiftEndDateTime = parse(`${dateStr} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
     if (shift.id === 'night' && shiftEndDateTime <= startDateTime) {
@@ -278,7 +287,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
       date: dateStr,
       startTime: values.startTime,
       endTime: values.endTime,
-      duration: totalDuration > 0 ? totalDuration : 0,
+      duration: payableDuration > 0 ? payableDuration : 0,
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
       modified_manually: true,
       modification_reason: 'admin_edit',
@@ -305,7 +314,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
     toast({ title: t('statusUpdated') });
   };
 
-  const isLoading = isLoadingEntries || isLoadingOverrides;
+  const isLoading = isLoadingEntries || isLoadingOverrides || isLoadingSettings;
 
   return (
     <>

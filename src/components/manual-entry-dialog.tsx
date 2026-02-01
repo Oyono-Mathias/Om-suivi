@@ -36,7 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { shifts } from '@/lib/shifts';
-import type { TimeEntry, Profile } from '@/lib/types';
+import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
 import { format, parse, differenceInMinutes, parseISO } from 'date-fns';
 import { useTranslations } from 'next-intl';
 
@@ -44,9 +44,10 @@ interface ManualEntryDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   profile: Profile | null;
+  globalSettings: GlobalSettings | null;
 }
 
-export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: ManualEntryDialogProps) {
+export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globalSettings }: ManualEntryDialogProps) {
   const t = useTranslations('ManualEntryDialog');
   const { user } = useUser();
   const firestore = useFirestore();
@@ -88,6 +89,13 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
     const endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
     const totalDuration = differenceInMinutes(endDateTime, startDateTime);
+    
+    const breakDuration = globalSettings?.breakDuration ?? 0;
+    let payableDuration = totalDuration;
+    if (totalDuration > 6 * 60 && breakDuration > 0) {
+      payableDuration -= breakDuration;
+    }
+
 
     const shiftEndDateTime = parseISO(`${dateStr}T${shift.endTime}:00`);
     let overtimeDuration = 0;
@@ -99,7 +107,7 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile }: Man
         date: dateStr,
         startTime: values.startTime,
         endTime: values.endTime,
-        duration: totalDuration,
+        duration: payableDuration,
         overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
         location: 'Manual',
         shiftId: values.shiftId,

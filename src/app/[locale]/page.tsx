@@ -169,6 +169,12 @@ export default function TimeTrackingPage() {
     const startDateTime = parseISO(`${startDateForCalc}T${startTimeForCalc}:00`);
     const totalDuration = differenceInMinutes(effectiveEndTime, startDateTime);
   
+    const breakDuration = globalSettings?.breakDuration ?? 0;
+    let payableDuration = totalDuration;
+    if (totalDuration > 6 * 60 && breakDuration > 0) {
+      payableDuration -= breakDuration;
+    }
+
     const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
     let overtimeDuration = 0;
     
@@ -181,7 +187,7 @@ export default function TimeTrackingPage() {
     const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
     updateDocumentNonBlocking(entryRef, {
       endTime: endTimeStr,
-      duration: totalDuration > 0 ? totalDuration : 0,
+      duration: payableDuration > 0 ? payableDuration : 0,
       overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
       ...(entryToUpdate?.location === 'Mission' && {location: 'Mission (Terminée)'}),
       stopContext,
@@ -226,7 +232,7 @@ export default function TimeTrackingPage() {
 
     tryShowAd();
     stopTimer();
-  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, tryShowAd]);
+  }, [activeTimeEntryId, user, profile, stopTimer, timeEntries, selectedShiftId, firestore, t, toast, recoveryData, tryShowAd, globalSettings]);
 
   // --- Local Storage and Recovery Logic ---
   const saveActiveShiftToLocal = (data: ActiveShiftState) => {
@@ -940,6 +946,7 @@ export default function TimeTrackingPage() {
         isOpen={isManualEntryOpen} 
         onOpenChange={setManualEntryOpen}
         profile={profile}
+        globalSettings={globalSettings}
       />
 
        <AlertDialog open={showLocationConfirm} onOpenChange={setShowLocationConfirm}>
