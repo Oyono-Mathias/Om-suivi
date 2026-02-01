@@ -90,6 +90,14 @@
         "echelon": {
             "type": "string",
             "description": "The user's salary echelon (e.g., 'A', 'B')."
+        },
+        "googleCalendarConnected": {
+            "type": "boolean",
+            "description": "Indicates if the user has connected their Google Calendar."
+        },
+        "googleRefreshToken": {
+            "type": "string",
+            "description": "The refresh token for Google Calendar API access."
         }
       },
       "required": [

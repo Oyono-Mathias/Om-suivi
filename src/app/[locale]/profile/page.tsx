@@ -43,6 +43,8 @@ import { fr, enUS } from "date-fns/locale";
 import { useAd } from "@/context/AdContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { salaryGrid } from "@/lib/salary-grid";
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApp } from 'firebase/app';
 
 
 export default function ProfilePage() {
@@ -230,10 +232,11 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      const dataToSave = { ...values };
-      Object.keys(dataToSave).forEach(key => {
-        if (dataToSave[key as keyof typeof dataToSave] === undefined) {
-          delete dataToSave[key as keyof typeof dataToSave];
+      const dataToSave: Partial<z.infer<typeof profileSchema>> = { ...values };
+      Object.keys(dataToSave).forEach(keyStr => {
+        const key = keyStr as keyof typeof dataToSave;
+        if (dataToSave[key] === undefined) {
+          delete dataToSave[key];
         }
       });
       
@@ -301,6 +304,37 @@ export default function ProfilePage() {
         return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     }
   }, [profile?.leaveStartDate, profile?.hireDate]);
+
+  const handleConnectGoogle = async () => {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Non connecté",
+            description: "Vous devez être connecté pour lier votre compte Google.",
+        });
+        return;
+    }
+    try {
+        const app = getApp();
+        const functions = getFunctions(app);
+        const authGoogleCallable = httpsCallable(functions, 'authGoogle');
+        // The callable function now gets the UID from the authenticated context on the backend.
+        const result = await authGoogleCallable();
+        const data = result.data as { authorizationUrl?: string };
+        if (data.authorizationUrl) {
+            window.location.href = data.authorizationUrl;
+        } else {
+            throw new Error("Authorization URL not returned from function.");
+        }
+    } catch (error) {
+        console.error("Error getting Google Auth URL:", error);
+        toast({
+            variant: "destructive",
+            title: "Erreur d'intégration",
+            description: "Impossible de lancer la connexion à Google. Veuillez réessayer.",
+        });
+    }
+  };
 
 
   if (isUserLoading || isLoadingProfile) {
@@ -482,6 +516,29 @@ export default function ProfilePage() {
                     )}
                   />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Intégrations</CardTitle>
+              <CardDescription>Connectez OM-Suivi à d'autres services pour automatiser vos tâches.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {profile?.googleCalendarConnected ? (
+                <div className="flex items-center justify-between rounded-lg border p-4 bg-secondary/30">
+                  <div className="flex items-center gap-3">
+                    <svg viewBox="0 0 24 24" className="h-8 w-8"><path fill="#34a853" d="M12 22a1 1 0 0 1-1-1v-8H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v8a1 1 0 0 1-1 1H4.5l7.5 7.5V21a1 1 0 0 1-1 1z"></path><path fill="#4285f4" d="M22 12a1 1 0 0 1-1 1h-8V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8z"></path><path fill="#fbbc04" d="M12 12a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v9a1 1 0 0 1-1 1h-8z"></path><path fill="#ea4335" d="M12 22a1 1 0 0 1-.71-.29l-9-9A1 1 0 0 1 2 12V3a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-.5l-7.21 7.21a1 1 0 0 1-.79.29z"></path></svg>
+                    <p className="font-medium">Google Calendar Connecté</p>
+                  </div>
+                  <CheckCircle className="h-6 w-6 text-green-500" />
+                </div>
+              ) : (
+                <Button type="button" variant="outline" className="w-full h-12" onClick={handleConnectGoogle}>
+                  <svg viewBox="0 0 24 24" className="h-6 w-6 mr-2"><path fill="#34a853" d="M12 22a1 1 0 0 1-1-1v-8H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v8a1 1 0 0 1-1 1H4.5l7.5 7.5V21a1 1 0 0 1-1 1z"></path><path fill="#4285f4" d="M22 12a1 1 0 0 1-1 1h-8V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8z"></path><path fill="#fbbc04" d="M12 12a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v9a1 1 0 0 1-1 1h-8z"></path><path fill="#ea4335" d="M12 22a1 1 0 0 1-.71-.29l-9-9A1 1 0 0 1 2 12V3a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-.5l-7.21 7.21a1 1 0 0 1-.79.29z"></path></svg>
+                  Connecter Google Calendar
+                </Button>
+              )}
             </CardContent>
           </Card>
 
