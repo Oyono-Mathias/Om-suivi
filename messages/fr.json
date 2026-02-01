@@ -325,7 +325,7 @@
     "leaveAnnouncement": "{name} est en congé à partir d'aujourd'hui ! Bon repos à lui/elle !"
   },
   "AdminPage": {
-    "title": "Administration",
+    "title": "Gestion des Utilisateurs",
     "description": "Gérez les utilisateurs et les équipes de l'application.",
     "usersTitle": "Gestion des Utilisateurs",
     "usersDescription": "Liste de tous les utilisateurs enregistrés dans le système.",
@@ -394,6 +394,32 @@
       "mission_ended": "Fin de mission",
       "admin_edit": "Modif. Admin"
     }
+  },
+  "AdminDashboardPage": {
+    "title": "Espace Administrateur",
+    "activeEmployees": "{count, plural, one {# employé en service} other {# employés en service}}",
+    "logout": "Se déconnecter",
+    "personnelManagementTitle": "Gestion du Personnel",
+    "personnelManagementDescription": "Ajouter, modifier ou supprimer des employés.",
+    "liveTrackingTitle": "Suivi en Direct",
+    "liveTrackingDescription": "Voir qui pointe actuellement en temps réel.",
+    "reportsPdfTitle": "Rapports & PDF",
+    "reportsPdfDescription": "Consulter l'historique et exporter les heures.",
+    "payrollCalculationTitle": "Calcul des Salaires",
+    "payrollCalculationDescription": "Calculer la paie mensuelle basée sur les heures.",
+    "salaryGridTitle": "Grille Salariale",
+    "salaryGridDescription": "Modifier les montants de la grille salariale dans Firestore.",
+    "alertCenterTitle": "Centre d'Alertes",
+    "alertCenterDescription": "Envoyer des notifications manuelles aux employés.",
+    "editSalaryGridTitle": "Modifier la Grille Salariale",
+    "editSalaryGridDescription": "Modifiez les montants des salaires de base. Ceci affectera tous les calculs futurs.",
+    "categoryLabel": "Catégorie",
+    "echelonLabel": "Échelon",
+    "salaryLabel": "Salaire",
+    "saveButton": "Enregistrer",
+    "cancelButton": "Annuler",
+    "gridUpdateSuccess": "Grille salariale mise à jour avec succès.",
+    "gridUpdateError": "Erreur lors de la mise à jour de la grille."
   },
   "Shared": {
     "loading": "Chargement...",

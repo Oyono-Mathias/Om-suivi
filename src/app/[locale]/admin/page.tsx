@@ -1,482 +1,189 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, setDoc, query, where, orderBy } from 'firebase/firestore';
-import { Loader2, ShieldX, User, ShieldCheck, Search, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useUser, useAuth, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, collection, setDoc, query, where, collectionGroup } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import { Link } from '@/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import type { Profile, GlobalSettings, AbsenceJustification } from '@/lib/types';
 import { useTranslations } from 'next-intl';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
-import { format } from 'date-fns';
-import Image from 'next/image';
+import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut, Briefcase } from 'lucide-react';
+import type { Profile, GlobalSettings, TimeEntry } from '@/lib/types';
+import { salaryGrid as staticSalaryGrid } from '@/lib/salary-grid';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
-function AccessDenied() {
-  const t = useTranslations('Shared');
-  return (
-    <div className="flex flex-col justify-center items-center h-screen text-center gap-4">
-      <ShieldX className="w-16 h-16 text-destructive" />
-      <h1 className="text-3xl font-bold">{t('accessDenied')}</h1>
-      <p className="text-muted-foreground">{t('accessDeniedDescription')}</p>
-      <Link href="/">
-        <Button variant="outline">Retour à l'accueil</Button>
-      </Link>
-    </div>
-  );
-}
 
-function GlobalSettingsForm() {
-    const t = useTranslations('AdminPage');
+function SalaryGridModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+    const t = useTranslations('AdminDashboardPage');
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { user } = useUser();
 
-    const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
+    const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
-    
-    const settingsSchema = z.object({
-        autoClockInEnabled: z.boolean(),
-        breakDuration: z.coerce.number().min(0),
-        absencePenaltyAmount: z.coerce.number().min(0),
-        defaultHourlyRate: z.coerce.number().min(0),
-        geofenceRadius: z.coerce.number().min(10),
-        overtimeRates: z.object({
-            tier1: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
-            tier2: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
-            night: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
-            sunday: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
-            holiday: z.coerce.number().min(1, { message: t('rateMustBePositive') }),
-        })
-    });
 
-    const form = useForm<z.infer<typeof settingsSchema>>({
-        resolver: zodResolver(settingsSchema),
-        defaultValues: {
-            autoClockInEnabled: true,
-            breakDuration: 40,
-            absencePenaltyAmount: 2426,
-            defaultHourlyRate: 420,
-            geofenceRadius: 50,
-            overtimeRates: {
-                tier1: 1.2,
-                tier2: 1.3,
-                night: 1.4,
-                sunday: 1.5,
-                holiday: 1.5,
-            }
+    const [grid, setGrid] = useState(staticSalaryGrid);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (globalSettings?.salaryGrid && globalSettings.salaryGrid.length > 0) {
+            setGrid(globalSettings.salaryGrid);
         }
-    });
+    }, [globalSettings]);
+
+    const handleSalaryChange = (category: string, echelon: string, newSalary: string) => {
+        const value = parseFloat(newSalary);
+        if (isNaN(value)) return;
+
+        setGrid(currentGrid =>
+            currentGrid.map(entry =>
+                entry.category === category && entry.echelon === echelon
+                    ? { ...entry, sm: value }
+                    : entry
+            )
+        );
+    };
     
-    React.useEffect(() => {
-        if (globalSettings) {
-            form.reset({
-                autoClockInEnabled: globalSettings.autoClockInEnabled,
-                breakDuration: globalSettings.breakDuration || 40,
-                absencePenaltyAmount: globalSettings.absencePenaltyAmount || 2426,
-                defaultHourlyRate: globalSettings.defaultHourlyRate || 420,
-                geofenceRadius: globalSettings.geofenceRadius || 50,
-                overtimeRates: globalSettings.overtimeRates || { tier1: 1.2, tier2: 1.3, night: 1.4, sunday: 1.5, holiday: 1.5 }
-            });
+    const handleSaveChanges = async () => {
+        setIsSaving(true);
+        try {
+            await setDoc(settingsRef, { salaryGrid: grid }, { merge: true });
+            toast({ title: t('gridUpdateSuccess') });
+            onOpenChange(false);
+        } catch (error) {
+            toast({ variant: "destructive", title: t('gridUpdateError') });
+        } finally {
+            setIsSaving(false);
         }
-    }, [globalSettings, form]);
-    
-    const onSubmit = async (values: z.infer<typeof settingsSchema>) => {
-        if(!settingsRef) return;
-        await setDoc(settingsRef, values, { merge: true });
-        toast({ title: t('configUpdatedTitle'), description: t('configUpdatedDescription') });
     };
 
-    if (isLoadingSettings) {
-      return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
-    }
 
     return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('rulesTitle')}</CardTitle>
-                        <CardDescription>{t('rulesDescription')}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="autoClockInEnabled"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                    <div className="space-y-0.5">
-                                        <FormLabel className="text-base">{t('autoClockInLabel')}</FormLabel>
-                                        <FormDescription>{t('autoClockInDescription')}</FormDescription>
-                                    </div>
-                                    <FormControl>
-                                        <Switch
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="geofenceRadius"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Rayon de Géofence (mètres)</FormLabel>
-                                    <FormControl>
-                                        <Input type="number" {...field} />
-                                    </FormControl>
-                                    <FormDescription>Le rayon pour le pointage automatique et la détection de sortie.</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="breakDuration"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('breakDurationLabel')}</FormLabel>
-                                    <FormControl>
-                                        <Input type="number" {...field} />
-                                    </FormControl>
-                                    <FormDescription>{t('breakDurationDescription')}</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-                
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('payrollSettingsTitle')}</CardTitle>
-                        <CardDescription>{t('payrollSettingsDescription')}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                        <FormField
-                            control={form.control}
-                            name="absencePenaltyAmount"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('absencePenaltyAmountLabel')}</FormLabel>
-                                    <FormControl><Input type="number" {...field} /></FormControl>
-                                    <FormDescription>{t('absencePenaltyAmountDescription')}</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="defaultHourlyRate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('defaultHourlyRateLabel')}</FormLabel>
-                                    <FormControl><Input type="number" {...field} /></FormControl>
-                                    <FormDescription>{t('defaultHourlyRateDescription')}</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('overtimeRulesTitle')}</CardTitle>
-                        <CardDescription>{t('overtimeRulesDescription')}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                        <FormField
-                            control={form.control}
-                            name="overtimeRates.tier1"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('tier1RateLabel')}</FormLabel>
-                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="overtimeRates.tier2"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('tier2RateLabel')}</FormLabel>
-                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="overtimeRates.night"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('nightRateLabel')}</FormLabel>
-                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="overtimeRates.sunday"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('sundayRateLabel')}</FormLabel>
-                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="overtimeRates.holiday"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t('holidayRateLabel')}</FormLabel>
-                                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {t('saveConfigButton')}
-                </Button>
-            </form>
-        </Form>
-    );
-}
-
-function JustificationsTab() {
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const [isApproving, setIsApproving] = useState<string | null>(null);
-
-  const justificationsQuery = useMemoFirebase(() => 
-    query(collection(firestore, 'absenceJustifications'), where('status', '==', 'pending'), orderBy('submittedAt', 'asc')),
-    [firestore]
-  );
-  const { data: justifications, isLoading } = useCollection<AbsenceJustification>(justificationsQuery);
-
-  const handleApprove = async (justification: AbsenceJustification) => {
-    setIsApproving(justification.id);
-    try {
-      // 1. Update justification status
-      const justifRef = doc(firestore, 'absenceJustifications', justification.id);
-      await setDoc(justifRef, { status: 'approved' }, { merge: true });
-
-      // 2. Create attendance override
-      const overrideRef = doc(firestore, 'users', justification.userId, 'attendanceOverrides', justification.absenceDate);
-      await setDoc(overrideRef, { status: 'sick_leave' });
-
-      toast({ title: "Justificatif approuvé", description: `L'absence de ${justification.userName} pour le ${justification.absenceDate} est marquée comme maladie.`});
-    } catch (error) {
-        toast({ variant: 'destructive', title: "Erreur d'approbation" });
-    } finally {
-        setIsApproving(null);
-    }
-  };
-
-  if (isLoading) return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Justificatifs en Attente</CardTitle>
-        <CardDescription>Approuver les documents soumis par les employés pour justifier leurs absences.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {justifications && justifications.length > 0 ? (
-          justifications.map(justif => (
-            <Card key={justif.id} className="p-4 flex flex-col md:flex-row gap-4 items-start">
-              <div className="flex-1">
-                <p><strong>Employé:</strong> {justif.userName}</p>
-                <p><strong>Date d'absence:</strong> {format(new Date(justif.absenceDate), 'PPP')}</p>
-                <p className="text-sm text-muted-foreground">Soumis le: {format(justif.submittedAt.toDate(), 'PPP p')}</p>
-                 <Button className="mt-4" onClick={() => handleApprove(justif)} disabled={isApproving === justif.id}>
-                    {isApproving === justif.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-2 h-4 w-4"/>}
-                    Approuver comme Maladie
-                </Button>
-              </div>
-              <div className="w-full md:w-1/3">
-                <a href={justif.imageUrl} target="_blank" rel="noopener noreferrer" className="block border rounded-md overflow-hidden">
-                  <Image src={justif.imageUrl} alt={`Justificatif pour ${justif.absenceDate}`} width={200} height={200} className="object-cover w-full h-auto aspect-square"/>
-                </a>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <p className="text-center text-muted-foreground py-8">Aucun justificatif en attente.</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-
-export default function AdminPage() {
-  const t = useTranslations('AdminPage');
-  const tShared = useTranslations('Shared');
-  const tProfile = useTranslations('ProfilePage');
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewingUser, setViewingUser] = useState<Profile | null>(null);
-
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
-
-  const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
-
-  const allProfilesQuery = useMemoFirebase(() => {
-    if (!firestore || profile?.role !== 'admin') return null;
-    return query(collection(firestore, 'users'), orderBy('name', 'asc'));
-  }, [firestore, profile?.role]);
-
-  const { data: allProfiles, isLoading: isLoadingAllProfiles } = useCollection<Profile>(allProfilesQuery);
-
-  const filteredProfiles = allProfiles?.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const pendingJustificationsQuery = useMemoFirebase(() => 
-    query(collection(firestore, 'absenceJustifications'), where('status', '==', 'pending')),
-    [firestore]
-  );
-  const { data: pendingJustifications } = useCollection<AbsenceJustification>(pendingJustificationsQuery);
-
-
-  const isLoading = isUserLoading || isLoadingProfile;
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-16 w-16 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen gap-4">
-        <p className="text-xl">{tShared('pleaseLogin')}</p>
-        <Link href="/login">
-          <Button>{tShared('loginButton')}</Button>
-        </Link>
-      </div>
-    );
-  }
-
-  if (profile?.role !== 'admin') {
-    return <AccessDenied />;
-  }
-
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
-      <p className="text-muted-foreground">{t('description')}</p>
-      
-      <Tabs defaultValue="users">
-          <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="users">{t('usersTab')}</TabsTrigger>
-              <TabsTrigger value="justifications">
-                Justificatifs 
-                {pendingJustifications && pendingJustifications.length > 0 && 
-                    <Badge className="ml-2">{pendingJustifications.length}</Badge>
-                }
-              </TabsTrigger>
-              <TabsTrigger value="config">{t('configTab')}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="users" className="mt-6">
-            <Card>
-                <CardHeader>
-                <CardTitle>{t('usersTitle')}</CardTitle>
-                <CardDescription>{t('usersDescription')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                <div className="sticky top-14 md:top-0 z-10 bg-background/95 backdrop-blur-sm py-2 mb-4">
-                    <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input 
-                        placeholder="Rechercher par nom ou email..."
-                        className="pl-10 h-12"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    </div>
-                </div>
-                {isLoadingAllProfiles ? (
-                    <div className="flex justify-center items-center h-40">
-                    <Loader2 className="h-8 w-8 animate-spin" />
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>{t('editSalaryGridTitle')}</DialogTitle>
+                    <DialogDescription>{t('editSalaryGridDescription')}</DialogDescription>
+                </DialogHeader>
+                {isLoadingSettings ? (
+                    <div className="flex-1 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                    {filteredProfiles && filteredProfiles.length > 0 ? (
-                        filteredProfiles.map((p) => (
-                        <Card key={p.id} onClick={() => setViewingUser(p)} className="flex flex-col sm:flex-row items-start p-4 gap-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-4 flex-1">
-                                <Avatar className="h-12 w-12">
-                                    <AvatarFallback>{p.name?.charAt(0) || 'U'}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <p className="font-medium">{p.name}</p>
-                                    <p className="text-sm text-muted-foreground">{p.email}</p>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-start sm:items-end gap-1 text-sm w-full sm:w-auto pt-1">
-                                <div className="font-semibold font-mono tabular-nums">
-                                    <span>{p.monthlyBaseSalary ? `${p.monthlyBaseSalary.toLocaleString('fr-FR')}` : 'N/A'}</span>
-                                    <span className="text-muted-foreground"> {p.currency}</span>
-                                </div>
-                                <div className="text-muted-foreground">{p.profession ? tProfile(`professions.${p.profession}`) : ''}</div>
-                                <Badge variant={p.role === 'admin' ? 'default' : 'secondary'} className="gap-1 text-xs mt-1 rounded-full">
-                                    {p.role === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-                                    {p.role}
-                                </Badge>
-                            </div>
-                        </Card>
-                        ))
-                    ) : (
-                        <div className="text-center h-24 flex items-center justify-center">
-                        {t('noUsers')}
-                        </div>
-                    )}
-                    </div>
+                    <ScrollArea className="flex-1">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-background">
+                                <TableRow>
+                                    <TableHead>{t('categoryLabel')}</TableHead>
+                                    <TableHead>{t('echelonLabel')}</TableHead>
+                                    <TableHead className="text-right">{t('salaryLabel')}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {grid.map((entry) => (
+                                    <TableRow key={`${entry.category}-${entry.echelon}`}>
+                                        <TableCell className="font-medium">{entry.category}</TableCell>
+                                        <TableCell>{entry.echelon}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Input
+                                                type="number"
+                                                value={entry.sm}
+                                                onChange={(e) => handleSalaryChange(entry.category, entry.echelon, e.target.value)}
+                                                className="w-40 ml-auto h-8 text-right"
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
                 )}
-                </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="justifications" className="mt-6">
-            <JustificationsTab />
-          </TabsContent>
-          <TabsContent value="config" className="mt-6">
-            <GlobalSettingsForm />
-          </TabsContent>
-      </Tabs>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>{t('cancelButton')}</Button>
+                    <Button onClick={handleSaveChanges} disabled={isSaving}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {t('saveButton')}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
-      <UserTimeEntriesSheet user={viewingUser} onOpenChange={(open) => !open && setViewingUser(null)} />
-    </div>
-  );
+
+export default function AdminDashboardPage() {
+    const t = useTranslations('AdminDashboardPage');
+    const { user, isUserLoading } = useUser();
+    const auth = useAuth();
+    const firestore = useFirestore();
+    const [isSalaryGridOpen, setIsSalaryGridOpen] = useState(false);
+    
+    // Placeholder for active employees until a performant query can be established
+    const activeEmployees = 0; 
+    
+    const adminCards = [
+        { title: t('personnelManagementTitle'), description: t('personnelManagementDescription'), href: '/admin/users', icon: Users, color: 'text-blue-500', bgColor: 'bg-blue-950' },
+        { title: t('liveTrackingTitle'), description: t('liveTrackingDescription'), href: '#', icon: Activity, color: 'text-green-500', bgColor: 'bg-green-950' },
+        { title: t('reportsPdfTitle'), description: t('reportsPdfDescription'), href: '#', icon: FileText, color: 'text-purple-500', bgColor: 'bg-purple-950' },
+        { title: t('payrollCalculationTitle'), description: t('payrollCalculationDescription'), href: '#', icon: Wallet, color: 'text-yellow-500', bgColor: 'bg-yellow-950' },
+        { title: t('salaryGridTitle'), description: t('salaryGridDescription'), action: () => setIsSalaryGridOpen(true), icon: Settings, color: 'text-gray-500', bgColor: 'bg-gray-950' },
+        { title: t('alertCenterTitle'), description: t('alertCenterDescription'), href: '#', icon: Bell, color: 'text-orange-500', bgColor: 'bg-orange-950' },
+    ];
+    
+    if (isUserLoading) {
+        return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin" /></div>;
+    }
+    
+    if (!user) {
+        // This should be handled by the AppShell, but as a fallback
+        return <div className="flex h-screen w-full items-center justify-center"><p>Please log in.</p></div>;
+    }
+    
+    return (
+        <div className="space-y-6">
+            <header className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('activeEmployees', {count: activeEmployees})}</p>
+                </div>
+                <Button variant="ghost" onClick={() => signOut(auth)}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t('logout')}
+                </Button>
+            </header>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {adminCards.map((card) => {
+                    const CardComponent = (
+                        <Card key={card.title} className={cn('group overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1', card.href ? 'cursor-pointer' : 'cursor-pointer')}
+                            onClick={card.action ? card.action : undefined}>
+                            <CardHeader className={cn("p-4", card.bgColor)}>
+                                <card.icon className={cn("h-8 w-8 mb-2", card.color)} />
+                            </CardHeader>
+                            <CardContent className="p-4">
+                                <h3 className="font-semibold text-base mb-1">{card.title}</h3>
+                                <p className="text-xs text-muted-foreground">{card.description}</p>
+                            </CardContent>
+                        </Card>
+                    );
+                    
+                    return card.href ? (
+                        <Link href={card.href} passHref key={card.title} legacyBehavior>
+                           <a>{CardComponent}</a>
+                        </Link>
+                    ) : (
+                        CardComponent
+                    );
+                })}
+            </div>
+            
+            <SalaryGridModal isOpen={isSalaryGridOpen} onOpenChange={setIsSalaryGridOpen} />
+        </div>
+    );
 }

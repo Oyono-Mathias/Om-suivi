@@ -325,7 +325,7 @@
     "leaveAnnouncement": "{name} is on leave starting today! Enjoy the rest!"
   },
   "AdminPage": {
-    "title": "Administration",
+    "title": "User Management",
     "description": "Manage application users and teams.",
     "usersTitle": "User Management",
     "usersDescription": "A list of all users registered in the system.",
@@ -394,6 +394,32 @@
       "mission_ended": "Mission Ended",
       "admin_edit": "Admin Edit"
     }
+  },
+  "AdminDashboardPage": {
+    "title": "Admin Dashboard",
+    "activeEmployees": "{count, plural, one {# employee currently active} other {# employees currently active}}",
+    "logout": "Log Out",
+    "personnelManagementTitle": "Personnel Management",
+    "personnelManagementDescription": "Add, modify, or remove employees.",
+    "liveTrackingTitle": "Live Tracking",
+    "liveTrackingDescription": "See who is currently clocked in.",
+    "reportsPdfTitle": "Reports & PDF",
+    "reportsPdfDescription": "Consult history and export hours.",
+    "payrollCalculationTitle": "Payroll Calculation",
+    "payrollCalculationDescription": "Calculate monthly pay based on hours.",
+    "salaryGridTitle": "Salary Grid",
+    "salaryGridDescription": "Modify salary grid amounts stored in Firestore.",
+    "alertCenterTitle": "Alert Center",
+    "alertCenterDescription": "Send manual notifications to employees.",
+    "editSalaryGridTitle": "Edit Salary Grid",
+    "editSalaryGridDescription": "Modify the base salary amounts. This will affect all future calculations.",
+    "categoryLabel": "Category",
+    "echelonLabel": "Echelon",
+    "salaryLabel": "Salary",
+    "saveButton": "Save Changes",
+    "cancelButton": "Cancel",
+    "gridUpdateSuccess": "Salary grid updated successfully.",
+    "gridUpdateError": "Error updating salary grid."
   },
   "Shared": {
     "loading": "Loading...",

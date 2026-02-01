@@ -227,6 +227,19 @@
         "geofenceRadius": {
             "type": "number",
             "description": "The radius in meters for geofencing work and home locations."
+        },
+        "salaryGrid": {
+            "type": "array",
+            "description": "The salary grid entries.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string"},
+                    "echelon": {"type": "string"},
+                    "sm": {"type": "number"}
+                },
+                "required": ["category", "echelon", "sm"]
+            }
         }
       },
       "required": [
