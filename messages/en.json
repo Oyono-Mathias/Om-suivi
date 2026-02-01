@@ -433,8 +433,9 @@
   "AdminPayrollPage": {
     "title": "Payroll Calculation",
     "description": "Generate and view employee payslips.",
-    "comingSoonTitle": "Coming Soon",
-    "comingSoonDescription": "This section is under development. You will soon be able to calculate monthly pay for each employee, generate detailed payslips, and export data for accounting."
+    "selectUserTitle": "Select an employee",
+    "selectUserDescription": "Click on an employee to generate their payslip.",
+    "noUsersFound": "No employees found."
   },
   "LiveTrackingPage": {
     "title": "Live Tracking",

@@ -433,8 +433,9 @@
   "AdminPayrollPage": {
     "title": "Calcul de la Paie",
     "description": "Générez et consultez les bulletins de paie des employés.",
-    "comingSoonTitle": "Bientôt disponible",
-    "comingSoonDescription": "Cette section est en cours de développement. Vous pourrez bientôt y calculer la paie mensuelle pour chaque employé, générer des bulletins de paie détaillés et exporter les données pour la comptabilité."
+    "selectUserTitle": "Sélectionner un employé",
+    "selectUserDescription": "Cliquez sur un employé pour générer son bulletin de paie.",
+    "noUsersFound": "Aucun employé trouvé."
   },
   "LiveTrackingPage": {
     "title": "Suivi en Direct",

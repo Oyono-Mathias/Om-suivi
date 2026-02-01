@@ -66,6 +66,10 @@ export const pathnames = {
     en: '/admin/payroll',
     fr: '/admin/calcul-paie'
   },
+  '/admin/payroll/[userId]': {
+    en: '/admin/payroll/[userId]',
+    fr: '/admin/calcul-paie/[userId]'
+  },
   '/faq': {
     en: '/faq',
     fr: '/faq'
