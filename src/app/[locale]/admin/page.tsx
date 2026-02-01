@@ -161,7 +161,7 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {adminCards.map((card) => {
                     const CardComponent = (
-                        <Card key={card.title} className={cn('group overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1', card.href ? 'cursor-pointer' : 'cursor-pointer')}
+                        <Card className={cn('group overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 h-full', card.href ? 'cursor-pointer' : 'cursor-pointer')}
                             onClick={card.action ? card.action : undefined}>
                             <CardHeader className={cn("p-4", card.bgColor)}>
                                 <card.icon className={cn("h-8 w-8 mb-2", card.color)} />
@@ -174,11 +174,11 @@ export default function AdminDashboardPage() {
                     );
                     
                     return card.href ? (
-                        <Link href={card.href} passHref key={card.title} legacyBehavior>
-                           <a>{CardComponent}</a>
+                        <Link href={card.href} key={card.title} className="block h-full">
+                           {CardComponent}
                         </Link>
                     ) : (
-                        CardComponent
+                        <div key={card.title}>{CardComponent}</div>
                     );
                 })}
             </div>
