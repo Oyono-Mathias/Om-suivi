@@ -44,7 +44,7 @@ const TableRowItem = ({ label, base, rate, gain, deduction }: { label: string; b
     </tr>
 );
 
-export default function AdminUserBulletinPage({ params }: { params: { userId: string } }) {
+export default function AdminUserBulletinPage({ params: { userId } }: { params: { userId: string } }) {
     const t = useTranslations('BulletinPage');
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');
@@ -52,7 +52,6 @@ export default function AdminUserBulletinPage({ params }: { params: { userId: st
     const dateFnsLocale = locale === 'fr' ? fr : enUS;
 
     const { user: adminUser, isUserLoading: isAdminUserLoading } = useUser();
-    const { userId } = params;
     const firestore = useFirestore();
 
     const adminProfileRef = useMemoFirebase(() => adminUser ? doc(firestore, 'users', adminUser.uid) : null, [firestore, adminUser]);

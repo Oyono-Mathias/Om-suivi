@@ -25,7 +25,7 @@ const DEFAULT_OVERTIME_RATES = {
   holiday: 1.5,
 };
 
-export default function AdminUserExportPage({ params }: { params: { userId: string } }) {
+export default function AdminUserExportPage({ params: { userId } }: { params: { userId: string } }) {
     const t = useTranslations('ExportReportPage');
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');
@@ -34,8 +34,6 @@ export default function AdminUserExportPage({ params }: { params: { userId: stri
 
     const { user: adminUser, isUserLoading: isAdminUserLoading } = useUser();
     const firestore = useFirestore();
-
-    const { userId } = params;
 
     // Admin's profile to check for role
     const adminProfileRef = useMemoFirebase(() => {
