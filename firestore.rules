@@ -75,13 +75,11 @@ service cloud.firestore {
       }
 
       match /notifications/{notificationId} {
-        // Users can read their own notifications, and admins can read any.
-        allow read: if isOwner(userId) || isAdmin();
-        // Users can update their own notifications (e.g., mark as read).
-        allow update: if isOwner(userId);
-        // Admins can create notifications for any user.
-        allow create: if isAdmin();
-        // Notifications cannot be deleted.
+        // Users can read and update their own notifications.
+        allow read, update: if isOwner(userId);
+        // Admins can read and create notifications for any user.
+        allow read, create: if isAdmin();
+        // Deleting is not allowed.
         allow delete: if false;
       }
     }
