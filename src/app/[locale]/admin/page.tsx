@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut, Building, MapPin } from 'lucide-react';
+import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut, Building, MapPin, TrendingUp } from 'lucide-react';
 import type { Profile, GlobalSettings, Announcement } from '@/lib/types';
 import { salaryGrid as staticSalaryGrid } from '@/lib/salary-grid';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -348,6 +348,7 @@ export default function AdminDashboardPage() {
     
     const adminCards = [
         { title: t('personnelManagementTitle'), description: t('personnelManagementDescription'), href: '/admin/users', icon: Users, color: 'text-blue-500', bgColor: 'bg-blue-950' },
+        { title: t('careerManagement.title'), description: t('careerManagement.description'), href: '/admin/career', icon: TrendingUp, color: 'text-indigo-400', bgColor: 'bg-indigo-950' },
         { title: t('liveTrackingTitle'), description: t('liveTrackingDescription'), href: '/admin/live', icon: Activity, color: 'text-green-500', bgColor: 'bg-green-950' },
         { title: t('reportsPdfTitle'), description: t('reportsPdfDescription'), href: '/admin/reports', icon: FileText, color: 'text-purple-500', bgColor: 'bg-purple-950' },
         { title: t('payrollCalculationTitle'), description: t('payrollCalculationDescription'), href: '/admin/payroll', icon: Wallet, color: 'text-yellow-500', bgColor: 'bg-yellow-950' },

@@ -50,6 +50,10 @@ export const pathnames = {
     en: '/admin/users',
     fr: '/admin/utilisateurs'
   },
+  '/admin/career': {
+    en: '/admin/career',
+    fr: '/admin/carriere'
+  },
   '/admin/live': {
     en: '/admin/live-tracking',
     fr: '/admin/suivi-direct'

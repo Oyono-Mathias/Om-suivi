@@ -429,7 +429,33 @@
     "cancelButton": "Annuler",
     "gridUpdateSuccess": "Grille salariale mise à jour avec succès.",
     "gridUpdateError": "Erreur lors de la mise à jour de la grille.",
-    "configTab": "Config. Usine"
+    "configTab": "Config. Usine",
+    "careerManagement": {
+      "title": "Gestion de Carrière",
+      "description": "Suivre et valider les avancements d'ancienneté."
+    }
+  },
+  "AdminCareerPage": {
+    "title": "Gestion de Carrière",
+    "description": "Suivez et validez les avancements d'échelon de vos employés.",
+    "alertsTitle": "Alertes d'Avancement",
+    "alertsDescription": "Employés approchant d'un palier d'ancienneté dans les 30 prochains jours.",
+    "noAlerts": "Aucun avancement imminent.",
+    "allEmployeesTitle": "Tous les Employés",
+    "hireDateLabel": "Date d'embauche",
+    "currentEchelonLabel": "Échelon Actuel",
+    "nextEchelonLabel": "Prochain Échelon",
+    "futureBonusLabel": "+2 jours de congé",
+    "approveButton": "Valider l'Avancement",
+    "inXDays": "dans {days} jours",
+    "today": "Aujourd'hui",
+    "footerNote": "Rappel : L'avancement d'un échelon et l'ajout de 2 jours de congé se font tous les 3 ans d'ancienneté révolus.",
+    "successTitle": "Avancement Validé",
+    "successDescription": "{name} a été promu à l'échelon {echelon}.",
+    "errorTitle": "Erreur de Validation",
+    "confirmEarlyTitle": "Validation Anticipée",
+    "confirmEarlyDescription": "Le palier d'ancienneté pour {name} n'est que dans {days} jours. Voulez-vous valider cet avancement maintenant ?",
+    "cancelButton": "Annuler"
   },
   "AdminReportsPage": {
     "title": "Rapports Administratifs",

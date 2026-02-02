@@ -429,7 +429,33 @@
     "cancelButton": "Cancel",
     "gridUpdateSuccess": "Salary grid updated successfully.",
     "gridUpdateError": "Error updating salary grid.",
-    "configTab": "Factory Config"
+    "configTab": "Factory Config",
+    "careerManagement": {
+      "title": "Career Management",
+      "description": "Track and validate seniority advancements."
+    }
+  },
+  "AdminCareerPage": {
+    "title": "Career Management",
+    "description": "Track and validate your employees' echelon advancements.",
+    "alertsTitle": "Advancement Alerts",
+    "alertsDescription": "Employees reaching a seniority milestone within the next 30 days.",
+    "noAlerts": "No upcoming advancements.",
+    "allEmployeesTitle": "All Employees",
+    "hireDateLabel": "Hire Date",
+    "currentEchelonLabel": "Current Echelon",
+    "nextEchelonLabel": "Next Echelon",
+    "futureBonusLabel": "+2 leave days",
+    "approveButton": "Approve Advancement",
+    "inXDays": "in {days} days",
+    "today": "Today",
+    "footerNote": "Reminder: An echelon advancement and 2 bonus leave days are granted for every 3 full years of seniority.",
+    "successTitle": "Advancement Approved",
+    "successDescription": "{name} has been promoted to echelon {echelon}.",
+    "errorTitle": "Validation Error",
+    "confirmEarlyTitle": "Early Approval",
+    "confirmEarlyDescription": "The seniority milestone for {name} is in {days} days. Do you want to approve this advancement now?",
+    "cancelButton": "Cancel"
   },
   "AdminReportsPage": {
     "title": "Admin Reports",
