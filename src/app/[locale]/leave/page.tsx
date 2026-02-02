@@ -56,11 +56,7 @@ export default function LeaveRequestPage() {
             const now = new Date();
 
             const seniorityYears = differenceInYears(now, hireDate);
-            let senioritySurplus = 0;
-            
-            if (seniorityYears >= 3) {
-                senioritySurplus = 2;
-            }
+            const senioritySurplus = Math.floor(seniorityYears / 3) * 2;
 
             const totalDays = 18 + senioritySurplus;
 

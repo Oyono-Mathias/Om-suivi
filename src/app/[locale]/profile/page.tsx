@@ -258,10 +258,7 @@ export default function ProfilePage() {
 
         // Seniority bonus calculation
         const seniorityYears = differenceInYears(now, hireDate);
-        let senioritySurplus = 0;
-        if (seniorityYears >= 3) {
-            senioritySurplus = 2;
-        }
+        const senioritySurplus = Math.floor(seniorityYears / 3) * 2;
 
         // Base days calculation for the current cycle
         let cycleStartDate;

@@ -347,11 +347,7 @@ export default function ReportsPage() {
         const now = new Date();
         const hireDate = parseISO(profile.hireDate);
         const seniorityYears = differenceInYears(now, hireDate);
-        let senioritySurplus = 0;
-        
-        if (seniorityYears >= 3) {
-            senioritySurplus = 2;
-        }
+        const senioritySurplus = Math.floor(seniorityYears / 3) * 2;
         
         let cycleStartDate;
         const lastAnniversary = new Date(now.getFullYear(), hireDate.getMonth(), hireDate.getDate());

@@ -153,11 +153,7 @@ export default function DetailCongesScreen() {
 
 
                 const seniorityYears = differenceInYears(referencePeriodEnd, hireDate);
-                let senioritySurplus = 0;
-                
-                if (seniorityYears >= 3) {
-                    senioritySurplus = 2;
-                }
+                const senioritySurplus = Math.floor(seniorityYears / 3) * 2;
 
                 const baseDays = 18;
                 const totalDays = baseDays + senioritySurplus;
