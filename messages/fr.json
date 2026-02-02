@@ -584,7 +584,9 @@
     "statusToBeTaken": "À prendre",
     "generateRequestButton": "Générer ma demande de congé",
     "noLeaveHistory": "Aucun historique de congé à afficher.",
-    "year": "Année {year}"
+    "year": "Année {year}",
+    "nextBonusMessage": "Vous bénéficiez de {currentBonus} jours de bonus. Dans {years, plural, one {# an} other {# ans}}, vous passerez à {nextBonus} jours !",
+    "firstBonusMessage": "Encore {years, plural, one {# an} other {# ans}} avant de débloquer vos {nextBonus} premiers jours de bonus !"
   },
   "FaqPage": {
     "title": "Foire Aux Questions",

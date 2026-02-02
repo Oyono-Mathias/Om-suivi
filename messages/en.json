@@ -584,7 +584,9 @@
     "statusToBeTaken": "To be taken",
     "generateRequestButton": "Generate Leave Request",
     "noLeaveHistory": "No leave history to display.",
-    "year": "Year {year}"
+    "year": "Year {year}",
+    "nextBonusMessage": "You currently have {currentBonus} seniority bonus days. In {years, plural, one {# year} other {# years}}, you will get {nextBonus} bonus days!",
+    "firstBonusMessage": "{years, plural, one {# year} other {# years}} left until you unlock your first {nextBonus} bonus days!"
   },
   "FaqPage": {
     "title": "Frequently Asked Questions",

@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Paperclip } from 'lucide-react';
+import { Loader2, Paperclip, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { shifts } from '@/lib/shifts';
 
@@ -185,6 +185,29 @@ export default function DetailCongesScreen() {
         }
     }, [profile, leaveAnnouncements, allTimeEntries, allOverrides, globalSettings, t]);
 
+    const seniorityBonusData = useMemo(() => {
+        if (!profile?.hireDate) return null;
+
+        try {
+            const hireDate = parseISO(profile.hireDate);
+            const now = new Date();
+            const seniorityYears = differenceInYears(now, hireDate);
+
+            const currentBonus = Math.floor(seniorityYears / 3) * 2;
+            const remainingYears = 3 - (seniorityYears % 3);
+            const nextBonus = (Math.floor(seniorityYears / 3) + 1) * 2;
+            
+            return {
+                seniorityYears,
+                currentBonus,
+                remainingYears,
+                nextBonus
+            };
+        } catch (e) {
+            return null;
+        }
+    }, [profile?.hireDate]);
+
     const isLoading = isUserLoading || isLoadingProfile || isLoadingLeaveAnnouncements || isLoadingEntries || isLoadingOverrides || isLoadingSettings;
     
     if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
@@ -215,6 +238,24 @@ export default function DetailCongesScreen() {
                                                 {data.days.base} ({t('baseLabel')}) + {data.days.seniority} ({t('seniorityLabel')}) = <span className="font-bold text-primary text-xl">{data.days.total} {tLeaveRequest('daysUnit')}</span>
                                             </p>
                                         </div>
+                                        {seniorityBonusData && (
+                                            <div className="mt-4 p-3 text-sm text-center bg-blue-950/50 border border-blue-500/50 text-blue-300 rounded-md flex items-center justify-center gap-2">
+                                                <Gift className="h-5 w-5 shrink-0" />
+                                                <p>
+                                                    {seniorityBonusData.currentBonus > 0
+                                                        ? t('nextBonusMessage', { 
+                                                            currentBonus: seniorityBonusData.currentBonus, 
+                                                            years: seniorityBonusData.remainingYears, 
+                                                            nextBonus: seniorityBonusData.nextBonus 
+                                                        })
+                                                        : t('firstBonusMessage', { 
+                                                            years: seniorityBonusData.remainingYears, 
+                                                            nextBonus: seniorityBonusData.nextBonus 
+                                                        })
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
 
