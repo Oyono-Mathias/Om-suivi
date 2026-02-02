@@ -1,0 +1,10 @@
+{
+    "@types/react": "^19.2.1",
+    "@types/react-confetti": "^6.0.0",
+    "@types/node": "^20",
+    "@types/react-dom": "^19.2.1",
+    "genkit-cli": "^1.20.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }

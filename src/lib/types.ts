@@ -125,3 +125,13 @@ export interface FaqItem {
   order: number;
   locale: 'fr' | 'en';
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: 'advancement' | 'announcement' | 'generic';
+  isRead: boolean;
+  createdAt: any; // serverTimestamp
+}

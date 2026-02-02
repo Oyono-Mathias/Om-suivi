@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { doc, collection, query, orderBy, setDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, orderBy, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader2, TrendingUp, ShieldCheck, Gift, ChevronsRight, User as UserIcon } from 'lucide-react';
-import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -115,6 +114,7 @@ function UserAdvancementCard({ user, onApprove }: { user: Profile & { advancemen
 export default function AdminCareerPage() {
     const t = useTranslations('AdminCareerPage');
     const tShared = useTranslations('Shared');
+    const tNotif = useTranslations('AdvancementNotification');
     const { user: adminUser, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -147,6 +147,7 @@ export default function AdminCareerPage() {
                 return {
                     ...user,
                     advancement: {
+                        seniorityYears,
                         seniorityString: `${seniorityYears}a ${seniorityMonths}m`,
                         daysUntilNextMilestone,
                         isAlert: daysUntilNextMilestone >= 0 && daysUntilNextMilestone <= 30,
@@ -178,6 +179,24 @@ export default function AdminCareerPage() {
                 title: t('successTitle'),
                 description: t('successDescription', { name: userToUpdate.name, echelon: `${userToUpdate.advancement.nextCategory}-${userToUpdate.advancement.nextEchelon}` })
             });
+
+            // Create notification for the user
+            const newEchelon = `${userToUpdate.advancement.nextCategory}-${userToUpdate.advancement.nextEchelon}`;
+            const seniorityYears = Math.floor(userToUpdate.advancement.seniorityYears / 3) * 3;
+            
+            const notifTitle = tNotif('title', { years: seniorityYears });
+            const notifBody = `${tNotif('bodyLine1', { name: userToUpdate.name, years: seniorityYears })}\n\n${tNotif('bodyLine2')}\n${tNotif('benefitEchelon', { echelon: newEchelon })}\n${tNotif('benefitLeave')}\n\n${tNotif('bodyLine3')}`;
+            
+            const newNotification = {
+                userId: userToUpdate.id,
+                type: 'advancement',
+                title: notifTitle,
+                body: notifBody,
+                isRead: false,
+                createdAt: serverTimestamp(),
+            };
+            addDocumentNonBlocking(collection(firestore, 'users', userToUpdate.id, 'notifications'), newNotification);
+
 
         } catch (error) {
             toast({ variant: 'destructive', title: t('errorTitle') });

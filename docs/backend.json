@@ -474,6 +474,21 @@
         "totalDays",
         "generatedAt"
       ]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Represents a user notification, such as for a career advancement.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string", "enum": ["advancement", "announcement", "generic"] },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "body", "type", "isRead", "createdAt"]
     }
   },
   "auth": {
@@ -568,6 +583,18 @@
               "name": "leaveRequestId",
               "description": "The unique ID for the leave request document."
             }
+          ]
+        }
+      },
+       {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": { "$ref": "#/backend/entities/Notification" },
+          "description": "Stores user-specific notifications like career advancements.",
+          "params": [
+            { "name": "userId", "description": "The user's UID." },
+            { "name": "notificationId", "description": "The unique ID for the notification." }
           ]
         }
       },

@@ -638,5 +638,14 @@
     "yourSituation": "Votre situation : Vous avez {years, plural, one {# an} other {# ans}} d'ancienneté. Vous profitez déjà de {bonus} jours de bonus.",
     "milestoneSoonTitle": "Bientôt du nouveau !",
     "milestoneSoonDescription": "Dans {months, plural, one {# mois} other {# mois}}, vos droits seront mis à jour automatiquement."
+  },
+  "AdvancementNotification": {
+    "title": "Félicitations pour vos {years} ans de fidélité ! 🎊",
+    "bodyLine1": "Cher(e) {name}, nous sommes heureux de célébrer vos {years} années au sein de l'entreprise.",
+    "bodyLine2": "En reconnaissance de votre engagement, vos droits ont été mis à jour :",
+    "benefitEchelon": "✅ Passage à l'Échelon {echelon} sur votre salaire de base.",
+    "benefitLeave": "✅ Ajout de 2 jours de congés supplémentaires à votre quota annuel.",
+    "bodyLine3": "Merci pour votre contribution au succès de l'entreprise !",
+    "closeButton": "Merci !"
   }
 }

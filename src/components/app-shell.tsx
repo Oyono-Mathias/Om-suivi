@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname, Link } from "@/navigation";
 import {
@@ -30,16 +30,48 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase";
 import { signOut } from "firebase/auth";
-import { collection, doc, query, where } from "firebase/firestore";
+import { collection, doc, query, where, orderBy, limit } from "firebase/firestore";
 import { Button } from "./ui/button";
 import LanguageSwitcher from "./language-switcher";
 import { useTranslations } from "next-intl";
-import type { Profile, AbsenceJustification } from "@/lib/types";
+import type { Profile, AbsenceJustification, Notification } from "@/lib/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileBottomNav from "./mobile-bottom-nav";
 import { Skeleton } from "./ui/skeleton";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { requestNotificationPermission } from "@/lib/firebase-messaging";
+import AdvancementDialog from "./advancement-dialog";
+
+function NotificationHandler() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [activeNotification, setActiveNotification] = useState<Notification | null>(null);
+
+    const notificationsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'users', user.uid, 'notifications'), where('isRead', '==', false), orderBy('createdAt', 'desc'), limit(1));
+    }, [firestore, user]);
+
+    const { data: unreadNotifications } = useCollection<Notification>(notificationsQuery);
+
+    useEffect(() => {
+        if (unreadNotifications && unreadNotifications.length > 0) {
+            setActiveNotification(unreadNotifications[0]);
+        }
+    }, [unreadNotifications]);
+
+    const handleClose = () => {
+        setActiveNotification(null);
+    }
+
+    if (!activeNotification) return null;
+
+    if (activeNotification.type === 'advancement') {
+        return <AdvancementDialog notification={activeNotification} onClose={handleClose} />;
+    }
+    
+    return null;
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -117,6 +149,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isMobile) {
     return (
       <SidebarProvider>
+        <NotificationHandler />
         <Sidebar className="no-print">
           <SidebarHeader className="p-4 border-b">
             {user && (
@@ -243,6 +276,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
+        <NotificationHandler />
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm no-print">
             <div className="flex items-center gap-4">
                 <SidebarTrigger />

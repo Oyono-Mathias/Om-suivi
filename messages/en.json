@@ -638,5 +638,14 @@
     "yourSituation": "Your situation: You have {years, plural, one {# year} other {# years}} of seniority. You already benefit from {bonus} bonus days.",
     "milestoneSoonTitle": "Something new is coming!",
     "milestoneSoonDescription": "In {months, plural, one {# month} other {# months}}, your rights will be automatically updated."
+  },
+  "AdvancementNotification": {
+    "title": "Congratulations on your {years} years of loyalty! 🎊",
+    "bodyLine1": "Dear {name}, we are happy to celebrate your {years} years with the company.",
+    "bodyLine2": "In recognition of your commitment, your rights have been updated:",
+    "benefitEchelon": "✅ Promotion to Echelon {echelon} on your base salary.",
+    "benefitLeave": "✅ Addition of 2 extra paid leave days to your annual quota.",
+    "bodyLine3": "Thank you for your contribution to the company's success!",
+    "closeButton": "Thank you!"
   }
 }
