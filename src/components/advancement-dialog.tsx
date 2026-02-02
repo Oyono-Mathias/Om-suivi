@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +13,11 @@ import {
 import { Button } from './ui/button';
 import { useTranslations } from 'next-intl';
 import type { Notification } from '@/lib/types';
-import Confetti from 'react-confetti';
 import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
+
+const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
+
 
 interface AdvancementDialogProps {
   notification: Notification;
@@ -28,6 +31,7 @@ const useWindowSize = () => {
   });
 
   useEffect(() => {
+    // This code now only runs on the client
     function handleResize() {
       setWindowSize({
         width: window.innerWidth,
@@ -39,7 +43,7 @@ const useWindowSize = () => {
     handleResize();
     
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   return windowSize;
 };
@@ -60,7 +64,7 @@ export default function AdvancementDialog({ notification, onClose }: Advancement
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      {showConfetti && <Confetti width={width} height={height} recycle={false} onConfettiComplete={() => setShowConfetti(false)} />}
+      {showConfetti && width > 0 && <Confetti width={width} height={height} recycle={false} onConfettiComplete={() => setShowConfetti(false)} />}
       <DialogContent className="max-w-md text-center">
         <DialogHeader>
           <DialogTitle className="text-2xl">{notification.title}</DialogTitle>
