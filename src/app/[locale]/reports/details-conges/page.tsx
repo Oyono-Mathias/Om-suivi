@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useTranslations, useLocale } from 'next-intl';
-import { differenceInYears, parseISO, format, addYears, getWeek, getDay, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, eachDayOfInterval } from 'date-fns';
+import { differenceInYears, parseISO, format, addYears, getWeek, getDay, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, eachDayOfInterval, differenceInMonths } from 'date-fns';
 import { fr, enUS } from "date-fns/locale";
 import type { Profile, LeaveAnnouncement, TimeEntry, AttendanceOverride, GlobalSettings } from '@/lib/types';
 import { Link } from '@/navigation';
@@ -13,9 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Paperclip, Gift } from 'lucide-react';
+import { Loader2, Paperclip, Gift, Lightbulb, CheckCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { shifts } from '@/lib/shifts';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const DEFAULT_OVERTIME_RATES = {
   tier1: 1.2,
@@ -27,6 +29,7 @@ const DEFAULT_OVERTIME_RATES = {
 
 export default function DetailCongesScreen() {
     const t = useTranslations('DetailsCongesPage');
+    const tKnow = useTranslations('KnowYourRights');
     const tShared = useTranslations('Shared');
     const tLeaveRequest = useTranslations('LeaveRequestPage');
     const locale = useLocale();
@@ -185,23 +188,30 @@ export default function DetailCongesScreen() {
         }
     }, [profile, leaveAnnouncements, allTimeEntries, allOverrides, globalSettings, t]);
 
-    const seniorityBonusData = useMemo(() => {
+    const seniorityInfo = useMemo(() => {
         if (!profile?.hireDate) return null;
 
         try {
-            const hireDate = parseISO(profile.hireDate);
+            const hireDate = new Date(profile.hireDate);
             const now = new Date();
             const seniorityYears = differenceInYears(now, hireDate);
+            const seniorityTotalMonths = differenceInMonths(now, hireDate);
 
             const currentBonus = Math.floor(seniorityYears / 3) * 2;
-            const remainingYears = 3 - (seniorityYears % 3);
-            const nextBonus = (Math.floor(seniorityYears / 3) + 1) * 2;
+
+            const monthsIntoCurrentCycle = seniorityTotalMonths % 36;
+            const monthsUntilNextMilestone = 36 - monthsIntoCurrentCycle;
             
+            const isMilestoneSoon = monthsUntilNextMilestone <= 6 && monthsUntilNextMilestone > 0;
+
+            const nextBonus = (Math.floor(seniorityYears / 3) + 1) * 2;
+
             return {
                 seniorityYears,
                 currentBonus,
-                remainingYears,
-                nextBonus
+                monthsUntilNextMilestone,
+                isMilestoneSoon,
+                nextBonus,
             };
         } catch (e) {
             return null;
@@ -218,6 +228,39 @@ export default function DetailCongesScreen() {
         <div className="space-y-6">
             <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
             <p className="text-muted-foreground">{t('description')}</p>
+            
+            {seniorityInfo && (
+                <Card>
+                    <CardHeader className="flex-row items-center gap-2">
+                        <Lightbulb className="h-6 w-6 text-primary" />
+                        <CardTitle>{tKnow('title')}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">{tKnow('explanation')}</p>
+                        <ul className="space-y-2 text-sm">
+                            <li className="flex items-start gap-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-green-500" />
+                                <span>{tKnow('benefitLeave')}</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-green-500" />
+                                <span>{tKnow('benefitSalary')}</span>
+                            </li>
+                        </ul>
+                        <div className="p-3 bg-muted/50 rounded-md">
+                            <p className="text-sm font-semibold">{tKnow('yourSituation', { years: seniorityInfo.seniorityYears, bonus: seniorityInfo.currentBonus })}</p>
+                        </div>
+                        {seniorityInfo.isMilestoneSoon && (
+                            <Alert className="bg-blue-950/50 border-blue-500/50 text-blue-300">
+                                <Clock className="h-4 w-4 text-blue-400" />
+                                <AlertTitle>{tKnow('milestoneSoonTitle')}</AlertTitle>
+                                <AlertDescription>{tKnow('milestoneSoonDescription', { months: seniorityInfo.monthsUntilNextMilestone })}</AlertDescription>
+                            </Alert>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
 
             <Accordion type="single" collapsible className="w-full space-y-4">
                 {annualLeaveData.length > 0 ? annualLeaveData.map((data, index) => data && (
@@ -238,19 +281,19 @@ export default function DetailCongesScreen() {
                                                 {data.days.base} ({t('baseLabel')}) + {data.days.seniority} ({t('seniorityLabel')}) = <span className="font-bold text-primary text-xl">{data.days.total} {tLeaveRequest('daysUnit')}</span>
                                             </p>
                                         </div>
-                                        {seniorityBonusData && (
+                                        {seniorityInfo && (
                                             <div className="mt-4 p-3 text-sm text-center bg-blue-950/50 border border-blue-500/50 text-blue-300 rounded-md flex items-center justify-center gap-2">
                                                 <Gift className="h-5 w-5 shrink-0" />
                                                 <p>
-                                                    {seniorityBonusData.currentBonus > 0
+                                                    {seniorityInfo.currentBonus > 0
                                                         ? t('nextBonusMessage', { 
-                                                            currentBonus: seniorityBonusData.currentBonus, 
-                                                            years: seniorityBonusData.remainingYears, 
-                                                            nextBonus: seniorityBonusData.nextBonus 
+                                                            currentBonus: seniorityInfo.currentBonus, 
+                                                            years: 3 - (seniorityInfo.seniorityYears % 3), 
+                                                            nextBonus: seniorityInfo.nextBonus 
                                                         })
                                                         : t('firstBonusMessage', { 
-                                                            years: seniorityBonusData.remainingYears, 
-                                                            nextBonus: seniorityBonusData.nextBonus 
+                                                            years: 3 - (seniorityInfo.seniorityYears % 3), 
+                                                            nextBonus: seniorityInfo.nextBonus 
                                                         })
                                                     }
                                                 </p>

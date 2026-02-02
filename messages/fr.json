@@ -1,3 +1,4 @@
+
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
@@ -602,5 +603,14 @@
     "deleteConfirmTitle": "Supprimer la question ?",
     "deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer cette question ? Cette action est irréversible.",
     "newFaqTitle": "Nouvelle Question"
+  },
+  "KnowYourRights": {
+    "title": "Bon à savoir",
+    "explanation": "Au Cameroun, la fidélité est récompensée ! Tous les 3 ans d'ancienneté révolus, vous bénéficiez automatiquement de :",
+    "benefitLeave": "+2 jours de congés payés supplémentaires par an.",
+    "benefitSalary": "L'avancement d'un échelon sur votre salaire de base (ex: passage de l'échelon A à B).",
+    "yourSituation": "Votre situation : Vous avez {years, plural, one {# an} other {# ans}} d'ancienneté. Vous profitez déjà de {bonus} jours de bonus.",
+    "milestoneSoonTitle": "Bientôt du nouveau !",
+    "milestoneSoonDescription": "Dans {months, plural, one {# mois} other {# mois}}, vos droits seront mis à jour automatiquement."
   }
 }

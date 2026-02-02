@@ -34,7 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { Loader2, MapPin, Paperclip, Home, CheckCircle } from "lucide-react";
+import { Loader2, MapPin, Paperclip, Home, CheckCircle, Lightbulb, Clock } from "lucide-react";
 import type { Profile, Profession, GlobalSettings } from "@/lib/types";
 import { Link } from "@/navigation";
 import { useTranslations, useLocale } from "next-intl";
@@ -45,12 +45,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { salaryGrid } from "@/lib/salary-grid";
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 export default function ProfilePage() {
   const t = useTranslations('ProfilePage');
   const tShared = useTranslations('Shared');
   const tGeo = useTranslations('TimeTrackingPage');
+  const tKnow = useTranslations('KnowYourRights');
   const locale = useLocale();
   
   const { user, isUserLoading } = useUser();
@@ -291,6 +293,33 @@ export default function ProfilePage() {
         return { baseDays: 0, senioritySurplus: 0, totalDays: 0 };
     }
   }, [profile?.leaveStartDate, profile?.hireDate]);
+
+  const seniorityInfo = useMemo(() => {
+    if (!profile?.hireDate) return null;
+
+    try {
+        const hireDate = new Date(profile.hireDate);
+        const now = new Date();
+        const seniorityYears = differenceInYears(now, hireDate);
+        const seniorityTotalMonths = differenceInMonths(now, hireDate);
+
+        const currentBonus = Math.floor(seniorityYears / 3) * 2;
+
+        const monthsIntoCurrentCycle = seniorityTotalMonths % 36;
+        const monthsUntilNextMilestone = 36 - monthsIntoCurrentCycle;
+        
+        const isMilestoneSoon = monthsUntilNextMilestone <= 6 && monthsUntilNextMilestone > 0;
+
+        return {
+            seniorityYears,
+            currentBonus,
+            monthsUntilNextMilestone,
+            isMilestoneSoon
+        };
+    } catch (e) {
+        return null;
+    }
+  }, [profile?.hireDate]);
 
   const handleConnectGoogle = async () => {
     if (!user) {
@@ -544,6 +573,38 @@ export default function ProfilePage() {
                 </Link>
             </CardContent>
           </Card>
+
+          {seniorityInfo && (
+            <Card>
+              <CardHeader className="flex-row items-center gap-2">
+                  <Lightbulb className="h-6 w-6 text-primary" />
+                  <CardTitle>{tKnow('title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">{tKnow('explanation')}</p>
+                  <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-green-500" />
+                          <span>{tKnow('benefitLeave')}</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-green-500" />
+                          <span>{tKnow('benefitSalary')}</span>
+                      </li>
+                  </ul>
+                  <div className="p-3 bg-muted/50 rounded-md">
+                      <p className="text-sm font-semibold">{tKnow('yourSituation', { years: seniorityInfo.seniorityYears, bonus: seniorityInfo.currentBonus })}</p>
+                  </div>
+                  {seniorityInfo.isMilestoneSoon && (
+                      <Alert className="bg-blue-950/50 border-blue-500/50 text-blue-300">
+                          <Clock className="h-4 w-4 text-blue-400" />
+                          <AlertTitle>{tKnow('milestoneSoonTitle')}</AlertTitle>
+                          <AlertDescription>{tKnow('milestoneSoonDescription', { months: seniorityInfo.monthsUntilNextMilestone })}</AlertDescription>
+                      </Alert>
+                  )}
+              </CardContent>
+            </Card>
+          )}
           
           <Card>
             <CardHeader>

@@ -1,3 +1,4 @@
+
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
@@ -602,5 +603,14 @@
     "deleteConfirmTitle": "Delete FAQ Item?",
     "deleteConfirmDescription": "Are you sure you want to delete this FAQ? This action cannot be undone.",
     "newFaqTitle": "New FAQ Item"
+  },
+  "KnowYourRights": {
+    "title": "Good to Know",
+    "explanation": "In Cameroon, loyalty is rewarded! For every 3 full years of seniority, you automatically receive:",
+    "benefitLeave": "+2 additional paid leave days per year.",
+    "benefitSalary": "Advancement of one echelon on your base salary (e.g., moving from echelon A to B).",
+    "yourSituation": "Your situation: You have {years, plural, one {# year} other {# years}} of seniority. You already benefit from {bonus} bonus days.",
+    "milestoneSoonTitle": "Something new is coming!",
+    "milestoneSoonDescription": "In {months, plural, one {# month} other {# months}}, your rights will be automatically updated."
   }
 }
