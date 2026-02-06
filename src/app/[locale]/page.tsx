@@ -364,10 +364,8 @@ export default function TimeTrackingPage() {
           // Calculate leave details
           const hireDate = parseISO(profile.hireDate);
           const seniorityYears = differenceInYears(today, hireDate);
-          let senioritySurplus = 0;
-          if (seniorityYears >= 5) {
-            senioritySurplus = 2 + Math.floor(Math.max(0, seniorityYears - 5) / 2) * 2;
-          }
+          let senioritySurplus = Math.floor(seniorityYears / 3) * 2;
+          
           const totalDays = 18 + senioritySurplus;
           const resumeDate = addWorkingDays(leaveStartDate, totalDays);
 
@@ -468,10 +466,13 @@ export default function TimeTrackingPage() {
 
     try {
         const docRef = await addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'timeEntries'), newEntry);
-        startTimer(docRef.id, now, shift.id);
-        toast({ title: t('timerStartedTitle'), description: locationString ? t('timerStartedLocationDescription', {location: locationString}) : t('timerStartedDescription') });
-        tryShowAd();
-        return docRef.id;
+        if (docRef) {
+            startTimer(docRef.id, now, shift.id);
+            toast({ title: t('timerStartedTitle'), description: locationString ? t('timerStartedLocationDescription', {location: locationString}) : t('timerStartedDescription') });
+            tryShowAd();
+            return docRef.id;
+        }
+        return null;
     } catch (error) {
         return null;
     }
