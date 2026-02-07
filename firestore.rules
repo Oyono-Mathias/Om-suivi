@@ -4,7 +4,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- FONCTIONS DE SÉCURITÉ ---
+    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -14,155 +14,84 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // SÉCURITÉ : Suppression de l'email en dur. La vérification du rôle est plus sûre.
+      // This function relies on a 'role' field in the user's profile document.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isApprovedInstructor() {
-      return isSignedIn() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'instructor' && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isInstructorApproved == true;
-    }
-
-    function isCourseOwner(courseId) {
-        return isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId;
-    }
-
-    function isStudentEnrolled(courseId) {
-        return isSignedIn() && exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId));
-    }
-
-    // --- ACCÈS PUBLICS (Lecture pour tous, même non connectés) ---
-    
-    match /settings/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    match /faqs/{faqId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /carousel_slides/{slideId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /course_templates/{templateId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /courses/{courseId} {
-      allow read: if true; // Les métadonnées du cours restent publiques
-      allow create: if isSignedIn() && (isApprovedInstructor() || isAdmin());
-      allow update: if isSignedIn() && (isCourseOwner(courseId) || isAdmin());
-      
-      // SÉCURITÉ : L'accès au contenu des sous-collections est maintenant restreint.
-      match /{allSubcollections=**} {
-        allow read: if isStudentEnrolled(courseId) || isCourseOwner(courseId) || isAdmin();
-        allow write: if isSignedIn() && (isCourseOwner(courseId) || isAdmin());
-      }
-    }
-
-    // SÉCURITÉ : La lecture des inscriptions est maintenant restreinte.
-    match /enrollments/{enrollmentId} {
-        allow read: if isSignedIn() && (isOwner(resource.data.studentId) || isCourseOwner(resource.data.courseId) || isAdmin());
-        allow create: if isSignedIn() && isOwner(request.resource.data.studentId);
-        allow update, delete: if isAdmin();
-    }
-
-    match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow update, delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.userId));
-    }
-
-    // --- ACCÈS RÉSERVÉS AUX MEMBRES CONNECTÉS ---
-
+    // --- User Data ---
     match /users/{userId} {
-      allow read: if isSignedIn(); 
-      // SÉCURITÉ : Assure qu'un utilisateur ne peut créer que son propre document.
+      // Users can read their own profile. Admins can read any profile.
+      allow get: if isOwner(userId) || isAdmin();
+      // Allow any signed-in user to read any profile for team features. This could be tightened if needed.
+      allow list: if isSignedIn();
+      // A user can create their own profile document.
       allow create: if isOwner(userId);
-      allow update: if isAdmin() || (
-        isOwner(userId) && 
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isInstructorApproved', 'permissions', 'status', 'email', 'uid'])
-      );
-
-      // Sous-collections PRIVÉES de l'utilisateur
-      match /notifications/{id} { allow read, write: if isOwner(userId); }
-      match /activity/{id} { allow read, write: if isOwner(userId); }
-      match /wishlist/{id} { allow read, write: if isOwner(userId); }
-      match /chatHistory/{id} { allow read, write: if isOwner(userId); }
+      // A user can update their own profile, but cannot change their role. Admins can update anything.
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
     }
 
-    match /course_progress/{progressId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == request.resource.data.userId || (resource != null && request.auth.uid == resource.data.userId));
+    // --- Time Entries: Only the user or an admin can access ---
+    match /users/{userId}/timeEntries/{timeEntryId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+    
+    // --- Attendance Overrides: Only admins can create/edit ---
+    match /users/{userId}/attendanceOverrides/{overrideId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
     }
 
-    match /roles/{roleId} {
+    // --- Notifications: User-specific ---
+    match /users/{userId}/notifications/{notificationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+    }
+    
+    // --- Leave Requests: User-specific ---
+    match /users/{userId}/leaveRequests/{leaveRequestId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+    }
+    
+    // --- Geofence Logs: Only user or admin can write/read ---
+    match /users/{userId}/workplaceUpdateLogs/{logId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // --- Teams: Readable by signed-in users, writable by admin ---
+    match /teams/{teamId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    match /payments/{paymentId} {
-      allow read: if isAdmin() || (isSignedIn() && (resource == null || isOwner(resource.data.userId)));
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow update: if isAdmin();
-    }
-
-    match /devoirs/{submissionId} {
-      allow read: if isSignedIn() && (isOwner(resource.data.studentId) || isCourseOwner(resource.data.courseId) || isAdmin());
-      allow create: if isSignedIn() && isOwner(request.resource.data.studentId);
-      // SÉCURITÉ : Seul l'étudiant, l'instructeur ou un admin peuvent modifier un devoir.
-      allow update: if isSignedIn() && (isOwner(resource.data.studentId) || isCourseOwner(resource.data.courseId) || isAdmin());
-    }
-
-    match /questions/{qId} {
+    // --- Global Settings: Publicly readable, admin-only write ---
+    match /settings/{settingId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      // SÉCURITÉ : Seul l'auteur ou un admin peuvent modifier une question.
-      allow update: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
+      allow write: if isAdmin();
     }
 
-    match /chats/{chatId} {
-      allow create: if isSignedIn();
-      allow read, update: if isSignedIn() && (request.auth.uid in resource.data.participants || isAdmin());
-      
-      match /messages/{msgId} {
-        allow read: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants || isAdmin());
-        allow create: if isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants);
-      }
+    // --- Announcements: Readable by signed-in users, writable by admin ---
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    // --- Leave Announcements: Readable by signed-in users, created by backend/admin ---
+    match /leaveAnnouncements/{announcementId} {
+        allow read: if isSignedIn();
+        allow create: if isAdmin(); 
     }
 
-    match /support_tickets/{ticketId} {
-      allow read: if isAdmin() || (isSignedIn() && isOwner(resource.data.userId));
-      allow create: if isSignedIn();
-      allow update: if isAdmin() || (isSignedIn() && isOwner(resource.data.userId));
-      
-      // SÉCURITÉ : Seul l'auteur du ticket ou un admin peuvent accéder aux messages.
-      match /messages/{msgId} {
-        allow read, write: if isAdmin() || isOwner(get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.userId);
-      }
+    // --- Absence Justifications: User creates/reads their own, admin reads all and updates ---
+    match /absenceJustifications/{justificationId} {
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow read: if (resource.data.userId == request.auth.uid) || isAdmin();
+        allow update: if isAdmin(); // Only admins can approve/reject
+        allow delete: if (resource.data.userId == request.auth.uid) || isAdmin();
     }
 
-    match /payouts/{payoutId} {
-      allow read, list: if isAdmin() || (isSignedIn() && isOwner(resource.data.instructorId));
-      allow create: if isSignedIn() && isApprovedInstructor() && isOwner(request.resource.data.instructorId);
-      allow update: if isAdmin();
-    }
-
-    match /resources/{resourceId} {
+    // --- FAQ: Publicly readable, admin-only write ---
+    match /faq/{faqId} {
       allow read: if true;
-      allow write: if isAdmin() || isApprovedInstructor();
+      allow write: if isAdmin();
     }
-
-    match /promoCodes/{codeId} { allow read: if isSignedIn(); allow write: if isAdmin(); }
-    match /security_logs/{logId} { allow read, write: if isAdmin(); }
-    match /admin_audit_logs/{logId} { allow read, write: if isAdmin(); }
-    // SÉCURITÉ : La création d'événements de suivi est réservée aux utilisateurs connectés.
-    match /tracking_events/{eventId} { allow create: if isSignedIn(); allow read: if isAdmin(); }
-    match /recommended_courses/{userId} { allow read: if isOwner(userId); }
   }
 }
