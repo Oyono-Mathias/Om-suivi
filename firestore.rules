@@ -28,32 +28,34 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       // A user can update their own profile, but cannot change their role. Admins can update anything.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
-    }
+      
+      // --- Subcollections ---
+      match /timeEntries/{timeEntryId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      match /attendanceOverrides/{overrideId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
+      }
 
-    // --- Time Entries: Only the user or an admin can access ---
-    match /users/{userId}/timeEntries/{timeEntryId} {
-      allow read, write: if isOwner(userId) || isAdmin();
-    }
-    
-    // --- Attendance Overrides: Only admins can create/edit ---
-    match /users/{userId}/attendanceOverrides/{overrideId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // --- Notifications: User-specific ---
-    match /users/{userId}/notifications/{notificationId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-    }
-    
-    // --- Leave Requests: User-specific ---
-    match /users/{userId}/leaveRequests/{leaveRequestId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-    }
-    
-    // --- Geofence Logs: Only user or admin can write/read ---
-    match /users/{userId}/workplaceUpdateLogs/{logId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+      match /notifications {
+        // Explicitly allow list for collection query
+        allow list: if isOwner(userId) || isAdmin();
+        
+        match /{notificationId} {
+            // Allow document-specific operations
+            allow get, write: if isOwner(userId) || isAdmin();
+        }
+      }
+      
+      match /leaveRequests/{leaveRequestId} {
+          allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      match /workplaceUpdateLogs/{logId} {
+          allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
     // --- Teams: Readable by signed-in users, writable by admin ---
