@@ -40,7 +40,8 @@ service cloud.firestore {
       }
 
       match /notifications/{notificationId} {
-        allow read, write: if request.auth.uid == userId;
+        // A user can list, read, and write (e.g., mark as read) their own notifications.
+        allow read, write: if isOwner(userId);
       }
       
       match /leaveRequests/{leaveRequestId} {
