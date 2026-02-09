@@ -39,14 +39,8 @@ service cloud.firestore {
         allow write: if isAdmin();
       }
 
-      match /notifications {
-        // Explicitly allow list for collection query
-        allow list: if isOwner(userId) || isAdmin();
-        
-        match /{notificationId} {
-            // Allow document-specific operations
-            allow get, write: if isOwner(userId) || isAdmin();
-        }
+      match /notifications/{notificationId} {
+        allow read, write: if request.auth.uid == userId;
       }
       
       match /leaveRequests/{leaveRequestId} {
