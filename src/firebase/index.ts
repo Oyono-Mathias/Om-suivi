@@ -23,9 +23,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
     auth: initializeAuth(firebaseApp, {
       persistence: indexedDBLocalPersistence
     }),
-    firestore: initializeFirestore(firebaseApp, {
-      experimentalForceLongPolling: true,
-    }),
+    firestore: initializeFirestore(firebaseApp, {}),
     storage: getStorage(firebaseApp)
   };
 }
