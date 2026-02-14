@@ -23,7 +23,9 @@ export function getSdks(firebaseApp: FirebaseApp) {
     auth: initializeAuth(firebaseApp, {
       persistence: indexedDBLocalPersistence
     }),
-    firestore: initializeFirestore(firebaseApp, {}),
+    firestore: initializeFirestore(firebaseApp, {
+      experimentalAutoDetectLongPolling: true,
+    }),
     storage: getStorage(firebaseApp)
   };
 }
