@@ -44,13 +44,7 @@ const TableRowItem = ({ label, base, rate, gain, deduction }: { label: string; b
     </tr>
 );
 
-interface PageProps {
-  params: {
-    userId: string;
-  };
-}
-
-export default function AdminUserBulletinPage({ params }: PageProps) {
+export default function AdminUserBulletinPage({ params }: any) {
     const { userId } = params;
     const t = useTranslations('BulletinPage');
     const tShared = useTranslations('Shared');
