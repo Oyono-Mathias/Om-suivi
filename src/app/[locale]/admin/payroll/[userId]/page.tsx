@@ -44,7 +44,8 @@ const TableRowItem = ({ label, base, rate, gain, deduction }: { label: string; b
     </tr>
 );
 
-export default function AdminUserBulletinPage({ params: { userId } }: { params: { userId: string } }) {
+export default function AdminUserBulletinPage({ params }: { params: { userId: string } }) {
+    const { userId } = params;
     const t = useTranslations('BulletinPage');
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');

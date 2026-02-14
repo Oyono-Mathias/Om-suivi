@@ -25,7 +25,8 @@ const DEFAULT_OVERTIME_RATES = {
   holiday: 1.5,
 };
 
-export default function AdminUserExportPage({ params: { userId } }: { params: { userId: string } }) {
+export default function AdminUserExportPage({ params }: { params: { userId: string } }) {
+    const { userId } = params;
     const t = useTranslations('ExportReportPage');
     const tShared = useTranslations('Shared');
     const tProfile = useTranslations('ProfilePage');
