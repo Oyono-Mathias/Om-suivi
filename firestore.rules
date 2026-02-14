@@ -40,8 +40,10 @@ service cloud.firestore {
       }
 
       match /notifications/{notificationId} {
-        // A user can list, read, and write (e.g., mark as read) their own notifications.
-        allow read, write: if isOwner(userId);
+        // A user can list, read, update and delete their own notifications.
+        allow list, read, update, delete: if isOwner(userId);
+        // An admin can create notifications for a user (e.g., for advancements).
+        allow create: if isAdmin();
       }
       
       match /leaveRequests/{leaveRequestId} {
