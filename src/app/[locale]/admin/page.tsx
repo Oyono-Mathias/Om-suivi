@@ -25,6 +25,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 
+// Explicitly type the props for the Link component to satisfy strict type checking
+type LinkProps = React.ComponentProps<typeof Link>;
+type AppPath = LinkProps['href'];
+
+interface AdminCard {
+    title: string;
+    description: string;
+    href?: AppPath;
+    icon: React.ElementType;
+    color: string;
+    bgColor: string;
+    action?: () => void;
+}
+
 
 function SalaryGridModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
     const t = useTranslations('AdminDashboardPage');
@@ -346,7 +360,7 @@ export default function AdminDashboardPage() {
     
     const activeEmployees = 0; 
     
-    const adminCards = [
+    const adminCards: AdminCard[] = [
         { title: t('personnelManagementTitle'), description: t('personnelManagementDescription'), href: '/admin/users', icon: Users, color: 'text-blue-500', bgColor: 'bg-blue-950' },
         { title: t('careerManagement.title'), description: t('careerManagement.description'), href: '/admin/career', icon: TrendingUp, color: 'text-indigo-400', bgColor: 'bg-indigo-950' },
         { title: t('liveTrackingTitle'), description: t('liveTrackingDescription'), href: '/admin/live', icon: Activity, color: 'text-green-500', bgColor: 'bg-green-950' },
