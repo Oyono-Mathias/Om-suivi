@@ -3,7 +3,7 @@ import AppShell from '@/components/app-shell';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getMessages } from 'next-intl/server';
 import { ShiftProvider } from '@/context/ShiftContext';
 import { AdProvider } from '@/context/AdContext';
 import { ReactNode } from 'react';
@@ -23,15 +23,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 };
 
-type Props = {
-  children: ReactNode;
-  params: {locale: string};
-};
-
 export default async function LocaleLayout({
   children,
-  params: { locale }
-}: Props) {
+  params
+}: any) {
+  const { locale } = params;
   const messages = await getMessages();
 
   return (
