@@ -26,8 +26,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Switch } from '@/components/ui/switch';
 
 // Explicitly type the props for the Link component to satisfy strict type checking
-type LinkProps = React.ComponentProps<typeof Link>;
-type AppPath = LinkProps['href'];
+type AppPath = any;
 
 interface AdminCard {
     title: string;
@@ -424,3 +423,5 @@ export default function AdminDashboardPage() {
         </div>
     );
 }
+
+    
