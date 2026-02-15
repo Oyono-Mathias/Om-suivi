@@ -55,6 +55,12 @@ export interface OvertimeRates {
     holiday: number;
 }
 
+export interface SalaryGridEntry {
+  category: string;
+  echelon: string;
+  sm: number;
+}
+
 export interface GlobalSettings {
     id: string;
     autoClockInEnabled: boolean;
@@ -66,6 +72,7 @@ export interface GlobalSettings {
     workLatitude?: number;
     workLongitude?: number;
     workplaceName?: string;
+    salaryGrid?: SalaryGridEntry[];
 }
 
 export interface AttendanceOverride {
