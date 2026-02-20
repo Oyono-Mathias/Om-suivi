@@ -161,7 +161,7 @@ export default function ProfilePage() {
 
   // Effect for user-configurable reminders
   useEffect(() => {
-    if (!profile?.reminders?.enabled || !profile.reminders.time) {
+    if (!profile || !profile.reminders || !profile.reminders.enabled || !profile.reminders.time) {
       return;
     }
 
@@ -171,7 +171,7 @@ export default function ProfilePage() {
       const now = new Date();
       const currentTime = format(now, 'HH:mm');
 
-      if (currentTime === profile.reminders.time && Notification.permission === 'granted' && navigator.serviceWorker) {
+      if (profile.reminders && currentTime === profile.reminders.time && Notification.permission === 'granted' && navigator.serviceWorker) {
         navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification(t('reminders.notificationTitle'), {
                 body: t('reminders.notificationBody'),
@@ -192,7 +192,7 @@ export default function ProfilePage() {
         clearInterval(intervalId);
       }
     };
-  }, [profile?.reminders, t]);
+  }, [profile, t]);
 
   // Effect for fixed shift-start reminders
   useEffect(() => {
@@ -731,3 +731,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
