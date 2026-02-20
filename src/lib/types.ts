@@ -31,6 +31,22 @@ export interface Profile {
   googleRefreshToken?: string;
 }
 
+export interface TimeEntry {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  overtimeDuration: number;
+  location?: string;
+  shiftId: string;
+  isPublicHoliday?: boolean;
+  userProfileId: string;
+  profession: Profession;
+  modified_manually?: boolean;
+  stopContext?: 'work_zone' | 'home_zone' | 'timeout' | 'manual' | 'mission_ended' | 'admin_edit';
+}
+
 export interface OvertimeRates {
     tier1: number;
     tier2: number;
