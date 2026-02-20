@@ -55,7 +55,7 @@ function AdminReportsPageContent() {
                         allProfiles.map(profile => {
                             const userAvatar = avatarPlaceholders.length > 0 ? avatarPlaceholders[simpleHash(profile.id) % avatarPlaceholders.length] : null;
                             return (
-                                <Link key={profile.id} href={`/admin/reports/${profile.id}`}>
+                                <Link key={profile.id} href={{ pathname: '/admin/reports/[userId]', params: { userId: profile.id } }}>
                                     <Card className="flex items-center p-4 gap-4 cursor-pointer hover:bg-muted/50 transition-colors h-full">
                                         <Avatar className="h-12 w-12">
                                             <AvatarImage src={userAvatar?.imageUrl} data-ai-hint={userAvatar?.imageHint} alt={profile.name} />
