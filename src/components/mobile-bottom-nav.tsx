@@ -6,7 +6,7 @@ import { BarChart3, Clock, Newspaper } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-const NavLink = ({ href, icon: Icon, label, isActive }: { href: string; icon: React.ElementType; label: string; isActive: boolean }) => (
+const NavLink = ({ href, icon: Icon, label, isActive }: { href: any; icon: React.ElementType; label: string; isActive: boolean }) => (
   <Link href={href} className="flex flex-col items-center justify-center gap-1 h-full flex-1">
     <div className={cn("p-3 rounded-full transition-all duration-200", isActive ? "bg-primary/10" : "")}>
         <Icon className={cn("transition-transform duration-200", isActive ? "h-6 w-6 text-primary scale-110" : "h-5 w-5 text-muted-foreground")} />
