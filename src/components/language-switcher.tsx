@@ -25,7 +25,7 @@ export default function LanguageSwitcher() {
 
 
   const onSelectChange = (value: string) => {
-    router.replace(pathname, { locale: value });
+    router.replace(pathname as any, { locale: value });
   };
 
   if (!isClient) {
