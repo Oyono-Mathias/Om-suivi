@@ -7,24 +7,6 @@ export type Shift = {
 
 export type Profession = 'machinist' | 'storekeeper' | 'deliveryDriver' | 'chauffeur' | 'securityAgent' | 'other';
 
-export interface TimeEntry {
-  id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  duration: number; // in minutes
-  overtimeDuration: number; // in minutes
-  location?: string;
-  shiftId: string;
-  isPublicHoliday?: boolean;
-  userProfileId: string;
-  profession: Profession;
-  modified_manually?: boolean;
-  modification_reason?: 'admin_edit';
-  notes?: string;
-  stopContext?: 'work_zone' | 'home_zone' | 'timeout' | 'manual' | 'mission_ended' | 'admin_edit';
-}
-
 export interface Profile {
   id: string;
   email: string;
@@ -45,6 +27,8 @@ export interface Profile {
   homeLatitude?: number;
   homeLongitude?: number;
   fcmToken?: string;
+  googleCalendarConnected?: boolean;
+  googleRefreshToken?: string;
 }
 
 export interface OvertimeRates {
