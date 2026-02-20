@@ -161,7 +161,7 @@ export default function ProfilePage() {
 
   // Effect for user-configurable reminders
   useEffect(() => {
-    if (!profile || !profile.reminders || !profile.reminders.enabled || !profile.reminders.time) {
+    if (!profile || !profile.reminders || !profile.reminders.enabled) {
       return;
     }
 
@@ -171,7 +171,7 @@ export default function ProfilePage() {
       const now = new Date();
       const currentTime = format(now, 'HH:mm');
 
-      if (profile.reminders && currentTime === profile.reminders.time && Notification.permission === 'granted' && navigator.serviceWorker) {
+      if (profile.reminders && profile.reminders.enabled && currentTime === profile.reminders.time && Notification.permission === 'granted' && navigator.serviceWorker) {
         navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification(t('reminders.notificationTitle'), {
                 body: t('reminders.notificationBody'),
@@ -366,7 +366,7 @@ export default function ProfilePage() {
       <div className="flex flex-col justify-center items-center h-screen gap-4">
         <p className="text-xl">{tShared('pleaseLogin')}</p>
         <Link href="/login">
-            <Button>{tShared('loginButton')}</Button>
+            <Button>{tShared('goToProfileButton')}</Button>
         </Link>
       </div>
     );
@@ -732,4 +732,3 @@ export default function ProfilePage() {
   );
 }
 
-    
