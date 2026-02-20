@@ -11,17 +11,6 @@ export const requestNotificationPermission = async (userId: string, firestore: F
     console.log('This browser does not support notifications or service workers.');
     return;
   }
-  
-  if (VAPID_KEY === 'YOUR_VAPID_KEY_HERE') {
-    console.error(
-      "================================\n" +
-      "ATTENTION: Clé VAPID manquante.\n" +
-      "Veuillez mettre à jour la constante VAPID_KEY dans src/lib/firebase-messaging.ts.\n" +
-      "Les notifications ne fonctionneront pas sans cette clé.\n" +
-      "================================"
-    );
-    return;
-  }
 
   try {
     const permission = await Notification.requestPermission();
