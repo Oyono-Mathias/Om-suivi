@@ -47,12 +47,13 @@
     "genkit": "^1.20.0",
     "googleapis": "^142.0.0",
     "lucide-react": "^0.475.0",
-    "next": "15.5.9",
+    "next": "14.2.4",
     "next-intl": "^3.15.3",
     "patch-package": "^8.0.0",
-    "react": "^19.2.1",
+    "react": "18.2.0",
     "react-confetti": "^6.1.0",
-    "react-dom": "^19.2.1",
+    "react-day-picker": "8.10.1",
+    "react-dom": "18.2.0",
     "react-hook-form": "^7.54.2",
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
@@ -60,12 +61,18 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/react": "^19.2.1",
+    "@types/react": "18.2.75",
     "@types/node": "^20",
-    "@types/react-dom": "^19.2.1",
+    "@types/react-dom": "18.2.24",
     "genkit-cli": "^1.20.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "react": "18.2.0",
+    "@types/react": "18.2.75",
+    "react-dom": "18.2.0",
+    "@types/react-dom": "18.2.24"
   }
 }
