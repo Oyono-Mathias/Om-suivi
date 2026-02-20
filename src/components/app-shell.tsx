@@ -42,6 +42,14 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { requestNotificationPermission } from "@/lib/firebase-messaging";
 import AdvancementDialog from "./advancement-dialog";
 
+type AppPath = any;
+interface NavItem {
+  href: AppPath;
+  label: string;
+  icon: React.ElementType;
+  badge?: number;
+}
+
 function NotificationHandler() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -121,17 +129,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
   
-  const mainNavItems = [
+  const mainNavItems: NavItem[] = [
     { href: "/", label: t('timeTracking'), icon: Clock },
     { href: "/reports", label: t('reports'), icon: BarChart3 },
     { href: "/bulletin", label: t('bulletin'), icon: Newspaper },
   ];
-  const secondaryNavItems = [
+  const secondaryNavItems: NavItem[] = [
     { href: "/team", label: t('team'), icon: Users },
     { href: "/profile", label: t('settings'), icon: Settings },
     { href: "/faq", label: t('faq'), icon: HelpCircle },
   ];
-  const adminNavItems = [{ 
+  const adminNavItems: NavItem[] = [{ 
     href: "/admin", 
     label: t('administration'), 
     icon: Shield,
