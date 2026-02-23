@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -14,19 +13,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // This function relies on a 'role' field in the user's profile document.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // --- User Data ---
     match /users/{userId} {
-      // Users can read their own profile. Admins can read any profile.
       allow get: if isOwner(userId) || isAdmin();
-      // Allow any signed-in user to read any profile for team features. This could be tightened if needed.
       allow list: if isSignedIn();
-      // A user can create their own profile document.
       allow create: if isOwner(userId);
-      // A user can update their own profile, but cannot change their role. Admins can update anything.
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
       
       // --- Subcollections ---
@@ -40,7 +34,8 @@ service cloud.firestore {
       }
 
       match /notifications/{notificationId} {
-        allow read, write: if request.auth.uid == userId;
+        // CORRECTION : Ajout de 'list' pour permettre l'affichage de la liste des notifs
+        allow read, write, list: if isOwner(userId);
       }
       
       match /leaveRequests/{leaveRequestId} {
@@ -52,39 +47,36 @@ service cloud.firestore {
       }
     }
 
-    // --- Teams: Readable by signed-in users, writable by admin ---
+    // --- Teams ---
     match /teams/{teamId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    // --- Global Settings: Publicly readable, admin-only write ---
+    // --- Global Settings ---
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // --- Announcements: Readable by signed-in users, writable by admin ---
+    // --- Announcements ---
     match /announcements/{announcementId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
     
-    // --- Leave Announcements: Readable by signed-in users, created by backend/admin ---
     match /leaveAnnouncements/{announcementId} {
         allow read: if isSignedIn();
         allow create: if isAdmin(); 
     }
 
-    // --- Absence Justifications: User creates/reads their own, admin reads all and updates ---
     match /absenceJustifications/{justificationId} {
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow read: if (resource.data.userId == request.auth.uid) || isAdmin();
-        allow update: if isAdmin(); // Only admins can approve/reject
+        allow update: if isAdmin();
         allow delete: if (resource.data.userId == request.auth.uid) || isAdmin();
     }
 
-    // --- FAQ: Publicly readable, admin-only write ---
     match /faq/{faqId} {
       allow read: if true;
       allow write: if isAdmin();
