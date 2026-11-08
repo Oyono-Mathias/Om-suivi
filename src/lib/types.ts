@@ -1,3 +1,5 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type Shift = {
   id: string;
   name: string;
@@ -22,8 +24,8 @@ export interface Profile {
   monthlyBaseSalary: number;
   currency: string;
   createdAt: any; // serverTimestamp
-  hireDate?: string; // YYYY-MM-DD
-  leaveStartDate?: string; // YYYY-MM-DD
+  hireDate?: string | Timestamp; // Server timestamp at registration; legacy records may be YYYY-MM-DD
+  leaveStartDate?: string | Timestamp; // Server timestamp at registration; legacy records may be YYYY-MM-DD
   category?: string; // e.g., 'III'
   echelon?: string; // e.g., 'A'
   reminders?: {
