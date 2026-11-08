@@ -34,6 +34,45 @@ const oauth2Client = new google.auth.OAuth2(
 const scopes = ["https://www.googleapis.com/auth/calendar.events"];
 
 /**
+ * One-time migration for the employee directory.
+ * Copies only non-sensitive fields from /users into /publicProfiles.
+ */
+export const syncPublicProfiles = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Authentication is required.");
+  }
+
+  const adminSnapshot = await db.collection("users").doc(uid).get();
+  if (adminSnapshot.data()?.role !== "admin") {
+    throw new HttpsError("permission-denied", "Administrator access is required.");
+  }
+
+  const usersSnapshot = await db.collection("users").get();
+  let synced = 0;
+
+  for (let offset = 0; offset < usersSnapshot.docs.length; offset += 400) {
+    const batch = db.batch();
+    const chunk = usersSnapshot.docs.slice(offset, offset + 400);
+
+    for (const userDoc of chunk) {
+      const userData = userDoc.data();
+      batch.set(db.collection("publicProfiles").doc(userDoc.id), {
+        id: userDoc.id,
+        name: typeof userData.name === "string" ? userData.name : "Membre",
+        profession: typeof userData.profession === "string" ? userData.profession : "other",
+      });
+    }
+
+    await batch.commit();
+    synced += chunk.length;
+  }
+
+  logger.info("Synchronized public employee profiles.", { adminUid: uid, synced });
+  return { synced };
+});
+
+/**
  * 1. `authGoogle` (Callable Function)
  * Generates an authorization URL for the user to grant calendar access.
  */
