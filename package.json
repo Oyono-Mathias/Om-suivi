@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "ship": "vercel --prod",
     "test:rules": "node --test tests/firestore.rules.test.mjs",
-    "test:business": "node --test tests/time-calculations.test.mjs tests/payroll-calculations.test.mjs"
+    "test:business": "node --test tests/time-calculations.test.mjs tests/payroll-calculations.test.mjs tests/leave-calculations.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.4",
