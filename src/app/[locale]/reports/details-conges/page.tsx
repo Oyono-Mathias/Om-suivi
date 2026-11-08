@@ -142,7 +142,7 @@ export default function DetailCongesScreen() {
                     const totalOvertimePayout = overtimeBreakdown.tier1.payout; // Simplified
 
                     const workedDays = new Set(monthData.entries.map(e => e.date));
-                    const sickLeaveDays = new Set(monthData.overrides.filter(o => o.status === 'sick_leave').map(o => o.id));
+                    const sickLeaveDays = new Set(monthData.overrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
                     const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
                     const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
