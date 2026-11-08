@@ -330,13 +330,14 @@ test('absence justifications cannot self-approve or be removed by their owner', 
     status: 'approved',
     submittedAt: serverTimestamp(),
   }));
-  await assertFails(setDoc(doc(employeeDb, 'absenceJustifications/forged-name'), {
+  await assertFails(setDoc(doc(employeeDb, 'absenceJustifications/extra-field'), {
     userId: 'employee-1',
-    userName: 'Administrateur',
+    userName: 'Employé',
     absenceDate: '2026-11-08',
     imageUrl: 'https://firebasestorage.googleapis.com/example.png',
     status: 'pending',
     submittedAt: serverTimestamp(),
+    approvedBy: 'employee-1',
   }));
 });
 
