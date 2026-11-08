@@ -31,6 +31,10 @@ jobs:
           cache: npm
       - name: Install web dependencies
         run: npm ci
+      - name: Apply non-breaking dependency security updates
+        run: |
+          npm audit fix --no-fund --no-progress || true
+          npm ci
       - name: Audit web dependencies (full and production)
         run: |
           npm audit --json > "$RUNNER_TEMP/npm-audit-full.json" || true
@@ -52,6 +56,18 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+      - name: Commit updated web lockfile on the stabilization branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/om-suivi-foundation-stability'
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "Web lockfile is already synchronized."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(web): apply compatible dependency security updates"
+            git push
+          fi
 
   functions:
     name: Firebase Functions compile
