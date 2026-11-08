@@ -82,6 +82,8 @@ jobs:
           npm ci --no-audit --no-fund
       - name: Compile Functions
         run: npm run build
+      - name: Test trusted attendance calculations
+        run: npm run test:attendance
       - name: Upload regenerated Functions lockfile
         uses: actions/upload-artifact@v4
         with:
