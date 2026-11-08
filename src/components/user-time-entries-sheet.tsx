@@ -416,7 +416,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntries
                                             </TableCell>
                                             <TableCell>
                                                  <Badge
-                                                    variant={override?.status === 'unjustified_absence' ? 'destructive' : 'default'}
+                                                    variant={override?.status === 'sick_leave' || override?.status === 'paid_leave' ? 'default' : 'destructive'}
                                                     className={override?.status === 'sick_leave' ? "bg-blue-500 hover:bg-blue-600" : override?.status === 'paid_leave' ? "bg-emerald-600 hover:bg-emerald-700" : ""}
                                                 >
                                                     {override?.status === 'sick_leave' ? (
