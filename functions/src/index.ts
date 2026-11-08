@@ -100,7 +100,7 @@ export const authGoogleCallback = onRequest({ cors: true }, async (req, res) => 
  * 3. `onTimeEntryEndCreateEvent` (Firestore Trigger)
  * Creates a calendar event automatically when a shift's endTime is added.
  */
-export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeEntries/{timeEntryId}", async (event) => {
+export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeEntries/{timeEntryId}", async (firestoreEvent) => {
   if (!firestoreEvent.data) {
     return; // Document was deleted, do nothing
   }
