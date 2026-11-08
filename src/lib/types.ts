@@ -52,6 +52,7 @@ export interface TimeEntry {
   profession: Profession;
   modified_manually?: boolean;
   stopContext?: 'work_zone' | 'home_zone' | 'timeout' | 'manual' | 'mission_ended' | 'admin_edit';
+  stopRequestedAt?: Timestamp;
 }
 
 export interface OvertimeRates {
