@@ -42,7 +42,7 @@ service cloud.firestore {
     function hasValidTimeEntry(userId) {
       let data = request.resource.data;
       return data.keys().hasAll(['date', 'startTime', 'endTime', 'duration', 'overtimeDuration', 'shiftId', 'userProfileId', 'profession'])
-        && data.keys().hasOnly(['date', 'startTime', 'endTime', 'duration', 'overtimeDuration', 'shiftId', 'userProfileId', 'profession', 'location', 'isPublicHoliday', 'modified_manually', 'modification_reason', 'stopContext'])
+        && data.keys().hasOnly(['date', 'startTime', 'endTime', 'duration', 'overtimeDuration', 'shiftId', 'userProfileId', 'profession', 'location', 'isPublicHoliday', 'modified_manually', 'modification_reason', 'stopContext', 'stopRequestedAt'])
         && data.userProfileId == userId
         && data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && data.startTime is string && data.startTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
@@ -50,12 +50,14 @@ service cloud.firestore {
         && data.duration is number && data.duration >= 0 && data.duration <= 1440
         && data.overtimeDuration is number && data.overtimeDuration >= 0 && data.overtimeDuration <= data.duration
         && data.shiftId is string && data.shiftId.size() > 0 && data.shiftId.size() <= 64
+        && data.shiftId in ['morningA', 'morningB', 'afternoon', 'night']
         && isValidProfession(data.profession)
         && (!('location' in data) || (data.location is string && data.location.size() <= 120))
         && (!('isPublicHoliday' in data) || data.isPublicHoliday is bool)
         && (!('modified_manually' in data) || data.modified_manually is bool)
         && (!('modification_reason' in data) || (data.modification_reason is string && data.modification_reason.size() <= 200))
-        && (!('stopContext' in data) || data.stopContext in ['work_zone', 'home_zone', 'timeout', 'manual', 'mission_ended', 'admin_edit']);
+        && (!('stopContext' in data) || data.stopContext in ['work_zone', 'home_zone', 'timeout', 'manual', 'mission_ended', 'admin_edit'])
+        && (!('stopRequestedAt' in data) || data.stopRequestedAt is timestamp);
     }
 
     // --- User Data ---
@@ -80,14 +82,36 @@ service cloud.firestore {
       // --- Subcollections ---
       match /timeEntries/{timeEntryId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create: if (isOwner(userId) || isAdmin()) && hasValidTimeEntry(userId);
+        allow create: if hasValidTimeEntry(userId) && (
+          isAdmin()
+          || (isOwner(userId) && (
+            (
+              request.resource.data.endTime == ''
+              && request.resource.data.duration == 0
+              && request.resource.data.overtimeDuration == 0
+              && (!('modified_manually' in request.resource.data) || request.resource.data.modified_manually == false)
+              && (!('isPublicHoliday' in request.resource.data) || request.resource.data.isPublicHoliday == false)
+            )
+            || (
+              request.resource.data.endTime != ''
+              && request.resource.data.duration == 0
+              && request.resource.data.overtimeDuration == 0
+              && request.resource.data.modified_manually == true
+              && request.resource.data.location == 'Manual'
+              && request.resource.data.stopContext == 'manual'
+              && (!('isPublicHoliday' in request.resource.data) || request.resource.data.isPublicHoliday == false)
+            )
+          ))
+        );
         allow update: if isAdmin()
           ? hasValidTimeEntry(userId)
           : isOwner(userId)
             && resource.data.endTime == ''
+            && !('stopRequestedAt' in resource.data)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'endTime', 'duration', 'overtimeDuration', 'location', 'stopContext'
+              'stopRequestedAt', 'location', 'stopContext'
             ])
+            && request.resource.data.stopRequestedAt == request.time
             && hasValidTimeEntry(userId);
         allow delete: if isAdmin();
       }
