@@ -233,56 +233,203 @@ export const authGoogleCallback = onRequest({ secrets: googleOAuthSecrets }, asy
  * 3. `onTimeEntryEndCreateEvent` (Firestore Trigger)
  * Creates a calendar event automatically when a shift's endTime is added.
  */
+const SHIFT_END_TIMES: Record<string, string> = {
+  morningA: "14:15",
+  morningB: "16:15",
+  afternoon: "22:15",
+  night: "06:15",
+};
+
+function parseClockMinutes(value: unknown): number | null {
+  if (typeof value !== "string" || !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+    return null;
+  }
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function localDateTimeToUtcMillis(dateValue: string, timeValue: string): number {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  // Africa/Douala is UTC+1.
+  return Date.UTC(year, month - 1, day, hours - 1, minutes);
+}
+
+function addLocalDay(dateValue: string): string {
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function getDoualaDateAndTime(value: Date): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Douala",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return {
+    date: `${part("year")}-${part("month")}-${part("day")}`,
+    time: `${part("hour")}:${part("minute")}`,
+  };
+}
+
+function calculateTrustedDurations(
+  entry: Record<string, any>,
+  endDate: string,
+  endTime: string,
+  breakDurationMinutes: number,
+  eligibleForOvertime: boolean
+): { duration: number; overtimeDuration: number } | null {
+  const startMinutes = parseClockMinutes(entry.startTime);
+  const endMinutes = parseClockMinutes(endTime);
+  const scheduledEndTime = SHIFT_END_TIMES[String(entry.shiftId)];
+  const scheduledEndMinutes = parseClockMinutes(scheduledEndTime);
+  if (startMinutes === null || endMinutes === null || scheduledEndMinutes === null) {
+    return null;
+  }
+
+  const startUtc = localDateTimeToUtcMillis(String(entry.date), String(entry.startTime));
+  const endUtc = localDateTimeToUtcMillis(endDate, endTime);
+  let totalDuration = Math.floor((endUtc - startUtc) / 60_000);
+  if (totalDuration <= 0 || totalDuration > 24 * 60) return null;
+
+  let scheduledEndUtc = localDateTimeToUtcMillis(String(entry.date), scheduledEndTime);
+  if (scheduledEndUtc <= startUtc) scheduledEndUtc += 24 * 60 * 60 * 1000;
+
+  const safeBreak = Math.min(
+    totalDuration,
+    Math.max(0, Number.isFinite(breakDurationMinutes) ? breakDurationMinutes : 0)
+  );
+  const duration = Math.max(0, totalDuration > 6 * 60 ? totalDuration - safeBreak : totalDuration);
+  const rawOvertime = eligibleForOvertime && endUtc > scheduledEndUtc
+    ? Math.floor((endUtc - scheduledEndUtc) / 60_000)
+    : 0;
+
+  return {
+    duration,
+    overtimeDuration: Math.min(duration, Math.max(0, rawOvertime)),
+  };
+}
+
+/**
+ * The client can request that a shift be stopped, but cannot write its end
+ * time or payroll durations. This trigger calculates them from server event
+ * time. User-entered manual shifts are also recalculated before payroll use.
+ */
 export const onTimeEntryEndCreateEvent = onDocumentWritten({
   document: "users/{userId}/timeEntries/{timeEntryId}",
   secrets: googleOAuthSecrets,
 }, async (firestoreEvent) => {
-  if (!firestoreEvent.data) {
-    return; // Document was deleted, do nothing
-  }
+  if (!firestoreEvent.data) return;
 
   const beforeData = firestoreEvent.data.before.data();
   const afterData = firestoreEvent.data.after.data();
+  if (!afterData) return;
 
-  // Trigger only when a shift has just ended (endTime was empty/null before, and now has a value)
-  if (!afterData || beforeData?.endTime || !afterData.endTime) {
-    return;
-  }
+  const isStopRequest = Boolean(afterData.stopRequestedAt) && !beforeData?.stopRequestedAt;
+  const isManualEntryCreation = !beforeData
+    && afterData.modified_manually === true
+    && afterData.location === "Manual"
+    && typeof afterData.endTime === "string"
+    && afterData.endTime.length > 0;
+
+  if (!isStopRequest && !isManualEntryCreation) return;
 
   const { userId, timeEntryId } = firestoreEvent.params;
   const userRef = db.collection("users").doc(userId);
-  const userDoc = await userRef.get();
-  const userData = userDoc.data();
+  const [userSnapshot, settingsSnapshot] = await Promise.all([
+    userRef.get(),
+    db.collection("settings").doc("global").get(),
+  ]);
+  const userData = userSnapshot.data();
+  if (!userData) {
+    logger.error("Cannot calculate shift for missing user profile.", { userId, timeEntryId });
+    return;
+  }
+
+  let endDate: string;
+  let endTime: string;
+  if (isStopRequest) {
+    const eventDate = new Date(firestoreEvent.time);
+    const startUtc = localDateTimeToUtcMillis(String(afterData.date), String(afterData.startTime));
+    if (startUtc > eventDate.getTime() + 60_000) {
+      logger.warn("Rejected a shift stop request with a future start time.", { userId, timeEntryId });
+      return;
+    }
+    const localEnd = getDoualaDateAndTime(eventDate);
+    endDate = localEnd.date;
+    endTime = localEnd.time;
+  } else {
+    endTime = String(afterData.endTime);
+    endDate = String(afterData.date);
+    const startMinutes = parseClockMinutes(afterData.startTime);
+    const endMinutes = parseClockMinutes(endTime);
+    if (startMinutes === null || endMinutes === null) {
+      logger.warn("Rejected a manual time entry with an invalid clock value.", { userId, timeEntryId });
+      return;
+    }
+    if (endMinutes <= startMinutes) endDate = addLocalDay(endDate);
+  }
+
+  const eligibleForOvertime = [
+    "storekeeper",
+    "deliveryDriver",
+    "chauffeur",
+    "machinist",
+  ].includes(String(userData.profession));
+  const calculated = calculateTrustedDurations(
+    afterData,
+    endDate,
+    endTime,
+    Number(settingsSnapshot.data()?.breakDuration ?? 0),
+    eligibleForOvertime
+  );
+  if (!calculated) {
+    logger.warn("Rejected an invalid or overlong time entry.", { userId, timeEntryId });
+    return;
+  }
+
+  await firestoreEvent.data.after.ref.update({
+    endTime,
+    duration: calculated.duration,
+    overtimeDuration: calculated.overtimeDuration,
+  });
+  logger.info("Calculated trusted shift duration.", {
+    userId,
+    timeEntryId,
+    duration: calculated.duration,
+    overtimeDuration: calculated.overtimeDuration,
+  });
+
+  if (!userData.googleCalendarConnected) return;
+
   const tokenDoc = await db.collection("googleCalendarTokens").doc(userId).get();
   const refreshToken = tokenDoc.data()?.refreshToken;
-
-  if (!userData?.googleCalendarConnected || typeof refreshToken !== "string" || !refreshToken) {
-    logger.log("User has not connected Google Calendar, skipping event creation.", { userId });
+  if (typeof refreshToken !== "string" || !refreshToken) {
+    logger.log("Google Calendar token is unavailable; skipping event creation.", { userId });
     return;
   }
 
   const oauth2Client = createOAuth2Client();
   oauth2Client.setCredentials({ refresh_token: refreshToken });
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
-
   const calendarEvent = {
     summary: `${userData.name} - OM-Suivi: ${afterData.shiftId}`,
     description: "Récapitulatif de session enregistré via l'application OM-Suivi.",
     start: {
-      dateTime: new Date(`${afterData.date}T${afterData.startTime}`).toISOString(),
+      dateTime: `${afterData.date}T${afterData.startTime}:00`,
       timeZone: "Africa/Douala",
     },
     end: {
-      dateTime: new Date(`${afterData.date}T${afterData.endTime}`).toISOString(),
+      dateTime: `${endDate}T${endTime}:00`,
       timeZone: "Africa/Douala",
     },
   };
-
-  if (new Date(calendarEvent.end.dateTime) < new Date(calendarEvent.start.dateTime)) {
-      const endDate = new Date(calendarEvent.end.dateTime);
-      endDate.setDate(endDate.getDate() + 1);
-      calendarEvent.end.dateTime = endDate.toISOString();
-  }
 
   try {
     await calendar.events.insert({
@@ -292,13 +439,12 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
     logger.info("Successfully created calendar event for user.", { userId, timeEntryId });
   } catch (error) {
     logger.error("Error creating calendar event:", { userId, error });
-    // If the token is invalid (e.g., revoked by user), disconnect the integration.
     if ((error as any).code === 401 || (error as any).response?.status === 401) {
-        await Promise.all([
-          userRef.update({ googleCalendarConnected: false }),
-          tokenDoc.ref.delete(),
-        ]);
-        logger.warn("Removed invalid Google refresh token for user.", { userId });
+      await Promise.all([
+        userRef.update({ googleCalendarConnected: false }),
+        tokenDoc.ref.delete(),
+      ]);
+      logger.warn("Removed invalid Google refresh token for user.", { userId });
     }
   }
 });
