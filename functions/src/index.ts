@@ -601,7 +601,9 @@ export const checkActiveShifts = onSchedule("every 15 minutes", async (event) =>
 
   const tasks = activeEntriesSnapshot.docs.map(async (doc) => {
     const entry = doc.data();
-    const startTime = new Date(`${entry.date}T${entry.startTime}`);
+    const startTime = entry.serverStartedAt?.toDate
+      ? entry.serverStartedAt.toDate()
+      : new Date(`${entry.date}T${entry.startTime}`);
     const durationMs = now.getTime() - startTime.getTime();
 
     if (durationMs > EIGHT_HOURS_FIFTEEN_MINUTES_MS) {
