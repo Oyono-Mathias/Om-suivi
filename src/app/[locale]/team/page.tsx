@@ -128,6 +128,7 @@ export default function TeamPage() {
     return doc(firestore, 'users', authUser.uid);
   }, [firestore, authUser]);
   const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<Profile>(currentUserProfileRef);
+  const isAdmin = currentUserProfile?.role === 'admin';
 
   const managingUserProfileRef = useMemoFirebase(() => {
     if (!isAdmin || !managingUser) return null;
@@ -144,8 +145,6 @@ export default function TeamPage() {
     return query(collection(firestore, 'leaveAnnouncements'), where('leaveStartDate', '==', todayStr));
   }, [firestore]);
   const { data: leaveAnnouncements, isLoading: isLoadingLeaveAnnouncements } = useCollection<LeaveAnnouncement>(leaveAnnouncementsQuery);
-
-  const isAdmin = currentUserProfile?.role === 'admin';
 
   const announcementSchema = z.object({
     message: z.string().min(1, { message: "Message cannot be empty." }),
