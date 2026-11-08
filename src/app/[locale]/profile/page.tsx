@@ -227,13 +227,16 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
+      const professionToSave = profile?.role === 'admin'
+        ? values.profession
+        : profile?.profession ?? values.profession;
       const dataToSave: Partial<z.output<typeof profileSchema>> = {
         name: values.name,
-        profession: values.profession,
         reminders: values.reminders,
         homeLatitude: values.homeLatitude,
         homeLongitude: values.homeLongitude,
         ...(profile?.role === 'admin' ? {
+          profession: professionToSave,
           monthlyBaseSalary: values.monthlyBaseSalary,
           category: values.category,
           echelon: values.echelon,
@@ -253,7 +256,7 @@ export default function ProfilePage() {
       await setDoc(doc(firestore, 'publicProfiles', user.uid), {
         id: user.uid,
         name: values.name,
-        profession: values.profession,
+        profession: professionToSave,
       }, { merge: true });
       toast({
         title: t('settingsUpdatedTitle'),
@@ -434,7 +437,7 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('professionLabel')}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={profile?.role !== 'admin'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={t('professionPlaceholder')} />
