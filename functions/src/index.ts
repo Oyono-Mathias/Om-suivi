@@ -5,6 +5,7 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { google } from "googleapis";
 import { logger } from "firebase-functions";
+import { defineSecret } from "firebase-functions/params";
 
 // Initialize Firebase Admin SDK
 try {
@@ -17,19 +18,21 @@ const db = admin.firestore();
 
 // --- Google Calendar Integration ---
 
-// TODO: Set these environment variables in your Firebase project settings
-// You can get these from the Google Cloud Console for your project.
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-// This must be the URL of your `authGoogleCallback` function.
-// You can get this from the Firebase console after deployment.
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+// Production credentials are stored in Google Secret Manager.
+const googleClientIdSecret = defineSecret("GOOGLE_CLIENT_ID");
+const googleClientSecretSecret = defineSecret("GOOGLE_CLIENT_SECRET");
+const googleRedirectUriSecret = defineSecret("GOOGLE_REDIRECT_URI");
+const googleOAuthSecrets = [
+  googleClientIdSecret,
+  googleClientSecretSecret,
+  googleRedirectUriSecret,
+];
 
 function createOAuth2Client() {
   return new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI
+    googleClientIdSecret.value(),
+    googleClientSecretSecret.value(),
+    googleRedirectUriSecret.value()
   );
 }
 
@@ -118,7 +121,7 @@ export const migrateGoogleCalendarTokens = onCall(async (request) => {
  * 1. `authGoogle` (Callable Function)
  * Generates an authorization URL for the user to grant calendar access.
  */
-export const authGoogle = onCall(async (request) => {
+export const authGoogle = onCall({ secrets: googleOAuthSecrets }, async (request) => {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
     throw new HttpsError("failed-precondition", "Google Calendar OAuth is not configured.");
   }
@@ -152,7 +155,7 @@ export const authGoogle = onCall(async (request) => {
  * 2. `authGoogleCallback` (HTTP Request Function)
  * Handles the callback from Google's consent screen.
  */
-export const authGoogleCallback = onRequest(async (req, res) => {
+export const authGoogleCallback = onRequest({ secrets: googleOAuthSecrets }, async (req, res) => {
   if (req.method !== "GET") {
     res.set("Allow", "GET").status(405).send("Method not allowed.");
     return;
@@ -230,7 +233,10 @@ export const authGoogleCallback = onRequest(async (req, res) => {
  * 3. `onTimeEntryEndCreateEvent` (Firestore Trigger)
  * Creates a calendar event automatically when a shift's endTime is added.
  */
-export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeEntries/{timeEntryId}", async (firestoreEvent) => {
+export const onTimeEntryEndCreateEvent = onDocumentWritten({
+  document: "users/{userId}/timeEntries/{timeEntryId}",
+  secrets: googleOAuthSecrets,
+}, async (firestoreEvent) => {
   if (!firestoreEvent.data) {
     return; // Document was deleted, do nothing
   }
