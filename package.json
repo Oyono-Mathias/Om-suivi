@@ -12,7 +12,6 @@
     "test:rules": "node --test tests/firestore.rules.test.mjs"
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.7",
     "@hookform/resolvers": "^5.5.4",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -62,7 +61,8 @@
     "postcss": "8.5.32",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
-    "@firebase/rules-unit-testing": "6.0.0"
+    "@firebase/rules-unit-testing": "6.0.0",
+    "@ducanh2912/next-pwa": "^10.2.7"
   },
   "overrides": {
     "react": "18.2.0",
@@ -73,6 +73,7 @@
     "@grpc/grpc-js": "1.14.7",
     "undici": "6.29.1",
     "@fastify/busboy": "3.2.5",
-    "serialize-javascript": "7.1.4"
+    "serialize-javascript": "7.1.4",
+    "uuid": "11.1.1"
   }
 }
