@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { toDate, toDateInput } from '@/lib/date-utils';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -124,8 +125,8 @@ export default function ProfilePage() {
         category: profile.category,
         echelon: profile.echelon,
         currency: profile.currency || 'FCFA',
-        hireDate: profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
-        leaveStartDate: profile.leaveStartDate || profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
+        hireDate: toDateInput(profile.hireDate) || format(new Date(), 'yyyy-MM-dd'),
+        leaveStartDate: toDateInput(profile.leaveStartDate) || toDateInput(profile.hireDate) || format(new Date(), 'yyyy-MM-dd'),
         reminders: profile.reminders || { enabled: false, time: '17:00' },
         homeLatitude: profile.homeLatitude,
         homeLongitude: profile.homeLongitude,
@@ -275,7 +276,7 @@ export default function ProfilePage() {
     
     try {
         const now = new Date();
-        const hireDate = parseISO(profile.hireDate);
+        const hireDate = toDate(profile.hireDate);
 
         // Seniority bonus calculation
         const seniorityYears = differenceInYears(now, hireDate);
@@ -283,7 +284,7 @@ export default function ProfilePage() {
 
         // Base days calculation for the current cycle
         let cycleStartDate;
-        const parsedLeaveStartDate = profile.leaveStartDate ? parseISO(profile.leaveStartDate) : null;
+        const parsedLeaveStartDate = profile.leaveStartDate ? toDate(profile.leaveStartDate) : null;
 
         // A cycle resets on the leave start date.
         // If not set, or in the future, we look at the hire date anniversary.
@@ -317,7 +318,7 @@ export default function ProfilePage() {
     if (!profile?.hireDate) return null;
 
     try {
-        const hireDate = new Date(profile.hireDate);
+        const hireDate = toDate(profile.hireDate);
         const now = new Date();
         const seniorityYears = differenceInYears(now, hireDate);
         const seniorityTotalMonths = differenceInMonths(now, hireDate);
