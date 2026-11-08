@@ -7,6 +7,12 @@ export type Shift = {
 
 export type Profession = 'machinist' | 'storekeeper' | 'deliveryDriver' | 'chauffeur' | 'securityAgent' | 'other';
 
+export interface PublicProfile {
+  id: string;
+  name: string;
+  profession: Profession;
+}
+
 export interface Profile {
   id: string;
   email: string;
