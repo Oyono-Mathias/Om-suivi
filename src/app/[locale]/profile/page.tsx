@@ -235,6 +235,11 @@ export default function ProfilePage() {
       });
       
       await setDoc(userProfileRef, dataToSave, { merge: true });
+      await setDoc(doc(firestore, 'publicProfiles', user.uid), {
+        id: user.uid,
+        name: values.name,
+        profession: values.profession,
+      }, { merge: true });
       toast({
         title: t('settingsUpdatedTitle'),
         description: t('settingsUpdatedDescription'),
