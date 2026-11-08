@@ -73,10 +73,54 @@ export const syncPublicProfiles = onCall(async (request) => {
 });
 
 /**
+ * One-time migration of legacy Google refresh tokens out of readable user profiles.
+ * Invoke as an administrator after deploying the private-token rules.
+ */
+export const migrateGoogleCalendarTokens = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Authentication is required.");
+  }
+
+  const adminSnapshot = await db.collection("users").doc(uid).get();
+  if (adminSnapshot.data()?.role !== "admin") {
+    throw new HttpsError("permission-denied", "Administrator access is required.");
+  }
+
+  const usersSnapshot = await db.collection("users").get();
+  let migrated = 0;
+
+  for (let offset = 0; offset < usersSnapshot.docs.length; offset += 400) {
+    const chunk = usersSnapshot.docs.slice(offset, offset + 400);
+    for (const userDoc of chunk) {
+      const legacyToken = userDoc.data().googleRefreshToken;
+      if (typeof legacyToken !== "string" || !legacyToken) continue;
+
+      await db.collection("googleCalendarTokens").doc(userDoc.id).set({
+        refreshToken: legacyToken,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await userDoc.ref.update({
+        googleRefreshToken: admin.firestore.FieldValue.delete(),
+        googleCalendarConnected: true,
+      });
+      migrated += 1;
+    }
+  }
+
+  logger.info("Migrated legacy Google Calendar credentials.", { adminUid: uid, migrated });
+  return { migrated };
+});
+
+/**
  * 1. `authGoogle` (Callable Function)
  * Generates an authorization URL for the user to grant calendar access.
  */
 export const authGoogle = onCall(async (request) => {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    throw new HttpsError("failed-precondition", "Google Calendar OAuth is not configured.");
+  }
+
   const uid = request.auth?.uid;
   if (!uid) {
     throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
@@ -105,7 +149,16 @@ export const authGoogle = onCall(async (request) => {
  * 2. `authGoogleCallback` (HTTP Request Function)
  * Handles the callback from Google's consent screen.
  */
-export const authGoogleCallback = onRequest({ cors: true }, async (req, res) => {
+export const authGoogleCallback = onRequest(async (req, res) => {
+  if (req.method !== "GET") {
+    res.set("Allow", "GET").status(405).send("Method not allowed.");
+    return;
+  }
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    res.status(503).send("Google Calendar OAuth is not configured.");
+    return;
+  }
+
   const { code, state } = req.query;
 
   if (!code || typeof code !== "string") {
@@ -154,10 +207,11 @@ export const authGoogleCallback = onRequest({ cors: true }, async (req, res) => 
     }
 
     const userRef = db.collection("users").doc(uid);
-    await userRef.set({
-      googleCalendarConnected: true,
-      googleRefreshToken: refreshToken,
-    }, { merge: true });
+    await db.collection("googleCalendarTokens").doc(uid).set({
+      refreshToken,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await userRef.set({ googleCalendarConnected: true }, { merge: true });
 
     logger.info("Successfully connected Google Calendar for user.", { uid });
     res.redirect("/profil");
@@ -189,13 +243,15 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeE
   const userRef = db.collection("users").doc(userId);
   const userDoc = await userRef.get();
   const userData = userDoc.data();
+  const tokenDoc = await db.collection("googleCalendarTokens").doc(userId).get();
+  const refreshToken = tokenDoc.data()?.refreshToken;
 
-  if (!userData?.googleCalendarConnected || !userData.googleRefreshToken) {
+  if (!userData?.googleCalendarConnected || typeof refreshToken !== "string" || !refreshToken) {
     logger.log("User has not connected Google Calendar, skipping event creation.", { userId });
     return;
   }
 
-  oauth2Client.setCredentials({ refresh_token: userData.googleRefreshToken });
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
   const calendarEvent = {
@@ -227,10 +283,10 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeE
     logger.error("Error creating calendar event:", { userId, error });
     // If the token is invalid (e.g., revoked by user), disconnect the integration.
     if ((error as any).code === 401 || (error as any).response?.status === 401) {
-        await userRef.update({
-            googleCalendarConnected: false,
-            googleRefreshToken: admin.firestore.FieldValue.delete(),
-        });
+        await Promise.all([
+          userRef.update({ googleCalendarConnected: false }),
+          tokenDoc.ref.delete(),
+        ]);
         logger.warn("Removed invalid Google refresh token for user.", { userId });
     }
   }
