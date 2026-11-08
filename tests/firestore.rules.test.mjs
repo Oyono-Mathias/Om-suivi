@@ -60,6 +60,13 @@ before(async () => {
       monthlyBaseSalary: 100000,
       currency: 'FCFA',
     });
+    await setDoc(doc(db, 'googleCalendarTokens/employee-1'), {
+      refreshToken: 'private-refresh-token',
+    });
+    await setDoc(doc(db, 'oauthStates/test-state'), {
+      uid: 'employee-1',
+      createdAt: Date.now(),
+    });
   });
 });
 
@@ -205,4 +212,19 @@ test('Storage restricts justification uploads to the owner and image files under
   await t.test('the owner can delete their own justification', async () => {
     await assertSucceeds(deleteObject(ownFile));
   });
+});
+
+
+test('Google OAuth credentials and transient states are never client-readable', async () => {
+  const employeeDb = testEnv.authenticatedContext('employee-1', {
+    email: 'employee@example.com',
+  }).firestore();
+  const adminDb = testEnv.authenticatedContext('admin-1', {
+    email: 'admin@example.com',
+  }).firestore();
+
+  await assertFails(getDoc(doc(employeeDb, 'googleCalendarTokens/employee-1')));
+  await assertFails(getDoc(doc(adminDb, 'googleCalendarTokens/employee-1')));
+  await assertFails(getDoc(doc(employeeDb, 'oauthStates/test-state')));
+  await assertFails(getDocs(collection(employeeDb, 'googleCalendarTokens')));
 });
