@@ -99,7 +99,7 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globa
       endTime: endDateTime,
       scheduledEndTime: shift.endTime,
       breakDurationMinutes: globalSettings?.breakDuration ?? 0,
-      eligibleForOvertime: true,
+      eligibleForOvertime: ['storekeeper', 'deliveryDriver', 'chauffeur', 'machinist'].includes(profile.profession),
     });
     
     const newEntry: Omit<TimeEntry, 'id'> = {
