@@ -44,7 +44,6 @@ import { fr, enUS } from 'date-fns/locale';
 import { Loader2, Briefcase, Megaphone, Palmtree, BellOff, CalendarPlus } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
-import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
 import { getDistanceFromLatLonInKm, cn, generateGoogleCalendarUrl } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from '@/navigation';
@@ -402,7 +401,13 @@ export default function TimeTrackingPage() {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
             if (!response.ok) throw new Error('Failed to fetch address');
             const data = await response.json();
-            setCurrentLocationAddress(data.display_name);
+            const address = data.address ?? {};
+            const area = address.neighbourhood || address.suburb || address.quarter;
+            const locality = address.city || address.town || address.village || address.municipality || address.county;
+            const conciseAddress = [area, locality].filter(Boolean).join(', ')
+              || data.name
+              || data.display_name;
+            setCurrentLocationAddress(conciseAddress);
           } catch (error) {
             setCurrentLocationAddress(t('locationUnavailable'));
           } finally {
@@ -687,22 +692,27 @@ export default function TimeTrackingPage() {
         return;
     }
     
-    try {
-        const { suggestedLocation: aiSuggestion } = await suggestWorkLocation({
-            latitude: currentCoordinates.lat,
-            longitude: currentCoordinates.lon,
-        });
+    const hasWorkplaceCoordinates =
+        typeof globalSettings?.workLatitude === 'number'
+        && typeof globalSettings?.workLongitude === 'number';
+    const distanceToWorkplace = hasWorkplaceCoordinates
+        ? getDistanceFromLatLonInKm(
+            currentCoordinates.lat,
+            currentCoordinates.lon,
+            globalSettings.workLatitude!,
+            globalSettings.workLongitude!,
+          ) * 1000
+        : Number.POSITIVE_INFINITY;
+    const isAtConfiguredWorkplace = hasWorkplaceCoordinates
+        && distanceToWorkplace <= (globalSettings?.geofenceRadius ?? 250);
+    const locationSuggestion = isAtConfiguredWorkplace
+        ? (globalSettings?.workplaceName || 'Entrepôt')
+        : (currentLocationAddress && currentLocationAddress !== t('locationUnavailable')
+            ? currentLocationAddress
+            : `GPS ${currentCoordinates.lat.toFixed(5)}, ${currentCoordinates.lon.toFixed(5)}`);
 
-        setSuggestedLocation(aiSuggestion);
-        setShowLocationConfirm(true);
-
-    } catch (error) {
-        toast({ variant: 'destructive', title: t('geoSuggestErrorTitle'), description: t('geoSuggestErrorDescription') });
-        const shift = shifts.find(s => s.id === shiftIdToUse);
-        if (shift) {
-            await startShift(shift, currentLocationAddress || `Lat: ${currentCoordinates.lat}, Lon: ${currentCoordinates.lon}`);
-        }
-    }
+    setSuggestedLocation(locationSuggestion);
+    setShowLocationConfirm(true);
   };
 
   const handleLocationConfirm = async (useLocation: boolean) => {
