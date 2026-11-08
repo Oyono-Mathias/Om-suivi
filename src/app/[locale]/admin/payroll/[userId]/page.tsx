@@ -12,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
+import { countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 import { AdminAccessDenied } from '@/components/admin-access-denied';
@@ -198,7 +199,7 @@ export default function AdminUserBulletinPage({ params }: any) {
             }
         }
         
-        const totalDaysWorked = workedDays.size + sickLeaveDays.size;
+        const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
         const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
         
         if (unjustifiedAbsenceCount > 0) {
