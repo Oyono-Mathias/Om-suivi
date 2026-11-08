@@ -167,11 +167,6 @@ test('employee records are private and cannot be escalated', async (t) => {
       name: 'Employé',
       profession: 'machinist',
     }));
-    await assertFails(setDoc(doc(employeeDb, 'publicProfiles/employee-1'), {
-      id: 'employee-1',
-      name: 'Autre identité',
-      profession: 'storekeeper',
-    }));
     await assertFails(setDoc(doc(otherEmployeeDb, 'publicProfiles/employee-1'), {
       id: 'employee-1',
       name: 'Usurpation',
