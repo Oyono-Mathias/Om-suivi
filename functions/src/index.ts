@@ -1,7 +1,7 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import { onCall, onRequest } from "firebase-functions/v2/https";
+import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { google } from "googleapis";
 import { logger } from "firebase-functions";
 
@@ -39,7 +39,7 @@ const scopes = ["https://www.googleapis.com/auth/calendar.events"];
 export const authGoogle = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
-    throw new https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+    throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
 
   const authorizationUrl = oauth2Client.generateAuthUrl({
