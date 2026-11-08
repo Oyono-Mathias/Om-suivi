@@ -39,7 +39,11 @@ service cloud.firestore {
       }
       
       match /leaveRequests/{leaveRequestId} {
-          allow read, write: if isOwner(userId) || isAdmin();
+          // Employees can create and view their own requests; only admins can change them.
+          allow read: if isOwner(userId) || isAdmin();
+          allow create: if isOwner(userId)
+            && request.resource.data.userId == userId;
+          allow update, delete: if isAdmin();
       }
       
       match /workplaceUpdateLogs/{logId} {
