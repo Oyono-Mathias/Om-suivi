@@ -36,7 +36,6 @@ export interface Profile {
   homeLongitude?: number;
   fcmToken?: string;
   googleCalendarConnected?: boolean;
-  googleRefreshToken?: string;
 }
 
 export interface TimeEntry {
