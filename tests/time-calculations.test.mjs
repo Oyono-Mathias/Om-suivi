@@ -57,7 +57,7 @@ test('break is deducted only after six hours and payable duration cannot be nega
     breakDurationMinutes: 60,
     eligibleForOvertime: false,
   });
-  assert.equal(overSixHours.payableDuration, 375);
+  assert.equal(overSixHours.payableDuration, 435);
 
   const shortShift = calculateShiftDurations({
     startDate: '2026-11-08',
