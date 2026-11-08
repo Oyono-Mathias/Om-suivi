@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { toDate } from '@/lib/date-utils';
 import {
   Card,
   CardContent,
@@ -345,7 +346,7 @@ export default function TimeTrackingPage() {
       if (!profile?.leaveStartDate || !profile.hireDate || !user || !firestore) return;
 
       try {
-        const leaveStartDate = parseISO(profile.leaveStartDate);
+        const leaveStartDate = toDate(profile.leaveStartDate);
         const today = startOfDay(new Date());
 
         if (isSameDay(leaveStartDate, today)) {
@@ -361,7 +362,7 @@ export default function TimeTrackingPage() {
           }
 
           // Calculate leave details
-          const hireDate = parseISO(profile.hireDate);
+          const hireDate = toDate(profile.hireDate);
           const seniorityYears = differenceInYears(today, hireDate);
           let senioritySurplus = Math.floor(seniorityYears / 3) * 2;
           
