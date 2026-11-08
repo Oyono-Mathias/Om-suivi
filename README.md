@@ -53,6 +53,7 @@ La suite vérifie les accès aux profils, l'élévation de privilèges, la modif
 ```bash
 npm --prefix functions install
 npm --prefix functions run build
+npm --prefix functions run test:attendance
 ```
 
 Google Calendar OAuth utilise Google Secret Manager en production. Définir les secrets avant le déploiement :
