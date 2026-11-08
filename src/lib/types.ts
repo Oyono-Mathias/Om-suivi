@@ -85,7 +85,7 @@ export interface GlobalSettings {
 
 export interface AttendanceOverride {
   id: string; // The date 'YYYY-MM-DD'
-  status: 'unjustified_absence' | 'sick_leave';
+  status: 'unjustified_absence' | 'sick_leave' | 'paid_leave';
 }
 
 export interface Announcement {
