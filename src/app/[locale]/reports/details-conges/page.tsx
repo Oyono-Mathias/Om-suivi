@@ -11,6 +11,7 @@ import { fr, enUS } from "date-fns/locale";
 import type { Profile, LeaveAnnouncement, TimeEntry, AttendanceOverride, GlobalSettings } from '@/lib/types';
 import { Link } from '@/navigation';
 import { formatCurrency, getPayrollCycle } from '@/lib/utils';
+import { countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -142,7 +143,7 @@ export default function DetailCongesScreen() {
 
                     const workedDays = new Set(monthData.entries.map(e => e.date));
                     const sickLeaveDays = new Set(monthData.overrides.filter(o => o.status === 'sick_leave').map(o => o.id));
-                    const totalDaysWorked = workedDays.size + sickLeaveDays.size;
+                    const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
                     const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
                     const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
