@@ -102,7 +102,7 @@ function BackfillDialog({ user, isOpen, onOpenChange, globalSettings }: { user: 
                     await addDoc(timeEntriesRef, newEntry);
                 } else if (status === 'paid_leave') {
                     const overrideRef = doc(overridesRef, dayString);
-                    await setDoc(overrideRef, { status: 'sick_leave' });
+                    await setDoc(overrideRef, { status: 'paid_leave' });
                 }
             }
             toast({ title: t('backfillSuccess') });
@@ -309,7 +309,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntries
     setDeletingEntry(null);
   };
   
-  const handleStatusChange = async (date: Date, status: 'unjustified_absence' | 'sick_leave') => {
+  const handleStatusChange = async (date: Date, status: 'unjustified_absence' | 'sick_leave' | 'paid_leave') => {
     if (!user) return;
     const dateStr = format(date, 'yyyy-MM-dd');
     const overrideRef = doc(firestore, 'users', user.id, 'attendanceOverrides', dateStr);
@@ -415,26 +415,29 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntries
                                                 <div className="font-medium">{format(day, 'PPP', { locale: dateFnsLocale })}</div>
                                             </TableCell>
                                             <TableCell>
-                                                 <Badge variant={override?.status === 'sick_leave' ? 'default' : 'destructive'} className={override?.status === 'sick_leave' ? "bg-blue-500 hover:bg-blue-600" : ""}>
+                                                 <Badge
+                                                    variant={override?.status === 'unjustified_absence' ? 'destructive' : 'default'}
+                                                    className={override?.status === 'sick_leave' ? "bg-blue-500 hover:bg-blue-600" : override?.status === 'paid_leave' ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                                                >
                                                     {override?.status === 'sick_leave' ? (
-                                                        <>
-                                                            <HeartPulse className="h-3 w-3 mr-1" />
-                                                            {t('sickLeaveStatus')}
-                                                        </>
+                                                        <><HeartPulse className="h-3 w-3 mr-1" />{t('sickLeaveStatus')}</>
+                                                    ) : override?.status === 'paid_leave' ? (
+                                                        t('backfillStatusPaidLeave')
                                                     ) : (
-                                                         t('absentLabel')
+                                                        t('absentLabel')
                                                     )}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell></TableCell>
                                             <TableCell className="text-right">
-                                                 <Select onValueChange={(value: 'unjustified_absence' | 'sick_leave') => handleStatusChange(day, value)} defaultValue={override?.status || 'unjustified_absence'}>
+                                                 <Select onValueChange={(value: 'unjustified_absence' | 'sick_leave' | 'paid_leave') => handleStatusChange(day, value)} defaultValue={override?.status || 'unjustified_absence'}>
                                                     <SelectTrigger className="w-[200px] ml-auto">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="unjustified_absence">{t('unjustifiedAbsenceStatus')}</SelectItem>
                                                         <SelectItem value="sick_leave">{t('sickLeaveStatus')}</SelectItem>
+                                                        <SelectItem value="paid_leave">{t('backfillStatusPaidLeave')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>
