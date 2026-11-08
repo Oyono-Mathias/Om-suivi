@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, limit, serverTimestamp, where, doc } from 'firebase/firestore';
-import type { PublicProfile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
+import type { Profile, PublicProfile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
 import { Loader2, Send, PartyPopper } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
