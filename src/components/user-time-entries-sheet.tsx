@@ -28,7 +28,9 @@ import { cn, getPayrollCycle } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+type TimeEntriesUser = Pick<Profile, 'id' | 'name' | 'profession' | 'hireDate'> & { email?: string };
+
+function BackfillDialog({ user, isOpen, onOpenChange }: { user: TimeEntriesUser, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
     const t = useTranslations('AdminPage');
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -176,7 +178,7 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
     );
 }
 
-export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, onOpenChange: (open: boolean) => void }) {
+export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntriesUser | null, onOpenChange: (open: boolean) => void }) {
   const t = useTranslations('AdminPage');
   const locale = useLocale();
   const dateFnsLocale = locale === 'fr' ? fr : enUS;
