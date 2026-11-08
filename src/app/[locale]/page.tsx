@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { toDate } from '@/lib/date-utils';
+import { addWorkingDays } from '@/lib/leave-calculations';
 import { calculateShiftDurations } from '@/lib/time-calculations';
 import {
   Card,
@@ -324,18 +325,6 @@ export default function TimeTrackingPage() {
       });
   }, [setIsShiftActive]);
 
-  const addWorkingDays = useCallback((startDate: Date, daysToAdd: number): Date => {
-    let currentDate = new Date(startDate);
-    let daysAdded = 0;
-    while (daysAdded < Math.floor(daysToAdd)) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        if (getDay(currentDate) !== 0) {
-            daysAdded++;
-        }
-    }
-    return currentDate;
-  }, []);
-
   // Effect for leave welcome message
   useEffect(() => {
     const checkLeaveStart = async () => {
@@ -385,7 +374,7 @@ export default function TimeTrackingPage() {
     };
 
     checkLeaveStart();
-  }, [profile, user, firestore, dateFnsLocale, addWorkingDays]);
+  }, [profile, user, firestore, dateFnsLocale]);
 
 
   useEffect(() => {
