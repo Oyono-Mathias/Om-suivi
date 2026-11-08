@@ -165,13 +165,15 @@ service cloud.firestore {
             'userId', 'userName', 'absenceDate', 'imageUrl', 'status', 'submittedAt'
           ])
           && request.resource.data.userId == request.auth.uid
-          && request.resource.data.userName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name
+          && request.resource.data.userName is string
+          && request.resource.data.userName.size() >= 2
+          && request.resource.data.userName.size() <= 120
           && request.resource.data.absenceDate is string
           && request.resource.data.absenceDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
           && request.resource.data.imageUrl is string
           && request.resource.data.imageUrl.size() <= 2048
           && request.resource.data.status == 'pending'
-          && request.resource.data.submittedAt == request.time;
+          && request.resource.data.submittedAt is timestamp;
         allow read: if (resource.data.userId == request.auth.uid) || isAdmin();
         allow update, delete: if isAdmin();
     }
