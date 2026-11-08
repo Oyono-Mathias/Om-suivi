@@ -115,6 +115,16 @@ export default function ReportsPage() {
       if (!event.target.files || event.target.files.length === 0 || !dateToJustify || !user || !profile) return;
       
       const file = event.target.files[0];
+      if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+        toast({
+          variant: 'destructive',
+          title: 'Fichier non accepté',
+          description: 'Choisissez une image de 10 Mo maximum.',
+        });
+        setDateToJustify(null);
+        event.target.value = '';
+        return;
+      }
       setIsJustifying(true);
     
       try {
