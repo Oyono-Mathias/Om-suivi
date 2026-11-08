@@ -99,7 +99,7 @@ test('employee records are private and cannot be escalated', async (t) => {
   });
 
   await t.test('an employee can create only a basic user account', async () => {
-    await assertSucceeds(setDoc(doc(employeeDb, 'users/employee-new'), {
+    await assertSucceeds(setDoc(doc(newEmployeeDb, 'users/employee-new'), {
       id: 'employee-new',
       name: 'Nouveau membre',
       email: 'employee@example.com',
