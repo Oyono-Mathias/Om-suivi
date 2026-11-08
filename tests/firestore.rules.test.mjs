@@ -77,6 +77,7 @@ before(async () => {
       uid: 'employee-1',
       createdAt: Date.now(),
     });
+    await setDoc(doc(db, 'settings/global'), { defaultHourlyRate: 500, workLatitude: 4.05 });
   });
 });
 
@@ -339,5 +340,19 @@ test('absence justifications cannot self-approve or be removed by their owner', 
     imageUrl: 'https://firebasestorage.googleapis.com/example.png',
     status: 'pending',
     submittedAt: serverTimestamp(),
+  }));
+});
+
+
+test('global operational settings are not publicly readable', async () => {
+  const unauthenticatedDb = testEnv.unauthenticatedContext().firestore();
+  const employeeDb = testEnv.authenticatedContext('employee-1', {
+    email: 'employee@example.com',
+  }).firestore();
+
+  await assertFails(getDoc(doc(unauthenticatedDb, 'settings/global')));
+  await assertSucceeds(getDoc(doc(employeeDb, 'settings/global')));
+  await assertFails(updateDoc(doc(employeeDb, 'settings/global'), {
+    defaultHourlyRate: 1,
   }));
 });
