@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "ship": "vercel --prod",
-    "test:rules": "node --test tests/firestore.rules.test.mjs"
+    "test:rules": "node --test tests/firestore.rules.test.mjs",
+    "test:business": "node --test tests/time-calculations.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.4",
