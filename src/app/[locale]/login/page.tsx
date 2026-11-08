@@ -183,6 +183,11 @@ export default function AuthPage() {
         createdAt: serverTimestamp(),
         hireDate: format(new Date(), 'yyyy-MM-dd'),
       });
+      await setDoc(doc(firestore, 'publicProfiles', newUser.uid), {
+        id: newUser.uid,
+        name: values.name,
+        profession: values.profession,
+      });
       
       router.replace('/');
     } catch (error) {
