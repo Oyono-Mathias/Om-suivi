@@ -1,4 +1,3 @@
-
 {
   "LoginPage": {
     "title": "Bienvenue sur OM Suivi",
@@ -224,7 +223,13 @@
     "homeConfigTitle": "Configuration du Domicile",
     "homeConfigDescription": "Définissez votre zone de domicile pour l'arrêt automatique du service.",
     "setHomeLocationButton": "Définir ma position actuelle comme domicile",
-    "homeLocationSetSuccessTitle": "Lieu de domicile mis à jour."
+    "homeLocationSetSuccessTitle": "Lieu de domicile mis à jour.",
+    "migrateGoogleTokensDescription": "Action réservée aux administrateurs. À exécuter une seule fois après le déploiement de la nouvelle fonction pour déplacer les anciens jetons Google vers leur stockage privé.",
+    "migrateGoogleTokensButton": "Migrer les anciens jetons Google",
+    "migrateGoogleTokensSuccessTitle": "Migration terminée",
+    "migrateGoogleTokensSuccessDescription": "{count} ancien(s) jeton(s) Google Calendar déplacé(s) vers le stockage privé.",
+    "migrateGoogleTokensErrorTitle": "Échec de la migration",
+    "migrateGoogleTokensErrorDescription": "La migration des anciens jetons Google n'a pas abouti. Vérifiez vos droits et réessayez."
   },
   "ReportsPage": {
     "title": "Tableau de Bord",
