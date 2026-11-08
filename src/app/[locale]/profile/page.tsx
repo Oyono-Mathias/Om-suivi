@@ -67,7 +67,7 @@ export default function ProfilePage() {
   const profileSchema = z.object({
     name: z.string().min(2, { message: t('nameMinLengthError') }),
     profession: z.enum(['machinist', 'storekeeper', 'deliveryDriver', 'chauffeur', 'securityAgent', 'other']),
-    monthlyBaseSalary: z.coerce.number().min(0, { message: t('salaryMinError') }),
+    monthlyBaseSalary: z.coerce.number<string | number>().min(0, { message: t('salaryMinError') }),
     category: z.string().optional(),
     echelon: z.string().optional(),
     currency: z.string().min(1, { message: t('currencyRequiredError')}),
