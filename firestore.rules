@@ -144,7 +144,7 @@ service cloud.firestore {
 
     // --- Global Settings ---
     match /settings/{settingId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
