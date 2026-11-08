@@ -15,15 +15,18 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
+import { deleteObject, getBytes, ref as storageRef, uploadBytes } from 'firebase/storage';
 
 const projectId = 'demo-om-suivi';
 const rules = readFileSync('firestore.rules', 'utf8');
+const storageRules = readFileSync('storage.rules', 'utf8');
 let testEnv;
 
 before(async () => {
   testEnv = await initializeTestEnvironment({
     projectId,
     firestore: { rules },
+    storage: { rules: storageRules },
   });
 
   await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -158,5 +161,44 @@ test('employee records are private and cannot be escalated', async (t) => {
       doc(adminDb, 'users/employee-1/leaveRequests/request-1'),
       { totalDays: 20 },
     ));
+  });
+});
+
+
+test('Storage restricts justification uploads to the owner and image files under 10 MB', async (t) => {
+  const employeeStorage = testEnv.authenticatedContext('employee-1').storage();
+  const otherEmployeeStorage = testEnv.authenticatedContext('employee-2').storage();
+  const ownFile = storageRef(employeeStorage, 'justifications/employee-1/2026-11-01/justificatif.png');
+  const foreignFile = storageRef(otherEmployeeStorage, 'justifications/employee-1/2026-11-01/forbidden.png');
+
+  await t.test('the owner can upload and read an image', async () => {
+    await assertSucceeds(uploadBytes(ownFile, new Uint8Array([137, 80, 78, 71]), {
+      contentType: 'image/png',
+    }));
+    await assertSucceeds(getBytes(ownFile));
+  });
+
+  await t.test('another employee cannot read or upload into the owner folder', async () => {
+    await assertFails(getBytes(storageRef(otherEmployeeStorage, ownFile.fullPath)));
+    await assertFails(uploadBytes(foreignFile, new Uint8Array([1, 2, 3]), {
+      contentType: 'image/png',
+    }));
+  });
+
+  await t.test('non-image and oversized files are rejected', async () => {
+    await assertFails(uploadBytes(
+      storageRef(employeeStorage, 'justifications/employee-1/2026-11-01/not-image.pdf'),
+      new Uint8Array([1, 2, 3]),
+      { contentType: 'application/pdf' },
+    ));
+    await assertFails(uploadBytes(
+      storageRef(employeeStorage, 'justifications/employee-1/2026-11-01/oversized.png'),
+      new Uint8Array(10 * 1024 * 1024 + 1),
+      { contentType: 'image/png' },
+    ));
+  });
+
+  await t.test('the owner can delete their own justification', async () => {
+    await assertSucceeds(deleteObject(ownFile));
   });
 });
