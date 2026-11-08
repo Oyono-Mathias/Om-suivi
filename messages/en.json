@@ -1,4 +1,3 @@
-
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
@@ -224,7 +223,13 @@
     "homeConfigTitle": "Home Configuration",
     "homeConfigDescription": "Define your home zone for automatic service stop.",
     "setHomeLocationButton": "Set my current location as home",
-    "homeLocationSetSuccessTitle": "Home location updated."
+    "homeLocationSetSuccessTitle": "Home location updated.",
+    "migrateGoogleTokensDescription": "Administrator-only action. Run once after deploying the new function to move legacy Google tokens into private storage.",
+    "migrateGoogleTokensButton": "Migrate legacy Google tokens",
+    "migrateGoogleTokensSuccessTitle": "Migration completed",
+    "migrateGoogleTokensSuccessDescription": "Moved {count} legacy Google Calendar token(s) into private storage.",
+    "migrateGoogleTokensErrorTitle": "Migration failed",
+    "migrateGoogleTokensErrorDescription": "Legacy Google token migration failed. Check your permissions and try again."
   },
   "ReportsPage": {
     "title": "Dashboard",
