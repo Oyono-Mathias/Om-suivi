@@ -39,6 +39,360 @@ service cloud.firestore {
         && (!changed.hasAny(['fcmToken']) || request.resource.data.fcmToken is string);
     }
 
+    function hasValidTimeEntry(userId) {
+      let data = request.resource.data;
+      return data.keys().hasAll([
+          'date', 'startTime', 'endTime', 'duration',
+          'overtimeDuration', 'shiftId', 'userProfileId', 'profession'
+        ])
+        && data.keys().hasOnly([
+          'date', 'startTime', 'endTime', 'duration',
+          'overtimeDuration', 'shiftId', 'userProfileId', 'profession',
+          'location', 'isPublicHoliday', 'modified_manually',
+          'modification_reason', 'stopContext'
+        ])
+        && data.userProfileId == userId
+        && data.date is string
+        && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'email', 'role', 'profession', 'monthlyBaseSalary', 'currency', 'createdAt', 'hireDate', 'leaveStartDate'])
+        && request.resource.data.id == userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'user'
+        && isValidProfession(request.resource.data.profession)
+        && request.resource.data.monthlyBaseSalary == 0
+        && request.resource.data.currency == 'FCFA'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.hireDate == request.time
+        && request.resource.data.leaveStartDate == request.time;
+      allow update: if isAdmin() || isValidSelfUpdate(userId);
+      
+      // --- Subcollections ---
+      match /timeEntries/{timeEntryId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) && hasValidTimeEntry(userId);
+        allow update: if isAdmin()
+          ? hasValidTimeEntry(userId)
+          : isOwner(userId)
+            && resource.data.endTime == ''
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'endTime', 'duration', 'overtimeDuration', 'location', 'stopContext'
+            ])
+            && hasValidTimeEntry(userId);
+        allow delete: if isAdmin();
+      }
+      
+      match /attendanceOverrides/{overrideId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
+      }
+
+      match /notifications/{notificationId} {
+        // CORRECTION : Ajout de 'list' pour permettre l'affichage de la liste des notifs
+        allow read, write, list: if isOwner(userId);
+      }
+      
+      match /leaveRequests/{leaveRequestId} {
+          // Employees can create and view their own requests; only admins can change them.
+          allow read: if isOwner(userId) || isAdmin();
+          allow create: if isOwner(userId)
+            && request.resource.data.userId == userId;
+          allow update, delete: if isAdmin();
+      }
+      
+      match /workplaceUpdateLogs/{logId} {
+          allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // OAuth credentials and transient authorization state are server-only.
+    // Admin SDK Cloud Functions bypass these client rules.
+    match /googleCalendarTokens/{userId} {
+      allow read, write: if false;
+    }
+
+    match /oauthStates/{stateId} {
+      allow read, write: if false;
+    }
+
+    // Minimal employee directory data; sensitive fields stay in /users.
+    match /publicProfiles/{profileId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(profileId)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'profession'])
+        && request.resource.data.id == profileId
+        && request.resource.data.name is string
+        && request.resource.data.profession is string;
+      allow delete: if isAdmin();
+    }
+
+    // --- Teams ---
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --- Global Settings ---
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Announcements ---
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    match /leaveAnnouncements/{announcementId} {
+        allow read: if isSignedIn();
+        allow create: if isAdmin(); 
+    }
+
+    match /absenceJustifications/{justificationId} {
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow read: if (resource.data.userId == request.auth.uid) || isAdmin();
+        allow update: if isAdmin();
+        allow delete: if (resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    match /faq/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+})
+        && data.startTime is string
+        && data.startTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'email', 'role', 'profession', 'monthlyBaseSalary', 'currency', 'createdAt', 'hireDate', 'leaveStartDate'])
+        && request.resource.data.id == userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'user'
+        && isValidProfession(request.resource.data.profession)
+        && request.resource.data.monthlyBaseSalary == 0
+        && request.resource.data.currency == 'FCFA'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.hireDate == request.time
+        && request.resource.data.leaveStartDate == request.time;
+      allow update: if isAdmin() || isValidSelfUpdate(userId);
+      
+      // --- Subcollections ---
+      match /timeEntries/{timeEntryId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      match /attendanceOverrides/{overrideId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
+      }
+
+      match /notifications/{notificationId} {
+        // CORRECTION : Ajout de 'list' pour permettre l'affichage de la liste des notifs
+        allow read, write, list: if isOwner(userId);
+      }
+      
+      match /leaveRequests/{leaveRequestId} {
+          // Employees can create and view their own requests; only admins can change them.
+          allow read: if isOwner(userId) || isAdmin();
+          allow create: if isOwner(userId)
+            && request.resource.data.userId == userId;
+          allow update, delete: if isAdmin();
+      }
+      
+      match /workplaceUpdateLogs/{logId} {
+          allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // OAuth credentials and transient authorization state are server-only.
+    // Admin SDK Cloud Functions bypass these client rules.
+    match /googleCalendarTokens/{userId} {
+      allow read, write: if false;
+    }
+
+    match /oauthStates/{stateId} {
+      allow read, write: if false;
+    }
+
+    // Minimal employee directory data; sensitive fields stay in /users.
+    match /publicProfiles/{profileId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(profileId)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'profession'])
+        && request.resource.data.id == profileId
+        && request.resource.data.name is string
+        && request.resource.data.profession is string;
+      allow delete: if isAdmin();
+    }
+
+    // --- Teams ---
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --- Global Settings ---
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Announcements ---
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    match /leaveAnnouncements/{announcementId} {
+        allow read: if isSignedIn();
+        allow create: if isAdmin(); 
+    }
+
+    match /absenceJustifications/{justificationId} {
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow read: if (resource.data.userId == request.auth.uid) || isAdmin();
+        allow update: if isAdmin();
+        allow delete: if (resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    match /faq/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+})
+        && data.endTime is string
+        && (data.endTime == '' || data.endTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'email', 'role', 'profession', 'monthlyBaseSalary', 'currency', 'createdAt', 'hireDate', 'leaveStartDate'])
+        && request.resource.data.id == userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'user'
+        && isValidProfession(request.resource.data.profession)
+        && request.resource.data.monthlyBaseSalary == 0
+        && request.resource.data.currency == 'FCFA'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.hireDate == request.time
+        && request.resource.data.leaveStartDate == request.time;
+      allow update: if isAdmin() || isValidSelfUpdate(userId);
+      
+      // --- Subcollections ---
+      match /timeEntries/{timeEntryId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      match /attendanceOverrides/{overrideId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
+      }
+
+      match /notifications/{notificationId} {
+        // CORRECTION : Ajout de 'list' pour permettre l'affichage de la liste des notifs
+        allow read, write, list: if isOwner(userId);
+      }
+      
+      match /leaveRequests/{leaveRequestId} {
+          // Employees can create and view their own requests; only admins can change them.
+          allow read: if isOwner(userId) || isAdmin();
+          allow create: if isOwner(userId)
+            && request.resource.data.userId == userId;
+          allow update, delete: if isAdmin();
+      }
+      
+      match /workplaceUpdateLogs/{logId} {
+          allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // OAuth credentials and transient authorization state are server-only.
+    // Admin SDK Cloud Functions bypass these client rules.
+    match /googleCalendarTokens/{userId} {
+      allow read, write: if false;
+    }
+
+    match /oauthStates/{stateId} {
+      allow read, write: if false;
+    }
+
+    // Minimal employee directory data; sensitive fields stay in /users.
+    match /publicProfiles/{profileId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(profileId)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'profession'])
+        && request.resource.data.id == profileId
+        && request.resource.data.name is string
+        && request.resource.data.profession is string;
+      allow delete: if isAdmin();
+    }
+
+    // --- Teams ---
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --- Global Settings ---
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Announcements ---
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    match /leaveAnnouncements/{announcementId} {
+        allow read: if isSignedIn();
+        allow create: if isAdmin(); 
+    }
+
+    match /absenceJustifications/{justificationId} {
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow read: if (resource.data.userId == request.auth.uid) || isAdmin();
+        allow update: if isAdmin();
+        allow delete: if (resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    match /faq/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}))
+        && data.duration is number
+        && data.duration >= 0
+        && data.duration <= 1440
+        && data.overtimeDuration is number
+        && data.overtimeDuration >= 0
+        && data.overtimeDuration <= data.duration
+        && data.shiftId is string
+        && data.shiftId.size() > 0
+        && data.shiftId.size() <= 64
+        && isValidProfession(data.profession)
+        && (!('location' in data) || (data.location is string && data.location.size() <= 120))
+        && (!('isPublicHoliday' in data) || data.isPublicHoliday is bool)
+        && (!('modified_manually' in data) || data.modified_manually is bool)
+        && (!('modification_reason' in data) || (data.modification_reason is string && data.modification_reason.size() <= 200))
+        && (!('stopContext' in data) || data.stopContext in [
+          'work_zone', 'home_zone', 'timeout', 'manual', 'mission_ended', 'admin_edit'
+        ]);
+    }
+
     // --- User Data ---
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
