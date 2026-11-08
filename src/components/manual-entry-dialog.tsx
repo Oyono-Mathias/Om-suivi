@@ -59,7 +59,6 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globa
     date: z.string().min(1, 'Date is required'),
     startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
     endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-    isPublicHoliday: z.boolean(),
   }).refine(data => {
     const start = parse(data.startTime, 'HH:mm', new Date());
     const end = parse(data.endTime, 'HH:mm', new Date());
@@ -78,7 +77,6 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globa
       date: format(new Date(), 'yyyy-MM-dd'),
       startTime: '08:00',
       endTime: '16:15',
-      isPublicHoliday: false,
     },
   });
 
@@ -109,18 +107,19 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globa
         date: dateStr,
         startTime: values.startTime,
         endTime: values.endTime,
-        duration: payableDuration,
-        overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+        duration: 0,
+        overtimeDuration: 0,
         location: 'Manual',
         shiftId: values.shiftId,
-        isPublicHoliday: values.isPublicHoliday,
+        modified_manually: true,
+        stopContext: 'manual',
         userProfileId: user.uid,
         profession: profile.profession,
     };
     
     await addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'timeEntries'), newEntry);
     
-    toast({ title: "Entrée enregistrée", description: "Votre entrée manuelle a été ajoutée avec succès." });
+    toast({ title: "Entrée enregistrée", description: `Durée déclarée : ${payableDuration} min. Calcul serveur en cours (${overtimeDuration} min supplémentaires estimées).` });
     onOpenChange(false);
     form.reset();
   }
@@ -199,23 +198,6 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globa
                 )}
               />
             </div>
-             <FormField
-                control={form.control}
-                name="isPublicHoliday"
-                render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                            <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                            />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                            <FormLabel>{t('isHolidayLabel')}</FormLabel>
-                        </div>
-                    </FormItem>
-                )}
-                />
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">{t('cancelButton')}</Button>
