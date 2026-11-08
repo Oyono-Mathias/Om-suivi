@@ -122,7 +122,7 @@ export const migrateGoogleCalendarTokens = onCall(async (request) => {
  * Generates an authorization URL for the user to grant calendar access.
  */
 export const authGoogle = onCall({ secrets: googleOAuthSecrets }, async (request) => {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+  if (!googleClientIdSecret.value() || !googleClientSecretSecret.value() || !googleRedirectUriSecret.value()) {
     throw new HttpsError("failed-precondition", "Google Calendar OAuth is not configured.");
   }
 
@@ -160,7 +160,7 @@ export const authGoogleCallback = onRequest({ secrets: googleOAuthSecrets }, asy
     res.set("Allow", "GET").status(405).send("Method not allowed.");
     return;
   }
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+  if (!googleClientIdSecret.value() || !googleClientSecretSecret.value() || !googleRedirectUriSecret.value()) {
     res.status(503).send("Google Calendar OAuth is not configured.");
     return;
   }
