@@ -1,4 +1,4 @@
-name: OM Suivi Quality Gate
+name: OM Suivi Quality Gate - Phase 2
 
 on:
   push:
