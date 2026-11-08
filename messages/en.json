@@ -263,6 +263,8 @@
     "absenceAlertDescription": "You have {count, plural, one {# absence} other {# absences}} this month. This represents an estimated penalty of -{penalty} FCFA on your pay.",
     "sickLeaveAlertTitle": "Justified Absences",
     "sickLeaveAlertDescription": "You have {count, plural, one {# paid sick leave day} other {# paid sick leave days}} this month.",
+    "paidLeaveAlertTitle": "Paid Leave",
+    "paidLeaveAlertDescription": "You have {count, plural, one {# paid leave day} other {# paid leave days}} this month."
     "leaveTableBase": "Base Leave",
     "leaveTableSeniority": "Seniority Surplus",
     "leaveRequestButton": "Generate Leave Request",
