@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
@@ -173,7 +174,7 @@ export default function BulletinPage() {
         let seniorityBonus = 0;
         if (profile.hireDate) {
             try {
-                const seniorityYears = differenceInYears(new Date(), parseISO(profile.hireDate));
+                const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
                     seniorityBonus = baseSalary * 0.017 * seniorityYears;
                 }
@@ -190,7 +191,7 @@ export default function BulletinPage() {
 
         let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
-            const hireDate = parseISO(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
             for (const day of cycleWorkDays) {
                 const dayString = format(day, 'yyyy-MM-dd');
