@@ -1,4 +1,4 @@
-name: OM Suivi Quality Gate - Phase 2 Business
+name: OM Suivi Quality Gate - Phase 3 Production Security
 
 on:
   push:
@@ -6,13 +6,14 @@ on:
       - main
       - fix/om-suivi-foundation-stability
       - fix/phase-2-business-features
+      - fix/phase-3-production-security
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: om-suivi-quality-${{ github.ref }}
@@ -59,18 +60,6 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
-      - name: Commit updated web lockfile on the stabilization branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/om-suivi-foundation-stability'
-        run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "Web lockfile is already synchronized."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore(web): apply compatible dependency security updates"
-            git push
-          fi
 
   functions:
     name: Firebase Functions compile
@@ -98,18 +87,6 @@ jobs:
         with:
           name: functions-package-lock
           path: functions/package-lock.json
-      - name: Commit synchronized lockfile on the stabilization branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/om-suivi-foundation-stability'
-        run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "Functions lockfile is already synchronized."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore(functions): synchronize package lockfile"
-            git push
-          fi
 
   firestore-rules:
     name: Firestore security rules tests
