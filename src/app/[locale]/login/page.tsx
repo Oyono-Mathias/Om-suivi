@@ -181,6 +181,8 @@ export default function AuthPage() {
         monthlyBaseSalary: 0,
         currency: 'FCFA',
         createdAt: serverTimestamp(),
+        hireDate: serverTimestamp(),
+        leaveStartDate: serverTimestamp(),
       });
       await setDoc(doc(firestore, 'publicProfiles', newUser.uid), {
         id: newUser.uid,
