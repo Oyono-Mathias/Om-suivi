@@ -322,6 +322,17 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
       return;
     }
     if (endMinutes <= startMinutes) endDate = addLocalDay(endDate);
+
+    const eventDate = new Date(firestoreEvent.time);
+    const requestedStartUtc = localDateTimeToUtcMillis(String(currentData.date), String(currentData.startTime));
+    const requestedEndUtc = localDateTimeToUtcMillis(endDate, endTime);
+    if (
+      requestedStartUtc > eventDate.getTime() + 60_000
+      || requestedEndUtc > eventDate.getTime() + 60_000
+    ) {
+      logger.warn("Rejected a manual time entry containing future work time.", { userId, timeEntryId });
+      return;
+    }
   }
 
   const eligibleForOvertime = [
