@@ -269,6 +269,16 @@ test('time entries validate ownership and protect completed payroll history', as
     { duration: 500 },
   ));
 
+  await assertSucceeds(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/active-2'), {
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '',
+    duration: 0,
+    overtimeDuration: 0,
+    shiftId: 'morningB',
+    userProfileId: 'employee-1',
+    profession: 'storekeeper',
+  }));
   await assertSucceeds(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/manual-1'), {
     date: '2026-11-08',
     startTime: '08:00',
