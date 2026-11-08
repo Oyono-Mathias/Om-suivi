@@ -44,7 +44,7 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(userId)
-        && request.resource.data.keys().hasOnly(['id', 'name', 'email', 'role', 'profession', 'monthlyBaseSalary', 'currency', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['id', 'name', 'email', 'role', 'profession', 'monthlyBaseSalary', 'currency', 'createdAt', 'hireDate', 'leaveStartDate'])
         && request.resource.data.id == userId
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 2
@@ -53,7 +53,9 @@ service cloud.firestore {
         && isValidProfession(request.resource.data.profession)
         && request.resource.data.monthlyBaseSalary == 0
         && request.resource.data.currency == 'FCFA'
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.hireDate == request.time
+        && request.resource.data.leaveStartDate == request.time;
       allow update: if isAdmin() || isValidSelfUpdate(userId);
       
       // --- Subcollections ---
