@@ -101,19 +101,19 @@ export const authGoogleCallback = onRequest({ cors: true }, async (req, res) => 
  * Creates a calendar event automatically when a shift's endTime is added.
  */
 export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeEntries/{timeEntryId}", async (event) => {
-  if (!event.data) {
+  if (!firestoreEvent.data) {
     return; // Document was deleted, do nothing
   }
 
-  const beforeData = event.data.before.data();
-  const afterData = event.data.after.data();
+  const beforeData = firestoreEvent.data.before.data();
+  const afterData = firestoreEvent.data.after.data();
 
   // Trigger only when a shift has just ended (endTime was empty/null before, and now has a value)
   if (!afterData || beforeData?.endTime || !afterData.endTime) {
     return;
   }
 
-  const { userId, timeEntryId } = event.params;
+  const { userId, timeEntryId } = firestoreEvent.params;
   const userRef = db.collection("users").doc(userId);
   const userDoc = await userRef.get();
   const userData = userDoc.data();
@@ -126,7 +126,7 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeE
   oauth2Client.setCredentials({ refresh_token: userData.googleRefreshToken });
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-  const event = {
+  const calendarEvent = {
     summary: `${userData.name} - OM-Suivi: ${afterData.shiftId}`,
     description: "Récapitulatif de session enregistré via l'application OM-Suivi.",
     start: {
@@ -139,16 +139,16 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeE
     },
   };
 
-  if (new Date(event.end.dateTime) < new Date(event.start.dateTime)) {
-      const endDate = new Date(event.end.dateTime);
+  if (new Date(calendarEvent.end.dateTime) < new Date(calendarEvent.start.dateTime)) {
+      const endDate = new Date(calendarEvent.end.dateTime);
       endDate.setDate(endDate.getDate() + 1);
-      event.end.dateTime = endDate.toISOString();
+      calendarEvent.end.dateTime = endDate.toISOString();
   }
 
   try {
     await calendar.events.insert({
       calendarId: "primary",
-      requestBody: event,
+      requestBody: calendarEvent,
     });
     logger.info("Successfully created calendar event for user.", { userId, timeEntryId });
   } catch (error) {
