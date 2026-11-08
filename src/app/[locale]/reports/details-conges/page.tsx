@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useTranslations, useLocale } from 'next-intl';
@@ -58,7 +59,7 @@ export default function DetailCongesScreen() {
         if (!profile?.hireDate || !leaveAnnouncements || !allTimeEntries || !allOverrides || !globalSettings) return [];
 
         try {
-            const hireDate = parseISO(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             const firstYearOfService = hireDate.getFullYear();
             const currentYear = new Date().getFullYear();
             const years = [];
@@ -192,7 +193,7 @@ export default function DetailCongesScreen() {
         if (!profile?.hireDate) return null;
 
         try {
-            const hireDate = new Date(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             const now = new Date();
             const seniorityYears = differenceInYears(now, hireDate);
             const seniorityTotalMonths = differenceInMonths(now, hireDate);
