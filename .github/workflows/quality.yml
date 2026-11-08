@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - fix/om-suivi-foundation-stability
+      - fix/phase-2-business-features
   pull_request:
     branches:
       - main
@@ -52,6 +53,8 @@ jobs:
             }
           }
           NODE
+      - name: Business logic tests
+        run: npm run test:business
       - name: TypeScript check
         run: npm run typecheck
       - name: Production build
