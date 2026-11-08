@@ -37,7 +37,7 @@ const simpleHash = (str: string) => {
     return Math.abs(hash);
 };
 
-function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void }) {
+function UserStatusCard({ user, onClick }: { user: PublicProfile, onClick?: () => void }) {
   const t = useTranslations('TeamPage');
   const tProfile = useTranslations('ProfilePage');
   const locale = useLocale();
@@ -121,7 +121,7 @@ export default function TeamPage() {
   const { toast } = useToast();
 
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
-  const [managingUser, setManagingUser] = useState<Profile | null>(null);
+  const [managingUser, setManagingUser] = useState<PublicProfile | null>(null);
 
   const currentUserProfileRef = useMemoFirebase(() => {
     if (!authUser) return null;
