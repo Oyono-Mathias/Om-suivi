@@ -38,7 +38,7 @@ import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from "@/l
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useStorage } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Loader2, ShieldAlert, HeartPulse, Paperclip, HelpCircle } from "lucide-react";
+import { Loader2, ShieldAlert, HeartPulse, Palmtree, Paperclip, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslations } from "next-intl";
 import { shifts } from "@/lib/shifts";
@@ -157,11 +157,12 @@ export default function ReportsPage() {
 
     const absencePenalty = useMemo(() => {
         if (!timeEntries || !profile || !profile.hireDate || !attendanceOverrides) {
-            return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount: 0, unjustifiedDates: [] };
+            return { unjustifiedCount: 0, totalPenalty: 0, sickLeaveCount: 0, paidLeaveCount: 0, unjustifiedDates: [] };
         }
 
         let unjustifiedAbsenceCount = 0;
         let sickLeaveCount = 0;
+        let paidLeaveCount = 0;
         let preRegistrationAbsenceCount = 0;
         let unjustifiedDates: string[] = [];
         
@@ -182,6 +183,8 @@ export default function ReportsPage() {
                     const status = overridesMap.get(dayString);
                     if (status === 'sick_leave') {
                         sickLeaveCount++;
+                    } else if (status === 'paid_leave') {
+                        paidLeaveCount++;
                     } else {
                         unjustifiedAbsenceCount++;
                         unjustifiedDates.push(dayString);
@@ -194,7 +197,7 @@ export default function ReportsPage() {
         const penaltyPerDay = globalSettings?.absencePenaltyAmount ?? 2426;
         const totalPenalty = totalAbsencesForPenalty * penaltyPerDay;
 
-        return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount, unjustifiedDates };
+        return { unjustifiedCount: unjustifiedAbsenceCount, totalPenalty, sickLeaveCount, paidLeaveCount, unjustifiedDates };
 
     }, [timeEntries, profile, attendanceOverrides, globalSettings, cycleStart, cycleEnd]);
 
@@ -492,6 +495,18 @@ export default function ReportsPage() {
             </AlertDescription>
         </Alert>
       )}
+
+      {absencePenalty.paidLeaveCount > 0 && (
+        <Alert variant="default" className="bg-emerald-950/40 border-emerald-500/40 text-emerald-300">
+            <Palmtree className="h-4 w-4 text-emerald-500" />
+            <AlertTitle>{t('paidLeaveAlertTitle')}</AlertTitle>
+            <AlertDescription>
+                {t('paidLeaveAlertDescription', {
+                    count: absencePenalty.paidLeaveCount
+                })}
+            </AlertDescription>
+        </Alert>
+      )
       
         <Card>
             <CardHeader>
