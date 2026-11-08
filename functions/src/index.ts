@@ -321,26 +321,123 @@ function calculateTrustedDurations(
  * time or payroll durations. This trigger calculates them from server event
  * time. User-entered manual shifts are also recalculated before payroll use.
  */
+const SHIFT_END_TIMES: Record<string, string> = {
+  morningA: "14:15",
+  morningB: "16:15",
+  afternoon: "22:15",
+  night: "06:15",
+};
+
+function parseClockMinutes(value: unknown): number | null {
+  if (typeof value !== "string" || !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+    return null;
+  }
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function localDateTimeToUtcMillis(dateValue: string, timeValue: string): number {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  // Africa/Douala is UTC+1.
+  return Date.UTC(year, month - 1, day, hours - 1, minutes);
+}
+
+function addLocalDay(dateValue: string): string {
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function getDoualaDateAndTime(value: Date): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Douala",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return {
+    date: `${part("year")}-${part("month")}-${part("day")}`,
+    time: `${part("hour")}:${part("minute")}`,
+  };
+}
+
+function calculateTrustedDurations(
+  entry: Record<string, any>,
+  endDate: string,
+  endTime: string,
+  breakDurationMinutes: number,
+  eligibleForOvertime: boolean
+): { duration: number; overtimeDuration: number } | null {
+  const startMinutes = parseClockMinutes(entry.startTime);
+  const endMinutes = parseClockMinutes(endTime);
+  const scheduledEndTime = SHIFT_END_TIMES[String(entry.shiftId)];
+  const scheduledEndMinutes = parseClockMinutes(scheduledEndTime);
+  if (startMinutes === null || endMinutes === null || scheduledEndMinutes === null) {
+    return null;
+  }
+
+  const startUtc = localDateTimeToUtcMillis(String(entry.date), String(entry.startTime));
+  const endUtc = localDateTimeToUtcMillis(endDate, endTime);
+  const totalDuration = Math.floor((endUtc - startUtc) / 60_000);
+  if (totalDuration <= 0 || totalDuration > 24 * 60) return null;
+
+  let scheduledEndUtc = localDateTimeToUtcMillis(String(entry.date), scheduledEndTime);
+  if (scheduledEndUtc <= startUtc) scheduledEndUtc += 24 * 60 * 60 * 1000;
+
+  const safeBreak = Math.min(
+    totalDuration,
+    Math.max(0, Number.isFinite(breakDurationMinutes) ? breakDurationMinutes : 0)
+  );
+  const duration = Math.max(0, totalDuration > 6 * 60 ? totalDuration - safeBreak : totalDuration);
+  const rawOvertime = eligibleForOvertime && endUtc > scheduledEndUtc
+    ? Math.floor((endUtc - scheduledEndUtc) / 60_000)
+    : 0;
+
+  return {
+    duration,
+    overtimeDuration: Math.min(duration, Math.max(0, rawOvertime)),
+  };
+}
+
+/**
+ * All employee-controlled time fields are treated as requests only.
+ * The server stamps shift starts/stops and calculates payable durations.
+ * Manually reported shifts are recalculated before payroll can use them.
+ */
 export const onTimeEntryEndCreateEvent = onDocumentWritten({
   document: "users/{userId}/timeEntries/{timeEntryId}",
   secrets: googleOAuthSecrets,
 }, async (firestoreEvent) => {
   if (!firestoreEvent.data) return;
 
-  const beforeData = firestoreEvent.data.before.data();
-  const afterData = firestoreEvent.data.after.data();
-  if (!afterData) return;
-
-  const isStopRequest = Boolean(afterData.stopRequestedAt) && !beforeData?.stopRequestedAt;
-  const isManualEntryCreation = !beforeData
-    && afterData.modified_manually === true
-    && afterData.location === "Manual"
-    && typeof afterData.endTime === "string"
-    && afterData.endTime.length > 0;
-
-  if (!isStopRequest && !isManualEntryCreation) return;
-
   const { userId, timeEntryId } = firestoreEvent.params;
+  const entryRef = firestoreEvent.data.after.ref;
+  const currentSnapshot = await entryRef.get();
+  const currentData = currentSnapshot.data();
+  if (!currentData) return;
+
+  const beforeData = firestoreEvent.data.before.data();
+  const isActiveStartCreation = !beforeData
+    && currentData.endTime === ''
+    && currentData.modified_manually !== true
+    && !currentData.serverStartedAt;
+  const isManualEntryCreation = currentData.modified_manually === true
+    && currentData.location === "Manual"
+    && typeof currentData.endTime === "string"
+    && currentData.endTime.length > 0
+    && !currentData.serverCalculatedAt;
+  const isStopRequest = Boolean(currentData.stopRequestedAt)
+    && currentData.endTime === ''
+    && Boolean(currentData.serverStartedAt)
+    && !currentData.serverCalculatedAt;
+
+  if (!isActiveStartCreation && !isManualEntryCreation && !isStopRequest) return;
+
   const userRef = db.collection("users").doc(userId);
   const [userSnapshot, settingsSnapshot] = await Promise.all([
     userRef.get(),
@@ -348,7 +445,20 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
   ]);
   const userData = userSnapshot.data();
   if (!userData) {
-    logger.error("Cannot calculate shift for missing user profile.", { userId, timeEntryId });
+    logger.error("Cannot process attendance for a missing user profile.", { userId, timeEntryId });
+    return;
+  }
+
+  if (isActiveStartCreation) {
+    const serverStart = getDoualaDateAndTime(new Date(firestoreEvent.time));
+    await entryRef.update({
+      date: serverStart.date,
+      startTime: serverStart.time,
+      profession: userData.profession,
+      userProfileId: userId,
+      serverStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    logger.info("Stamped trusted shift start.", { userId, timeEntryId });
     return;
   }
 
@@ -356,7 +466,7 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
   let endTime: string;
   if (isStopRequest) {
     const eventDate = new Date(firestoreEvent.time);
-    const startUtc = localDateTimeToUtcMillis(String(afterData.date), String(afterData.startTime));
+    const startUtc = localDateTimeToUtcMillis(String(currentData.date), String(currentData.startTime));
     if (startUtc > eventDate.getTime() + 60_000) {
       logger.warn("Rejected a shift stop request with a future start time.", { userId, timeEntryId });
       return;
@@ -365,9 +475,9 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
     endDate = localEnd.date;
     endTime = localEnd.time;
   } else {
-    endTime = String(afterData.endTime);
-    endDate = String(afterData.date);
-    const startMinutes = parseClockMinutes(afterData.startTime);
+    endTime = String(currentData.endTime);
+    endDate = String(currentData.date);
+    const startMinutes = parseClockMinutes(currentData.startTime);
     const endMinutes = parseClockMinutes(endTime);
     if (startMinutes === null || endMinutes === null) {
       logger.warn("Rejected a manual time entry with an invalid clock value.", { userId, timeEntryId });
@@ -383,7 +493,7 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
     "machinist",
   ].includes(String(userData.profession));
   const calculated = calculateTrustedDurations(
-    afterData,
+    currentData,
     endDate,
     endTime,
     Number(settingsSnapshot.data()?.breakDuration ?? 0),
@@ -394,10 +504,12 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
     return;
   }
 
-  await firestoreEvent.data.after.ref.update({
+  await entryRef.update({
     endTime,
     duration: calculated.duration,
     overtimeDuration: calculated.overtimeDuration,
+    profession: userData.profession,
+    serverCalculatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   logger.info("Calculated trusted shift duration.", {
     userId,
@@ -419,10 +531,10 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
   oauth2Client.setCredentials({ refresh_token: refreshToken });
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
   const calendarEvent = {
-    summary: `${userData.name} - OM-Suivi: ${afterData.shiftId}`,
+    summary: `${userData.name} - OM-Suivi: ${currentData.shiftId}`,
     description: "Récapitulatif de session enregistré via l'application OM-Suivi.",
     start: {
-      dateTime: `${afterData.date}T${afterData.startTime}:00`,
+      dateTime: `${currentData.date}T${currentData.startTime}:00`,
       timeZone: "Africa/Douala",
     },
     end: {
