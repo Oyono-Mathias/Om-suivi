@@ -89,6 +89,7 @@ service cloud.firestore {
               request.resource.data.endTime == ''
               && request.resource.data.duration == 0
               && request.resource.data.overtimeDuration == 0
+              && !('stopRequestedAt' in request.resource.data)
               && (!('modified_manually' in request.resource.data) || request.resource.data.modified_manually == false)
               && (!('isPublicHoliday' in request.resource.data) || request.resource.data.isPublicHoliday == false)
             )
@@ -96,6 +97,8 @@ service cloud.firestore {
               request.resource.data.endTime != ''
               && request.resource.data.duration == 0
               && request.resource.data.overtimeDuration == 0
+              && !('stopRequestedAt' in request.resource.data)
+              && request.resource.data.endTime != request.resource.data.startTime
               && request.resource.data.modified_manually == true
               && request.resource.data.location == 'Manual'
               && request.resource.data.stopContext == 'manual'
