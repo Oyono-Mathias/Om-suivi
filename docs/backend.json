@@ -62,14 +62,34 @@
             "description": "The longitude of the user's home location."
         },
         "hireDate": {
-          "type": "string",
-          "format": "date",
-          "description": "The user's hiring date."
+          "oneOf": [
+            { "type": "string", "format": "date", "description": "Legacy YYYY-MM-DD value." },
+            {
+              "type": "object",
+              "properties": {
+                "seconds": { "type": "integer" },
+                "nanoseconds": { "type": "integer" }
+              },
+              "required": ["seconds", "nanoseconds"],
+              "additionalProperties": false,
+              "description": "Firestore Timestamp written by serverTimestamp() during registration."
+            }
+          ]
         },
         "leaveStartDate": {
-          "type": "string",
-          "format": "date",
-          "description": "The start date of the user's current annual leave cycle."
+          "oneOf": [
+            { "type": "string", "format": "date", "description": "Legacy YYYY-MM-DD value." },
+            {
+              "type": "object",
+              "properties": {
+                "seconds": { "type": "integer" },
+                "nanoseconds": { "type": "integer" }
+              },
+              "required": ["seconds", "nanoseconds"],
+              "additionalProperties": false,
+              "description": "Firestore Timestamp written by serverTimestamp() during registration."
+            }
+          ]
         },
         "fcmToken": {
             "type": "string",
