@@ -71,6 +71,9 @@ test('employee records are private and cannot be escalated', async (t) => {
   const otherEmployeeDb = testEnv.authenticatedContext('employee-2', {
     email: 'other@example.com',
   }).firestore();
+  const newEmployeeDb = testEnv.authenticatedContext('employee-new', {
+    email: 'employee@example.com',
+  }).firestore();
   const adminDb = testEnv.authenticatedContext('admin-1', {
     email: 'admin@example.com',
   }).firestore();
@@ -83,7 +86,7 @@ test('employee records are private and cannot be escalated', async (t) => {
   });
 
   await t.test('an employee cannot create an administrator account', async () => {
-    await assertFails(setDoc(doc(employeeDb, 'users/employee-new'), {
+    await assertFails(setDoc(doc(newEmployeeDb, 'users/employee-new'), {
       id: 'employee-new',
       name: 'Escalade',
       email: 'employee@example.com',
