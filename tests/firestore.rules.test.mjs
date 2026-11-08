@@ -253,10 +253,13 @@ test('time entries validate ownership and protect completed payroll history', as
   const ownEntry = doc(employeeDb, 'users/employee-1/timeEntries/entry-1');
 
   await assertSucceeds(updateDoc(ownEntry, {
+    stopRequestedAt: serverTimestamp(),
+    stopContext: 'manual',
+  }));
+  await assertFails(updateDoc(ownEntry, {
     endTime: '17:00',
     duration: 480,
     overtimeDuration: 60,
-    stopContext: 'manual',
   }));
   await assertFails(updateDoc(ownEntry, { date: '2020-01-01' }));
   await assertFails(deleteDoc(ownEntry));
@@ -269,13 +272,38 @@ test('time entries validate ownership and protect completed payroll history', as
     date: '2026-11-08',
     startTime: '08:00',
     endTime: '16:00',
+    duration: 0,
+    overtimeDuration: 0,
+    shiftId: 'morning',
+    userProfileId: 'employee-1',
+    profession: 'storekeeper',
+    modified_manually: true,
+    stopContext: 'manual',
+    location: 'Manual',
+  }));
+  await assertFails(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/client-payroll-1'), {
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '16:00',
     duration: 480,
     overtimeDuration: 0,
     shiftId: 'morning',
     userProfileId: 'employee-1',
     profession: 'storekeeper',
     modified_manually: true,
+    stopContext: 'manual',
     location: 'Manual',
+  }));
+  await assertFails(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/holiday-1'), {
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '',
+    duration: 0,
+    overtimeDuration: 0,
+    shiftId: 'morning',
+    userProfileId: 'employee-1',
+    profession: 'storekeeper',
+    isPublicHoliday: true,
   }));
   await assertFails(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/forged-1'), {
     date: '2026-11-08',
