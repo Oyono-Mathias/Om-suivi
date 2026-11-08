@@ -292,7 +292,7 @@ export default function AdminUserBulletinPage({ params }: any) {
                     </div>
                     <div className="text-right">
                         <p>Matricule: 00123</p>
-                        <p>Ancienneté: {differenceInYears(new Date(), parseISO(profile.hireDate || ''))} ans</p>
+                        <p>Ancienneté: {differenceInYears(new Date(), toDate(profile.hireDate || ''))} ans</p>
                     </div>
                 </div>
                 <div className="overflow-x-auto">
