@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, limit, serverTimestamp, where, doc } from 'firebase/firestore';
-import type { Profile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
+import type { PublicProfile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
 import { Loader2, Send, PartyPopper } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
@@ -129,8 +129,8 @@ export default function TeamPage() {
   }, [firestore, authUser]);
   const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<Profile>(currentUserProfileRef);
 
-  const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('name')), [firestore]);
-  const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<Profile>(allProfilesQuery);
+  const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'publicProfiles'), orderBy('name')), [firestore]);
+  const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<PublicProfile>(allProfilesQuery);
 
   const leaveAnnouncementsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
