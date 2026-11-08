@@ -231,7 +231,7 @@ function ConfigurationModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenC
     const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
-    const form = useForm<z.infer<typeof configSchema>>({
+    const form = useForm<z.input<typeof configSchema>, any, z.output<typeof configSchema>>({
         resolver: zodResolver(configSchema),
     });
     
@@ -269,7 +269,7 @@ function ConfigurationModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenC
         }
     };
     
-    const handleSaveChanges = async (values: z.infer<typeof configSchema>) => {
+    const handleSaveChanges = async (values: z.output<typeof configSchema>) => {
         const { tier1Rate, tier2Rate, nightRate, sundayRate, holidayRate, ...otherValues } = values;
         const dataToSave = {
             ...otherValues,
