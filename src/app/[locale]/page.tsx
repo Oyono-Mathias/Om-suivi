@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { toDate } from '@/lib/date-utils';
+import { calculateShiftDurations } from '@/lib/time-calculations';
 import {
   Card,
   CardContent,
@@ -161,28 +162,23 @@ export default function TimeTrackingPage() {
 
     const effectiveEndTime = manualEndTime || new Date();
     const endTimeStr = format(effectiveEndTime, 'HH:mm');
-    const today = format(effectiveEndTime, 'yyyy-MM-dd');
-  
     const startTimeForCalc = entryToUpdate?.startTime || format(new Date(recoveryData!.startTimeISO), 'HH:mm');
     const startDateForCalc = entryToUpdate?.date || format(new Date(recoveryData!.startTimeISO), 'yyyy-MM-dd');
-  
-    const startDateTime = parseISO(`${startDateForCalc}T${startTimeForCalc}:00`);
-    const totalDuration = differenceInMinutes(effectiveEndTime, startDateTime);
-  
-    const breakDuration = globalSettings?.breakDuration ?? 0;
-    let payableDuration = totalDuration;
-    if (totalDuration > 6 * 60 && breakDuration > 0) {
-      payableDuration -= breakDuration;
-    }
 
-    const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
-    let overtimeDuration = 0;
-    
     const isEligibleForAutoOvertime = ['storekeeper', 'deliveryDriver', 'chauffeur', 'machinist'].includes(profile.profession);
-
-    if (isEligibleForAutoOvertime && effectiveEndTime > shiftEndDateTime) {
-      overtimeDuration = differenceInMinutes(effectiveEndTime, shiftEndDateTime);
-    }
+    const {
+      startDateTime,
+      totalDuration,
+      payableDuration,
+      overtimeDuration,
+    } = calculateShiftDurations({
+      startDate: startDateForCalc,
+      startTime: startTimeForCalc,
+      endTime: effectiveEndTime,
+      scheduledEndTime: shift.endTime,
+      breakDurationMinutes: globalSettings?.breakDuration ?? 0,
+      eligibleForOvertime: isEligibleForAutoOvertime,
+    });
   
     const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
     updateDocumentNonBlocking(entryRef, {
