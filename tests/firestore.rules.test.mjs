@@ -143,6 +143,7 @@ test('employee records are private and cannot be escalated', async (t) => {
       reminders: { enabled: true, time: '18:00' },
     }));
     await assertFails(updateDoc(ownProfile, { role: 'admin' }));
+    await assertFails(updateDoc(ownProfile, { profession: 'machinist' }));
     await assertFails(updateDoc(ownProfile, { monthlyBaseSalary: 900000 }));
     await assertFails(updateDoc(ownProfile, { hireDate: '2000-01-01' }));
     await assertFails(updateDoc(ownProfile, { leaveStartDate: '2000-01-01' }));
@@ -304,6 +305,17 @@ test('time entries validate ownership and protect completed payroll history', as
     userProfileId: 'employee-1',
     profession: 'storekeeper',
     isPublicHoliday: true,
+  }));
+  await assertFails(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/server-fields-1'), {
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '',
+    duration: 0,
+    overtimeDuration: 0,
+    shiftId: 'morning',
+    userProfileId: 'employee-1',
+    profession: 'storekeeper',
+    serverStartedAt: serverTimestamp(),
   }));
   await assertFails(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/forged-1'), {
     date: '2026-11-08',
