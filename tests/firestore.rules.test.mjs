@@ -189,6 +189,7 @@ test('employee records are private and cannot be escalated', async (t) => {
 test('Storage restricts justification uploads to the owner and image files under 10 MB', async (t) => {
   const employeeStorage = testEnv.authenticatedContext('employee-1').storage();
   const otherEmployeeStorage = testEnv.authenticatedContext('employee-2').storage();
+  const adminStorage = testEnv.authenticatedContext('admin-1').storage();
   const ownFile = storageRef(employeeStorage, 'justifications/employee-1/2026-11-01/justificatif.png');
   const foreignFile = storageRef(otherEmployeeStorage, 'justifications/employee-1/2026-11-01/forbidden.png');
 
@@ -197,6 +198,9 @@ test('Storage restricts justification uploads to the owner and image files under
       contentType: 'image/png',
     }));
     await assertSucceeds(getBytes(ownFile));
+    await assertFails(uploadBytes(ownFile, new Uint8Array([1, 2, 3]), {
+      contentType: 'image/png',
+    }));
   });
 
   await t.test('another employee cannot read or upload into the owner folder', async () => {
@@ -219,8 +223,9 @@ test('Storage restricts justification uploads to the owner and image files under
     ));
   });
 
-  await t.test('the owner can delete their own justification', async () => {
-    await assertSucceeds(deleteObject(ownFile));
+  await t.test('the owner cannot replace or delete submitted evidence; an admin can delete it', async () => {
+    await assertFails(deleteObject(ownFile));
+    await assertSucceeds(deleteObject(storageRef(adminStorage, ownFile.fullPath)));
   });
 });
 
@@ -294,5 +299,45 @@ test('time entries validate ownership and protect completed payroll history', as
     userProfileId: 'employee-1',
     profession: 'storekeeper',
     monthlyBaseSalary: 999999,
+  }));
+});
+
+
+test('absence justifications cannot self-approve or be removed by their owner', async () => {
+  const employeeDb = testEnv.authenticatedContext('employee-1', {
+    email: 'employee@example.com',
+  }).firestore();
+  const adminDb = testEnv.authenticatedContext('admin-1', {
+    email: 'admin@example.com',
+  }).firestore();
+  const ownJustification = doc(employeeDb, 'absenceJustifications/justification-1');
+
+  await assertSucceeds(setDoc(ownJustification, {
+    userId: 'employee-1',
+    userName: 'Employé',
+    absenceDate: '2026-11-08',
+    imageUrl: 'https://firebasestorage.googleapis.com/example.png',
+    status: 'pending',
+    submittedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(ownJustification, { status: 'approved' }));
+  await assertFails(deleteDoc(ownJustification));
+  await assertSucceeds(deleteDoc(doc(adminDb, 'absenceJustifications/justification-1')));
+
+  await assertFails(setDoc(doc(employeeDb, 'absenceJustifications/forged-approval'), {
+    userId: 'employee-1',
+    userName: 'Employé',
+    absenceDate: '2026-11-08',
+    imageUrl: 'https://firebasestorage.googleapis.com/example.png',
+    status: 'approved',
+    submittedAt: serverTimestamp(),
+  }));
+  await assertFails(setDoc(doc(employeeDb, 'absenceJustifications/forged-name'), {
+    userId: 'employee-1',
+    userName: 'Administrateur',
+    absenceDate: '2026-11-08',
+    imageUrl: 'https://firebasestorage.googleapis.com/example.png',
+    status: 'pending',
+    submittedAt: serverTimestamp(),
   }));
 });
