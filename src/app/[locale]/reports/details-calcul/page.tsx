@@ -10,6 +10,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@
 import { doc, collection, query, where } from "firebase/firestore";
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import { shifts } from '@/lib/shifts';
+import { countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { parseISO, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, getDay, parse, differenceInYears, eachDayOfInterval, format } from "date-fns";
 import { Loader2 } from 'lucide-react';
 import { Link } from '@/navigation';
@@ -189,7 +190,7 @@ export default function DetailsCalculPage() {
             }
         }
         
-        const totalDaysWorked = workedDays.size + sickLeaveDays.size;
+        const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
         const proratedBaseSalary = (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked;
         
         if (unjustifiedAbsenceCount > 0) {
