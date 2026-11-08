@@ -66,7 +66,13 @@ firebase functions:secrets:set GOOGLE_REDIRECT_URI
 
 GOOGLE_REDIRECT_URI doit correspondre à l'URL réelle de la fonction authGoogleCallback. Le fichier functions/.env.example est réservé aux émulateurs locaux ; ne pas utiliser de fichier .env pour stocker les identifiants de production et ne jamais committer de secret.
 
-Après déploiement de la nouvelle fonction, exécuter une seule fois la callable admin `migrateGoogleCalendarTokens` pour déplacer les anciens jetons de `/users/{uid}` vers `/googleCalendarTokens/{uid}`. Vérifier le nombre migré avant de considérer l'assainissement terminé. Les règles clientes refusent ensuite tout accès à cette collection privée et aux états OAuth.
+Ordre de mise en service obligatoire pour éviter de laisser des anciens jetons lisibles dans les profils :
+
+1. Définir les trois secrets puis déployer les Functions : `firebase deploy --only functions`.
+2. Se connecter avec un compte administrateur, ouvrir **Profil → Intégrations**, puis lancer une seule fois **Migrer les anciens jetons Google**. Vérifier le nombre déplacé dans le message de confirmation.
+3. Après la migration, déployer les règles : `firebase deploy --only firestore:rules,storage`.
+
+La callable `migrateGoogleCalendarTokens` déplace les anciens jetons de `/users/{uid}` vers `/googleCalendarTokens/{uid}`. Les règles clientes refusent ensuite tout accès à cette collection privée et aux états OAuth.
 
 ## Règles et déploiement Firebase
 
