@@ -60,6 +60,16 @@ before(async () => {
       monthlyBaseSalary: 100000,
       currency: 'FCFA',
     });
+    await setDoc(doc(db, 'users/employee-1/timeEntries/entry-1'), {
+      date: '2026-11-08',
+      startTime: '08:00',
+      endTime: '',
+      duration: 0,
+      overtimeDuration: 0,
+      shiftId: 'morning',
+      userProfileId: 'employee-1',
+      profession: 'storekeeper',
+    });
     await setDoc(doc(db, 'googleCalendarTokens/employee-1'), {
       refreshToken: 'private-refresh-token',
     });
@@ -227,4 +237,62 @@ test('Google OAuth credentials and transient states are never client-readable', 
   await assertFails(getDoc(doc(adminDb, 'googleCalendarTokens/employee-1')));
   await assertFails(getDoc(doc(employeeDb, 'oauthStates/test-state')));
   await assertFails(getDocs(collection(employeeDb, 'googleCalendarTokens')));
+});
+
+
+test('time entries validate ownership and protect completed payroll history', async () => {
+  const employeeDb = testEnv.authenticatedContext('employee-1', {
+    email: 'employee@example.com',
+  }).firestore();
+  const adminDb = testEnv.authenticatedContext('admin-1', {
+    email: 'admin@example.com',
+  }).firestore();
+  const ownEntry = doc(employeeDb, 'users/employee-1/timeEntries/entry-1');
+
+  await assertSucceeds(updateDoc(ownEntry, {
+    endTime: '17:00',
+    duration: 480,
+    overtimeDuration: 60,
+    stopContext: 'manual',
+  }));
+  await assertFails(updateDoc(ownEntry, { date: '2020-01-01' }));
+  await assertFails(deleteDoc(ownEntry));
+  await assertSucceeds(updateDoc(
+    doc(adminDb, 'users/employee-1/timeEntries/entry-1'),
+    { duration: 500 },
+  ));
+
+  await assertSucceeds(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/manual-1'), {
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '16:00',
+    duration: 480,
+    overtimeDuration: 0,
+    shiftId: 'morning',
+    userProfileId: 'employee-1',
+    profession: 'storekeeper',
+    modified_manually: true,
+    location: 'Manual',
+  }));
+  await assertFails(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/forged-1'), {
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '16:00',
+    duration: 480,
+    overtimeDuration: 0,
+    shiftId: 'morning',
+    userProfileId: 'employee-2',
+    profession: 'storekeeper',
+  }));
+  await assertFails(setDoc(doc(employeeDb, 'users/employee-1/timeEntries/extra-field-1'), {
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '16:00',
+    duration: 480,
+    overtimeDuration: 0,
+    shiftId: 'morning',
+    userProfileId: 'employee-1',
+    profession: 'storekeeper',
+    monthlyBaseSalary: 999999,
+  }));
 });
