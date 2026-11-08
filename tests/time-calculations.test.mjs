@@ -26,6 +26,20 @@ test('night shift calculates scheduled end on the following day', () => {
   assert.equal(result.overtimeDuration, 45);
 });
 
+test('manual night shift beginning at 23:00 calculates overtime after next-day schedule', () => {
+  const result = calculateShiftDurations({
+    startDate: '2026-11-08',
+    startTime: '23:00',
+    endTime: new Date('2026-11-09T07:00:00'),
+    scheduledEndTime: '06:15',
+    breakDurationMinutes: 30,
+    eligibleForOvertime: true,
+  });
+  assert.equal(result.totalDuration, 480);
+  assert.equal(result.payableDuration, 450);
+  assert.equal(result.overtimeDuration, 45);
+});
+
 test('night shift ending on schedule has no overtime', () => {
   const result = calculateShiftDurations({
     startDate: '2026-11-08',
