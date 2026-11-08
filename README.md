@@ -48,13 +48,17 @@ npm --prefix functions install
 npm --prefix functions run build
 ```
 
-Google Calendar OAuth utilise les variables suivantes dans l'environnement Firebase Functions :
+Google Calendar OAuth utilise Google Secret Manager en production. Définir les secrets avant le déploiement :
 
-- GOOGLE_CLIENT_ID
-- GOOGLE_CLIENT_SECRET
-- GOOGLE_REDIRECT_URI
+```bash
+firebase functions:secrets:set GOOGLE_CLIENT_ID
+firebase functions:secrets:set GOOGLE_CLIENT_SECRET
+firebase functions:secrets:set GOOGLE_REDIRECT_URI
+```
 
-Copier functions/.env.example vers functions/.env.studio-3929362902-1f7dc, puis renseigner les valeurs depuis Google Cloud Console et Firebase. GOOGLE_REDIRECT_URI doit correspondre à l'URL réelle de la fonction authGoogleCallback après son déploiement. Ne jamais committer un fichier .env rempli.
+GOOGLE_REDIRECT_URI doit correspondre à l'URL réelle de la fonction authGoogleCallback. Le fichier functions/.env.example est réservé aux émulateurs locaux ; ne pas utiliser de fichier .env pour stocker les identifiants de production et ne jamais committer de secret.
+
+Après déploiement de la nouvelle fonction, exécuter une seule fois la callable admin `migrateGoogleCalendarTokens` pour déplacer les anciens jetons de `/users/{uid}` vers `/googleCalendarTokens/{uid}`. Vérifier le nombre migré avant de considérer l'assainissement terminé. Les règles clientes refusent ensuite tout accès à cette collection privée et aux états OAuth.
 
 ## Règles et déploiement Firebase
 
