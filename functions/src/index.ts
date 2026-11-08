@@ -1,4 +1,5 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { randomBytes } from "node:crypto";
 import * as admin from "firebase-admin";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
@@ -42,12 +43,19 @@ export const authGoogle = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
 
+  // OAuth state is a one-time, unpredictable CSRF token; never expose the UID in it.
+  const stateToken = randomBytes(32).toString("hex");
+  await db.collection("oauthStates").doc(stateToken).create({
+    uid,
+    createdAt: Date.now(),
+  });
+
   const authorizationUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,
     include_granted_scopes: true,
     prompt: "consent", // Important to get a refresh token every time.
-    state: uid, // Pass the user's UID to identify them in the callback
+    state: stateToken,
   });
 
   return { authorizationUrl };
@@ -60,18 +68,43 @@ export const authGoogle = onCall(async (request) => {
  */
 export const authGoogleCallback = onRequest({ cors: true }, async (req, res) => {
   const { code, state } = req.query;
-  const uid = state as string;
 
   if (!code || typeof code !== "string") {
     res.status(400).send("Authorization code is missing.");
     return;
   }
-  if (!uid) {
-    res.status(400).send("State (User ID) is missing.");
+  if (typeof state !== "string" || !/^[a-f0-9]{64}$/.test(state)) {
+    res.status(400).send("Invalid OAuth state.");
     return;
   }
 
   try {
+    // Consume the state atomically so it cannot be replayed or used for another UID.
+    const stateRef = db.collection("oauthStates").doc(state);
+    const uid = await db.runTransaction(async (transaction) => {
+      const stateSnapshot = await transaction.get(stateRef);
+      if (!stateSnapshot.exists) return null;
+
+      const stateData = stateSnapshot.data();
+      transaction.delete(stateRef);
+
+      if (
+        typeof stateData?.uid !== "string" ||
+        typeof stateData?.createdAt !== "number" ||
+        Date.now() - stateData.createdAt > 10 * 60 * 1000 ||
+        Date.now() < stateData.createdAt
+      ) {
+        return null;
+      }
+
+      return stateData.uid;
+    });
+
+    if (!uid) {
+      res.status(400).send("OAuth state is expired or has already been used.");
+      return;
+    }
+
     const { tokens } = await oauth2Client.getToken(code);
     const refreshToken = tokens.refresh_token;
 
