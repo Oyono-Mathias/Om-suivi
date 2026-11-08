@@ -246,13 +246,11 @@ export default function TeamPage() {
       </Card>
     </div>
     
-    {isAdmin && (
-        {managingUser && managingUserProfile && (
-          <UserTimeEntriesSheet
-            user={managingUserProfile}
-            onOpenChange={(open) => !open && setManagingUser(null)}
-          />
-        )}
+    {isAdmin && managingUser && managingUserProfile && (
+      <UserTimeEntriesSheet
+        user={managingUserProfile}
+        onOpenChange={(open) => !open && setManagingUser(null)}
+      />
     )}
 
     <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
