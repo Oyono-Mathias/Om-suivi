@@ -127,4 +127,4 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Test Firestore rules in emulator
-        run: npx --yes firebase-tools@15.35.0 emulators:exec --only firestore --project demo-om-suivi "npm run test:rules"
+        run: npx --yes firebase-tools@15.35.0 emulators:exec --only firestore,storage --project demo-om-suivi "npm run test:rules"
