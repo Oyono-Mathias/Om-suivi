@@ -98,6 +98,8 @@ test('employee records are private and cannot be escalated', async (t) => {
       monthlyBaseSalary: 0,
       currency: 'FCFA',
       createdAt: serverTimestamp(),
+      hireDate: serverTimestamp(),
+      leaveStartDate: serverTimestamp(),
     }));
   });
 
@@ -111,6 +113,8 @@ test('employee records are private and cannot be escalated', async (t) => {
       monthlyBaseSalary: 0,
       currency: 'FCFA',
       createdAt: serverTimestamp(),
+      hireDate: serverTimestamp(),
+      leaveStartDate: serverTimestamp(),
     }));
   });
 
