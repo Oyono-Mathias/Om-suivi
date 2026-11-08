@@ -62,6 +62,7 @@ export default function ProfilePage() {
   const { tryShowAd } = useAd();
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isMigratingGoogleTokens, setIsMigratingGoogleTokens] = useState(false);
   const [isCustomSalary, setIsCustomSalary] = useState(false);
   const [salaryInfo, setSalaryInfo] = useState<string | null>(null);
   
@@ -376,6 +377,33 @@ export default function ProfilePage() {
   };
 
 
+  const handleMigrateGoogleTokens = async () => {
+    if (profile?.role !== 'admin') return;
+
+    setIsMigratingGoogleTokens(true);
+    try {
+      const functions = getFunctions(getApp());
+      const migrateCallable = httpsCallable(functions, 'migrateGoogleCalendarTokens');
+      const result = await migrateCallable();
+      const data = result.data as { migrated?: number };
+      toast({
+        title: t('migrateGoogleTokensSuccessTitle'),
+        description: t('migrateGoogleTokensSuccessDescription', {
+          count: data.migrated ?? 0,
+        }),
+      });
+    } catch (error) {
+      console.error("Error migrating legacy Google Calendar tokens:", error);
+      toast({
+        variant: "destructive",
+        title: t('migrateGoogleTokensErrorTitle'),
+        description: t('migrateGoogleTokensErrorDescription'),
+      });
+    } finally {
+      setIsMigratingGoogleTokens(false);
+    }
+  };
+
   if (isUserLoading || isLoadingProfile) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -579,6 +607,21 @@ export default function ProfilePage() {
                   <svg viewBox="0 0 24 24" className="h-6 w-6 mr-2"><path fill="#34a853" d="M12 22a1 1 0 0 1-1-1v-8H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v8a1 1 0 0 1-1 1H4.5l7.5 7.5V21a1 1 0 0 1-1 1z"></path><path fill="#4285f4" d="M22 12a1 1 0 0 1-1 1h-8V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8z"></path><path fill="#fbbc04" d="M12 12a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v9a1 1 0 0 1-1 1h-8z"></path><path fill="#ea4335" d="M12 22a1 1 0 0 1-.71-.29l-9-9A1 1 0 0 1 2 12V3a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-.5l-7.21 7.21a1 1 0 0 1-.79.29z"></path></svg>
                   Connecter Google Calendar
                 </Button>
+              )}
+              {profile?.role === 'admin' && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">{t('migrateGoogleTokensDescription')}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={isMigratingGoogleTokens}
+                    onClick={handleMigrateGoogleTokens}
+                  >
+                    {isMigratingGoogleTokens && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('migrateGoogleTokensButton')}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
