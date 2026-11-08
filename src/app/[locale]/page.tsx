@@ -183,9 +183,7 @@ export default function TimeTrackingPage() {
   
     const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
     updateDocumentNonBlocking(entryRef, {
-      endTime: endTimeStr,
-      duration: payableDuration > 0 ? payableDuration : 0,
-      overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+      stopRequestedAt: serverTimestamp(),
       ...(entryToUpdate?.location === 'Mission' && {location: 'Mission (Terminée)'}),
       stopContext,
     });
