@@ -94,7 +94,7 @@ export default function AuthPage() {
     email: z.string().email({ message: t('emailInvalidError') }),
     password: z.string().min(6, { message: t('passwordMinLengthError') }),
     profession: z.enum(['machinist', 'storekeeper', 'deliveryDriver', 'chauffeur', 'securityAgent', 'other'], {
-      required_error: t('professionRequiredError'),
+      error: t('professionRequiredError'),
     }),
   });
 
