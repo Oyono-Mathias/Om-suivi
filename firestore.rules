@@ -160,16 +160,16 @@ service cloud.firestore {
     // Minimal employee directory data; sensitive fields stay in /users.
     match /publicProfiles/{profileId} {
       allow read: if isSignedIn();
-      allow create: if isOwner(profileId)
+      allow create: if (isOwner(profileId) || isAdmin())
         && request.resource.data.keys().hasOnly(['id', 'name', 'profession'])
         && request.resource.data.id == profileId
         && request.resource.data.name is string
         && request.resource.data.profession is string;
-      allow update: if isOwner(profileId)
+      allow update: if (isOwner(profileId) || isAdmin())
         && request.resource.data.keys().hasOnly(['id', 'name', 'profession'])
         && request.resource.data.id == profileId
         && request.resource.data.name is string
-        && request.resource.data.profession == resource.data.profession;
+        && (isAdmin() || request.resource.data.profession == resource.data.profession);
       allow delete: if isAdmin();
     }
 
