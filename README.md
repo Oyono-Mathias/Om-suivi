@@ -41,6 +41,13 @@ npx --yes firebase-tools@15.35.0 emulators:exec --only firestore,storage --proje
 
 La suite vérifie les accès aux profils, l'élévation de privilèges, la modification des données de paie, les demandes de congé et les justificatifs Storage.
 
+## Sécurité du pointage et de la paie
+
+- À la création d'un pointage actif, le serveur fixe la date et l'heure de départ ; les valeurs fournies par le navigateur ne font pas autorité.
+- Le salarié envoie une demande d'arrêt horodatée. Une Cloud Function fixe l'heure de fin et recalcule la durée payable et les heures supplémentaires à partir du profil, du planning et de la pause configurée.
+- Les entrées manuelles sont identifiées comme telles ; leurs durées sont recalculées côté serveur. Le salarié ne peut ni écrire les durées de paie, ni modifier lui-même sa profession ou déclarer un jour férié.
+- Les modifications et suppressions des historiques de pointage restent réservées aux administrateurs.
+
 ## Firebase Functions
 
 ```bash
