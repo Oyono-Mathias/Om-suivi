@@ -25,11 +25,13 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 // You can get this from the Firebase console after deployment.
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 
-const oauth2Client = new google.auth.OAuth2(
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI
-);
+function createOAuth2Client() {
+  return new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI
+  );
+}
 
 const scopes = ["https://www.googleapis.com/auth/calendar.events"];
 
@@ -127,6 +129,7 @@ export const authGoogle = onCall(async (request) => {
   }
 
   // OAuth state is a one-time, unpredictable CSRF token; never expose the UID in it.
+  const oauth2Client = createOAuth2Client();
   const stateToken = randomBytes(32).toString("hex");
   await db.collection("oauthStates").doc(stateToken).create({
     uid,
@@ -197,6 +200,7 @@ export const authGoogleCallback = onRequest(async (req, res) => {
       return;
     }
 
+    const oauth2Client = createOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
     const refreshToken = tokens.refresh_token;
 
@@ -251,6 +255,7 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten("users/{userId}/timeE
     return;
   }
 
+  const oauth2Client = createOAuth2Client();
   oauth2Client.setCredentials({ refresh_token: refreshToken });
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
