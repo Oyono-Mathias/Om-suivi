@@ -263,6 +263,8 @@
     "absenceAlertDescription": "Vous avez {count, plural, one {# absence} other {# absences}} ce mois-ci. Cela représente une pénalité estimée de -{penalty} FCFA sur votre paie.",
     "sickLeaveAlertTitle": "Absences Justifiées",
     "sickLeaveAlertDescription": "Vous avez {count, plural, one {# jour de congé maladie payé} other {# jours de congé maladie payés}} ce mois-ci.",
+    "paidLeaveAlertTitle": "Congés payés",
+    "paidLeaveAlertDescription": "Vous avez {count, plural, one {# jour de congé payé} other {# jours de congé payés}} ce mois-ci.",
     "leaveTableBase": "Congé de base",
     "leaveTableSeniority": "Surplus Ancienneté",
     "leaveRequestButton": "Générer une demande de congé",
