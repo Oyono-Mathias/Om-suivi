@@ -36,8 +36,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { shifts } from '@/lib/shifts';
+import { calculateShiftDurations } from '@/lib/time-calculations';
 import type { TimeEntry, Profile, GlobalSettings } from '@/lib/types';
-import { format, parse, differenceInMinutes, parseISO } from 'date-fns';
+import { addDays, format, parse } from 'date-fns';
 import { useTranslations } from 'next-intl';
 
 interface ManualEntryDialogProps {
@@ -62,7 +63,10 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globa
   }).refine(data => {
     const start = parse(data.startTime, 'HH:mm', new Date());
     const end = parse(data.endTime, 'HH:mm', new Date());
-    return end > start;
+    if (end > start) return true;
+
+    const selectedShift = shifts.find(shift => shift.id === data.shiftId);
+    return Boolean(selectedShift && selectedShift.endTime <= selectedShift.startTime);
   }, {
     message: t('endTimeErrorAlert'),
     path: ['endTime'],
@@ -86,22 +90,20 @@ export default function ManualEntryDialog({ isOpen, onOpenChange, profile, globa
 
     const dateStr = values.date;
     const startDateTime = parse(`${dateStr} ${values.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
-    const endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    let endDateTime = parse(`${dateStr} ${values.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
 
-    const totalDuration = differenceInMinutes(endDateTime, startDateTime);
-    
-    const breakDuration = globalSettings?.breakDuration ?? 0;
-    let payableDuration = totalDuration;
-    if (totalDuration > 6 * 60 && breakDuration > 0) {
-      payableDuration -= breakDuration;
+    if (endDateTime <= startDateTime) {
+      endDateTime = addDays(endDateTime, 1);
     }
 
-
-    const shiftEndDateTime = parseISO(`${dateStr}T${shift.endTime}:00`);
-    let overtimeDuration = 0;
-    if (endDateTime > shiftEndDateTime) {
-        overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
-    }
+    const { payableDuration, overtimeDuration } = calculateShiftDurations({
+      startDate: dateStr,
+      startTime: values.startTime,
+      endTime: endDateTime,
+      scheduledEndTime: shift.endTime,
+      breakDurationMinutes: globalSettings?.breakDuration ?? 0,
+      eligibleForOvertime: true,
+    });
     
     const newEntry: Omit<TimeEntry, 'id'> = {
         date: dateStr,
