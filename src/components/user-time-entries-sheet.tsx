@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, orderBy, setDoc, deleteDoc, addDoc, where, getDocs } from 'firebase/firestore';
 import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, HeartPulse, History } from 'lucide-react';
@@ -355,7 +356,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntries
                                 const entryForDay = timeEntries?.find(e => e.date === dayString);
                                 const isWorkDay = getDay(day) !== 0; // 0 is Sunday
                                 const override = attendanceOverrides?.find(o => o.id === dayString);
-                                const hireDate = user?.hireDate ? parseISO(user.hireDate) : null;
+                                const hireDate = user?.hireDate ? toDate(user.hireDate) : null;
                                 
                                 if (hireDate && day < startOfDay(hireDate)) {
                                     return (
