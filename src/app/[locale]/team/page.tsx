@@ -129,6 +129,12 @@ export default function TeamPage() {
   }, [firestore, authUser]);
   const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<Profile>(currentUserProfileRef);
 
+  const managingUserProfileRef = useMemoFirebase(() => {
+    if (!isAdmin || !managingUser) return null;
+    return doc(firestore, 'users', managingUser.id);
+  }, [firestore, isAdmin, managingUser]);
+  const { data: managingUserProfile } = useDoc<Profile>(managingUserProfileRef);
+
   const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'publicProfiles'), orderBy('name')), [firestore]);
   const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<PublicProfile>(allProfilesQuery);
 
@@ -242,10 +248,12 @@ export default function TeamPage() {
     </div>
     
     {isAdmin && (
-        <UserTimeEntriesSheet 
-            user={managingUser}
+        {managingUser && managingUserProfile && (
+          <UserTimeEntriesSheet
+            user={managingUserProfile}
             onOpenChange={(open) => !open && setManagingUser(null)}
-        />
+          />
+        )}
     )}
 
     <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
