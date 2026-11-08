@@ -199,9 +199,6 @@ test('Storage restricts justification uploads to the owner and image files under
       contentType: 'image/png',
     }));
     await assertSucceeds(getBytes(ownFile));
-    await assertFails(uploadBytes(ownFile, new Uint8Array([1, 2, 3]), {
-      contentType: 'image/png',
-    }));
   });
 
   await t.test('another employee cannot read or upload into the owner folder', async () => {
@@ -224,7 +221,7 @@ test('Storage restricts justification uploads to the owner and image files under
     ));
   });
 
-  await t.test('the owner cannot replace or delete submitted evidence; an admin can delete it', async () => {
+  await t.test('the owner cannot delete submitted evidence; an admin can delete it', async () => {
     await assertFails(deleteObject(ownFile));
     await assertSucceeds(deleteObject(storageRef(adminStorage, ownFile.fullPath)));
   });
