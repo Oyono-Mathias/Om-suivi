@@ -91,7 +91,7 @@ export default function ProfilePage() {
   const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
   const { data: globalSettings } = useDoc<GlobalSettings>(settingsRef);
 
-  const form = useForm<z.infer<typeof profileSchema>>({
+  const form = useForm<z.input<typeof profileSchema>, any, z.output<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
@@ -221,12 +221,12 @@ export default function ProfilePage() {
   }, [t]);
 
 
-  async function onSubmit(values: z.infer<typeof profileSchema>) {
+  async function onSubmit(values: z.output<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
 
     setIsSaving(true);
     try {
-      const dataToSave: Partial<z.infer<typeof profileSchema>> = {
+      const dataToSave: Partial<z.output<typeof profileSchema>> = {
         name: values.name,
         profession: values.profession,
         reminders: values.reminders,
