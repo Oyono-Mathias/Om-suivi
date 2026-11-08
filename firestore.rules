@@ -164,7 +164,9 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['id', 'name', 'profession'])
         && request.resource.data.id == profileId
         && request.resource.data.name is string
-        && request.resource.data.profession is string;
+        && request.resource.data.profession is string
+        && request.resource.data.name == get(/databases/$(database)/documents/users/$(profileId)).data.name
+        && request.resource.data.profession == get(/databases/$(database)/documents/users/$(profileId)).data.profession;
       allow delete: if isAdmin();
     }
 
