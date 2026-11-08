@@ -21,7 +21,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { shifts } from '@/lib/shifts';
-import { format, parse, differenceInMinutes, parseISO, addDays, eachDayOfInterval, getDay, startOfDay } from 'date-fns';
+import { calculateShiftDurations } from '@/lib/time-calculations';
+import { format, parse, parseISO, addDays, eachDayOfInterval, getDay, startOfDay } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -31,7 +32,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/comp
 
 type TimeEntriesUser = Pick<Profile, 'id' | 'name' | 'profession' | 'hireDate'> & { email?: string };
 
-function BackfillDialog({ user, isOpen, onOpenChange }: { user: TimeEntriesUser, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+function BackfillDialog({ user, isOpen, onOpenChange, globalSettings }: { user: TimeEntriesUser, isOpen: boolean, onOpenChange: (open: boolean) => void, globalSettings: GlobalSettings | null }) {
     const t = useTranslations('AdminPage');
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -77,11 +78,20 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: TimeEntriesUser,
 
                 if (status === 'present') {
                     const standardShift = shifts.find(s => s.id === 'morningB')!; // 8:00 - 16:15
+                    const scheduledEnd = parse(`${dayString} ${standardShift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    const { payableDuration } = calculateShiftDurations({
+                        startDate: dayString,
+                        startTime: standardShift.startTime,
+                        endTime: scheduledEnd,
+                        scheduledEndTime: standardShift.endTime,
+                        breakDurationMinutes: globalSettings?.breakDuration ?? 0,
+                        eligibleForOvertime: false,
+                    });
                     const newEntry: Omit<TimeEntry, 'id'> = {
                         date: dayString,
                         startTime: standardShift.startTime,
                         endTime: standardShift.endTime,
-                        duration: 495, // 8h 15m
+                        duration: payableDuration,
                         overtimeDuration: 0,
                         location: 'Régularisation Admin',
                         shiftId: standardShift.id,
@@ -266,24 +276,14 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntries
         endDateTime = addDays(endDateTime, 1);
     }
 
-    const totalDuration = differenceInMinutes(endDateTime, startDateTime);
-
-    const breakDuration = globalSettings?.breakDuration ?? 0;
-    let payableDuration = totalDuration;
-    if (totalDuration > 6 * 60 && breakDuration > 0) {
-      payableDuration -= breakDuration;
-    }
-
-    let shiftEndDateTime = parse(`${dateStr} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
-
-    if (shift.id === 'night' && shiftEndDateTime <= startDateTime) {
-        shiftEndDateTime = addDays(shiftEndDateTime, 1);
-    }
-    
-    let overtimeDuration = 0;
-    if (endDateTime > shiftEndDateTime) {
-        overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
-    }
+    const { payableDuration, overtimeDuration } = calculateShiftDurations({
+      startDate: dateStr,
+      startTime: values.startTime,
+      endTime: endDateTime,
+      scheduledEndTime: shift.endTime,
+      breakDurationMinutes: globalSettings?.breakDuration ?? 0,
+      eligibleForOvertime: true,
+    });
     
     const entryRef = doc(firestore, 'users', user.id, 'timeEntries', editingEntry.id);
     await setDoc(entryRef, {
@@ -450,7 +450,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntries
         </SheetContent>
       </Sheet>
 
-      {user && <BackfillDialog user={user} isOpen={isBackfillOpen} onOpenChange={setIsBackfillOpen} />}
+      {user && <BackfillDialog user={user} isOpen={isBackfillOpen} onOpenChange={setIsBackfillOpen} globalSettings={globalSettings ?? null} />}
 
       <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
         <DialogContent>
