@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, addDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader2, TrendingUp, ShieldCheck, Gift, ChevronsRight, User as UserIcon } from 'lucide-react';
@@ -69,7 +70,7 @@ function UserAdvancementCard({ user, onApprove }: { user: Profile & { advancemen
                 </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm flex-grow">
-                 <p><span className="font-semibold">{t('hireDateLabel')}:</span> {new Date(user.hireDate!).toLocaleDateString()}</p>
+                 <p><span className="font-semibold">{t('hireDateLabel')}:</span> {toDate(user.hireDate!).toLocaleDateString()}</p>
                  <div className="flex items-center justify-center gap-4 text-center bg-muted/50 p-2 rounded-md">
                      <div>
                          <p className="text-xs text-muted-foreground">{t('currentEchelonLabel')}</p>
@@ -134,7 +135,7 @@ export default function AdminCareerPage() {
         const usersWithAdvancement = allProfiles
             .filter(user => user.hireDate && user.category && user.echelon)
             .map(user => {
-                const hireDate = new Date(user.hireDate!);
+                const hireDate = toDate(user.hireDate!);
                 const seniorityYears = differenceInYears(now, hireDate);
                 const seniorityMonths = differenceInMonths(now, hireDate) % 12;
 
@@ -251,7 +252,7 @@ export default function AdminCareerPage() {
                          <div key={user.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                             <div className="space-y-1">
                                 <p className="font-medium">{user.name}</p>
-                                <p className="text-xs text-muted-foreground">{t('hireDateLabel')}: {new Date(user.hireDate!).toLocaleDateString()}</p>
+                                <p className="text-xs text-muted-foreground">{t('hireDateLabel')}: {toDate(user.hireDate!).toLocaleDateString()}</p>
                             </div>
                             <div className="text-right">
                                 <p className="font-semibold">{user.advancement.seniorityString}</p>
