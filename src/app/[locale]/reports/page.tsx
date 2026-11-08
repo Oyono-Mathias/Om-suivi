@@ -506,7 +506,7 @@ export default function ReportsPage() {
                 })}
             </AlertDescription>
         </Alert>
-      )
+      )}
       
         <Card>
             <CardHeader>
