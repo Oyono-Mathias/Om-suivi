@@ -55,3 +55,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Compile Functions
         run: npm run build
+      - name: Upload regenerated Functions lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-package-lock
+          path: functions/package-lock.json
