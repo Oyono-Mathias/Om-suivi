@@ -226,7 +226,21 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      const dataToSave: Partial<z.infer<typeof profileSchema>> = { ...values };
+      const dataToSave: Partial<z.infer<typeof profileSchema>> = {
+        name: values.name,
+        profession: values.profession,
+        reminders: values.reminders,
+        homeLatitude: values.homeLatitude,
+        homeLongitude: values.homeLongitude,
+        ...(profile?.role === 'admin' ? {
+          monthlyBaseSalary: values.monthlyBaseSalary,
+          category: values.category,
+          echelon: values.echelon,
+          currency: values.currency,
+          hireDate: values.hireDate,
+          leaveStartDate: values.leaveStartDate,
+        } : {}),
+      };
       Object.keys(dataToSave).forEach(keyStr => {
         const key = keyStr as keyof typeof dataToSave;
         if (dataToSave[key] === undefined) {
@@ -441,6 +455,7 @@ export default function ProfilePage() {
                     {isCustomSalary ? (
                     <FormControl>
                         <Input 
+                            disabled={profile?.role !== 'admin'}
                             type="number" 
                             placeholder={t('salaryPlaceholder')} 
                             value={form.getValues('monthlyBaseSalary')}
@@ -455,6 +470,7 @@ export default function ProfilePage() {
                     </FormControl>
                     ) : (
                         <Select
+                            disabled={profile?.role !== 'admin'}
                             value={category && echelon ? `${category}-${echelon}` : ""}
                             onValueChange={(value) => {
                                 if (value === 'custom') {
@@ -502,7 +518,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>{t('currencyLabel')}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('currencyPlaceholder')} {...field} />
+                        <Input placeholder={t('currencyPlaceholder')} disabled={profile?.role !== 'admin'} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -517,7 +533,7 @@ export default function ProfilePage() {
                       <FormItem className="flex flex-col">
                         <FormLabel>{t('hireDateLabel')}</FormLabel>
                         <FormControl>
-                           <Input type="date" {...field} value={field.value ?? ''} />
+                           <Input type="date" disabled={profile?.role !== 'admin'} {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
