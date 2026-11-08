@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import { toDate } from '@/lib/date-utils';
 import { Link } from '@/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -164,7 +165,7 @@ export default function ReportsPage() {
         let preRegistrationAbsenceCount = 0;
         let unjustifiedDates: string[] = [];
         
-        const hireDate = parseISO(profile.hireDate);
+        const hireDate = toDate(profile.hireDate);
         const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) })
           .filter(d => getDay(d) !== 0); // Mon-Sat
         
@@ -355,7 +356,7 @@ export default function ReportsPage() {
     
     try {
         const now = new Date();
-        const hireDate = parseISO(profile.hireDate);
+        const hireDate = toDate(profile.hireDate);
         const seniorityYears = differenceInYears(now, hireDate);
         const senioritySurplus = Math.floor(seniorityYears / 3) * 2;
         
@@ -367,7 +368,7 @@ export default function ReportsPage() {
             cycleStartDate = lastAnniversary;
         }
 
-        const lastLeaveStartDate = profile.leaveStartDate ? parseISO(profile.leaveStartDate) : null;
+        const lastLeaveStartDate = profile.leaveStartDate ? toDate(profile.leaveStartDate) : null;
         if (lastLeaveStartDate && lastLeaveStartDate > cycleStartDate) {
             cycleStartDate = lastLeaveStartDate;
         }
