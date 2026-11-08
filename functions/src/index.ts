@@ -451,14 +451,20 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
 
   if (isActiveStartCreation) {
     const serverStart = getDoualaDateAndTime(new Date(firestoreEvent.time));
-    await entryRef.update({
-      date: serverStart.date,
-      startTime: serverStart.time,
-      profession: userData.profession,
-      userProfileId: userId,
-      serverStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+    const stamped = await db.runTransaction(async (transaction) => {
+      const latestSnapshot = await transaction.get(entryRef);
+      const latestData = latestSnapshot.data();
+      if (!latestData || latestData.serverStartedAt) return false;
+      transaction.update(entryRef, {
+        date: serverStart.date,
+        startTime: serverStart.time,
+        profession: userData.profession,
+        userProfileId: userId,
+        serverStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return true;
     });
-    logger.info("Stamped trusted shift start.", { userId, timeEntryId });
+    if (stamped) logger.info("Stamped trusted shift start.", { userId, timeEntryId });
     return;
   }
 
@@ -504,13 +510,28 @@ export const onTimeEntryEndCreateEvent = onDocumentWritten({
     return;
   }
 
-  await entryRef.update({
-    endTime,
-    duration: calculated.duration,
-    overtimeDuration: calculated.overtimeDuration,
-    profession: userData.profession,
-    serverCalculatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  const calculationCommitted = await db.runTransaction(async (transaction) => {
+    const latestSnapshot = await transaction.get(entryRef);
+    const latestData = latestSnapshot.data();
+    if (!latestData || latestData.serverCalculatedAt) return false;
+    if (isStopRequest && latestData.endTime !== '') return false;
+    if (isManualEntryCreation && (
+      latestData.modified_manually !== true
+      || latestData.location !== "Manual"
+      || !latestData.endTime
+    )) return false;
+
+    transaction.update(entryRef, {
+      endTime,
+      duration: calculated.duration,
+      overtimeDuration: calculated.overtimeDuration,
+      profession: userData.profession,
+      serverCalculatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return true;
   });
+  if (!calculationCommitted) return;
+
   logger.info("Calculated trusted shift duration.", {
     userId,
     timeEntryId,
