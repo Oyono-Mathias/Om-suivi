@@ -19,7 +19,7 @@ service cloud.firestore {
     // --- User Data ---
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isSignedIn();
+      allow list: if isAdmin();
       allow create: if isOwner(userId);
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
       
@@ -49,6 +49,17 @@ service cloud.firestore {
       match /workplaceUpdateLogs/{logId} {
           allow read, write: if isOwner(userId) || isAdmin();
       }
+    }
+
+    // Minimal employee directory data; sensitive fields stay in /users.
+    match /publicProfiles/{profileId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(profileId)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'profession'])
+        && request.resource.data.id == profileId
+        && request.resource.data.name is string
+        && request.resource.data.profession is string;
+      allow delete: if isAdmin();
     }
 
     // --- Teams ---
