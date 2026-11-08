@@ -86,6 +86,16 @@ service cloud.firestore {
       }
     }
 
+    // OAuth credentials and transient authorization state are server-only.
+    // Admin SDK Cloud Functions bypass these client rules.
+    match /googleCalendarTokens/{userId} {
+      allow read, write: if false;
+    }
+
+    match /oauthStates/{stateId} {
+      allow read, write: if false;
+    }
+
     // Minimal employee directory data; sensitive fields stay in /users.
     match /publicProfiles/{profileId} {
       allow read: if isSignedIn();
