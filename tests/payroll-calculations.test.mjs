@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const module = { exports: {} };
 vm.runInNewContext(compiled, { module, exports: module.exports });
-const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate, calculateSundayCashPayout, FULL_MONTH_SIMULATION_REFERENCE } = module.exports;
+const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate, calculateSundayCashPayout, calculateSpecialDayCashPayout, FULL_MONTH_SIMULATION_REFERENCE } = module.exports;
 
 test('a date with both a time entry and sick leave counts once', () => {
   assert.equal(
@@ -190,4 +190,65 @@ test('Prima Dee-Lite full-month simulation uses the exact reference amounts and 
     FULL_MONTH_SIMULATION_REFERENCE.transportMonthly +
     3000 + 4000 + overtimeGross;
   assert.equal(gross, 178426);
+});
+
+
+test('Sunday special cash uses 140 percent plus ration for a day shift', () => {
+  const result = calculateSpecialDayCashPayout({
+    date: '2026-11-08',
+    startTime: '08:00',
+    endTime: '16:00',
+    breakMinutes: 60,
+    hourlyRate: 1500,
+    shiftType: 'day',
+    holidays: [],
+  });
+  assert.equal(result.dayKind, 'sunday');
+  assert.equal(result.multiplier, 1.4);
+  assert.equal(result.hourlyWage, 14700);
+  assert.equal(result.ration, 1000);
+  assert.equal(result.nightBasket, 0);
+  assert.equal(result.amount, 15700);
+});
+
+test('a public holiday falling on Sunday takes 150 percent once, and night adds both primes', () => {
+  const result = calculateSpecialDayCashPayout({
+    date: '2026-11-08',
+    startTime: '20:00',
+    endTime: '04:00',
+    breakMinutes: 0,
+    hourlyRate: 1500,
+    shiftType: 'night',
+    holidays: [{ date: '2026-11-08', label: 'Fête exceptionnelle' }],
+  });
+  assert.equal(result.dayKind, 'public_holiday');
+  assert.equal(result.multiplier, 1.5);
+  assert.equal(result.hourlyWage, 18000);
+  assert.equal(result.ration, 1000);
+  assert.equal(result.nightBasket, 1390);
+  assert.equal(result.amount, 20390);
+});
+
+test('a registered weekday holiday is paid at 150 percent and ordinary dates are not special', () => {
+  const holiday = calculateSpecialDayCashPayout({
+    date: '2026-11-09',
+    startTime: '08:00',
+    endTime: '12:00',
+    hourlyRate: 1000,
+    shiftType: 'day',
+    holidays: [{ date: '2026-11-09', label: 'Jour férié ajouté' }],
+  });
+  assert.equal(holiday.multiplier, 1.5);
+  assert.equal(holiday.amount, 7000);
+
+  const ordinary = calculateSpecialDayCashPayout({
+    date: '2026-11-10',
+    startTime: '08:00',
+    endTime: '12:00',
+    hourlyRate: 1000,
+    shiftType: 'day',
+    holidays: [],
+  });
+  assert.equal(ordinary.dayKind, 'ordinary');
+  assert.equal(ordinary.amount, 5000);
 });
