@@ -72,3 +72,17 @@ test('invalid negative payroll inputs are clamped to zero', () => {
   });
   assert.equal(result.total, 0);
 });
+
+test('CNPS PVID remains due below the tax withholding threshold', () => {
+  const result = calculateCameroonPayrollDeductions({
+    grossSalary: 50000,
+    baseSalary: 50000,
+    cnpsBase: 50000,
+  });
+  assert.equal(result.cnps, 2100);
+  assert.equal(result.cfc, 0);
+  assert.equal(result.irpp, 0);
+  assert.equal(result.cac, 0);
+  assert.equal(result.crtv, 0);
+  assert.equal(result.tdl, 0);
+});
