@@ -7,7 +7,7 @@ import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, 
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, where } from "firebase/firestore";
+import { doc, collection, query, where, setDoc } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
@@ -174,7 +174,7 @@ export default function AdminUserBulletinPage({ params }: any) {
             try {
                 const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
-                    seniorityBonus = baseSalary * 0.017 * seniorityYears;
+                    seniorityBonus = baseSalary * (allowances.seniorityRate ?? 0.017) * seniorityYears;
                 }
             } catch (e) { /* empty */ }
         }
@@ -276,6 +276,38 @@ export default function AdminUserBulletinPage({ params }: any) {
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
             
+            <details className="no-print rounded-xl border bg-card p-4">
+                <summary className="cursor-pointer font-semibold">Paramètres individuels des indemnités</summary>
+                <p className="mt-2 text-sm text-muted-foreground">Montants en FCFA. Les indemnités journalières sont multipliées par les jours couverts du cycle. Chaque valeur est enregistrée au changement de champ.</p>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {([
+                      ['basketPerDay', 'Prime de panier / jour'],
+                      ['transportPerDay', 'Transport / jour'],
+                      ['performanceMonthly', 'Prime de rendement / mois'],
+                      ['housingMonthly', 'Indemnité logement / mois'],
+                      ['attendanceMonthly', 'Prime d’assiduité / mois'],
+                      ['seniorityRate', 'Taux ancienneté (ex. 0.017)'],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="grid gap-1 text-sm">
+                        <span>{label}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step={key === 'seniorityRate' ? '0.001' : '1'}
+                          defaultValue={profile.payrollAllowances?.[key] ?? (key === 'transportPerDay' ? 18325 / 26 : key === 'performanceMonthly' ? 4000 : key === 'attendanceMonthly' ? 3000 : key === 'seniorityRate' ? 0.017 : 0)}
+                          className="h-10 w-full rounded-md border bg-background px-3"
+                          onBlur={async (event) => {
+                            const value = Number(event.currentTarget.value);
+                            if (!Number.isFinite(value) || value < 0) return;
+                            await setDoc(doc(firestore, 'users', userId), {
+                              payrollAllowances: { ...(profile.payrollAllowances || {}), [key]: value }
+                            }, { merge: true });
+                          }}
+                        />
+                      </label>
+                    ))}
+                </div>
+            </details>
             <div className="print-container bg-card md:border md:rounded-lg md:p-6">
                  <header className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
