@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const module = { exports: {} };
 vm.runInNewContext(compiled, { module, exports: module.exports });
-const { countCoveredWorkDays, calculateCameroonPayrollDeductions } = module.exports;
+const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration } = module.exports;
 
 test('a date with both a time entry and sick leave counts once', () => {
   assert.equal(
@@ -85,4 +85,16 @@ test('CNPS PVID remains due below the tax withholding threshold', () => {
   assert.equal(result.cac, 0);
   assert.equal(result.crtv, 0);
   assert.equal(result.tdl, 0);
+});
+
+
+test('monthly fixed amounts are prorated over a 30-day payroll basis', () => {
+  assert.equal(calculatePayrollProration(200000, 10), 66667);
+  assert.equal(calculatePayrollProration(30000, 10), 10000);
+});
+
+test('payroll proration is bounded between zero and the monthly amount', () => {
+  assert.equal(calculatePayrollProration(200000, 0), 0);
+  assert.equal(calculatePayrollProration(200000, 45), 200000);
+  assert.equal(calculatePayrollProration(-200000, 10), 0);
 });
