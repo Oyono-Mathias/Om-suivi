@@ -223,3 +223,13 @@ export function calculateTransportAllowance(
   const days = Math.max(0, Number.isFinite(effectiveWorkedDays) ? effectiveWorkedDays : 0);
   return roundMoney(clampMoney(perDayRate) * days);
 }
+
+
+/** Counts only absences explicitly marked unexcused and not approved by an admin. */
+export function countUnjustifiedAbsences(
+  overrides: Iterable<{ status: string; adminJustified?: boolean }>
+): number {
+  return [...overrides].filter(
+    (item) => item.status === "unjustified_absence" && item.adminJustified !== true
+  ).length;
+}
