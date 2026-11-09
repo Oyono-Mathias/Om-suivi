@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { toDate, toDateInput } from '@/lib/date-utils';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -61,13 +62,14 @@ export default function ProfilePage() {
   const { tryShowAd } = useAd();
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isMigratingGoogleTokens, setIsMigratingGoogleTokens] = useState(false);
   const [isCustomSalary, setIsCustomSalary] = useState(false);
   const [salaryInfo, setSalaryInfo] = useState<string | null>(null);
   
   const profileSchema = z.object({
     name: z.string().min(2, { message: t('nameMinLengthError') }),
     profession: z.enum(['machinist', 'storekeeper', 'deliveryDriver', 'chauffeur', 'securityAgent', 'other']),
-    monthlyBaseSalary: z.coerce.number().min(0, { message: t('salaryMinError') }),
+    monthlyBaseSalary: z.coerce.number<string | number>().min(0, { message: t('salaryMinError') }),
     category: z.string().optional(),
     echelon: z.string().optional(),
     currency: z.string().min(1, { message: t('currencyRequiredError')}),
@@ -91,7 +93,7 @@ export default function ProfilePage() {
   const settingsRef = useMemoFirebase(() => user ? doc(firestore, 'settings', 'global') : null, [firestore, user]);
   const { data: globalSettings } = useDoc<GlobalSettings>(settingsRef);
 
-  const form = useForm<z.infer<typeof profileSchema>>({
+  const form = useForm<z.input<typeof profileSchema>, any, z.output<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
@@ -124,8 +126,8 @@ export default function ProfilePage() {
         category: profile.category,
         echelon: profile.echelon,
         currency: profile.currency || 'FCFA',
-        hireDate: profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
-        leaveStartDate: profile.leaveStartDate || profile.hireDate || format(new Date(), 'yyyy-MM-dd'),
+        hireDate: toDateInput(profile.hireDate) || format(new Date(), 'yyyy-MM-dd'),
+        leaveStartDate: toDateInput(profile.leaveStartDate) || toDateInput(profile.hireDate) || format(new Date(), 'yyyy-MM-dd'),
         reminders: profile.reminders || { enabled: false, time: '17:00' },
         homeLatitude: profile.homeLatitude,
         homeLongitude: profile.homeLongitude,
@@ -221,12 +223,29 @@ export default function ProfilePage() {
   }, [t]);
 
 
-  async function onSubmit(values: z.infer<typeof profileSchema>) {
+  async function onSubmit(values: z.output<typeof profileSchema>) {
     if (!userProfileRef || !user) return;
 
     setIsSaving(true);
     try {
-      const dataToSave: Partial<z.infer<typeof profileSchema>> = { ...values };
+      const professionToSave = profile?.role === 'admin'
+        ? values.profession
+        : profile?.profession ?? values.profession;
+      const dataToSave: Partial<z.output<typeof profileSchema>> = {
+        name: values.name,
+        reminders: values.reminders,
+        homeLatitude: values.homeLatitude,
+        homeLongitude: values.homeLongitude,
+        ...(profile?.role === 'admin' ? {
+          profession: professionToSave,
+          monthlyBaseSalary: values.monthlyBaseSalary,
+          category: values.category,
+          echelon: values.echelon,
+          currency: values.currency,
+          hireDate: values.hireDate,
+          leaveStartDate: values.leaveStartDate,
+        } : {}),
+      };
       Object.keys(dataToSave).forEach(keyStr => {
         const key = keyStr as keyof typeof dataToSave;
         if (dataToSave[key] === undefined) {
@@ -235,6 +254,11 @@ export default function ProfilePage() {
       });
       
       await setDoc(userProfileRef, dataToSave, { merge: true });
+      await setDoc(doc(firestore, 'publicProfiles', user.uid), {
+        id: user.uid,
+        name: values.name,
+        profession: professionToSave,
+      }, { merge: true });
       toast({
         title: t('settingsUpdatedTitle'),
         description: t('settingsUpdatedDescription'),
@@ -256,7 +280,7 @@ export default function ProfilePage() {
     
     try {
         const now = new Date();
-        const hireDate = parseISO(profile.hireDate);
+        const hireDate = toDate(profile.hireDate);
 
         // Seniority bonus calculation
         const seniorityYears = differenceInYears(now, hireDate);
@@ -264,7 +288,7 @@ export default function ProfilePage() {
 
         // Base days calculation for the current cycle
         let cycleStartDate;
-        const parsedLeaveStartDate = profile.leaveStartDate ? parseISO(profile.leaveStartDate) : null;
+        const parsedLeaveStartDate = profile.leaveStartDate ? toDate(profile.leaveStartDate) : null;
 
         // A cycle resets on the leave start date.
         // If not set, or in the future, we look at the hire date anniversary.
@@ -298,7 +322,7 @@ export default function ProfilePage() {
     if (!profile?.hireDate) return null;
 
     try {
-        const hireDate = new Date(profile.hireDate);
+        const hireDate = toDate(profile.hireDate);
         const now = new Date();
         const seniorityYears = differenceInYears(now, hireDate);
         const seniorityTotalMonths = differenceInMonths(now, hireDate);
@@ -352,6 +376,33 @@ export default function ProfilePage() {
     }
   };
 
+
+  const handleMigrateGoogleTokens = async () => {
+    if (profile?.role !== 'admin') return;
+
+    setIsMigratingGoogleTokens(true);
+    try {
+      const functions = getFunctions(getApp());
+      const migrateCallable = httpsCallable(functions, 'migrateGoogleCalendarTokens');
+      const result = await migrateCallable();
+      const data = result.data as { migrated?: number };
+      toast({
+        title: t('migrateGoogleTokensSuccessTitle'),
+        description: t('migrateGoogleTokensSuccessDescription', {
+          count: data.migrated ?? 0,
+        }),
+      });
+    } catch (error) {
+      console.error("Error migrating legacy Google Calendar tokens:", error);
+      toast({
+        variant: "destructive",
+        title: t('migrateGoogleTokensErrorTitle'),
+        description: t('migrateGoogleTokensErrorDescription'),
+      });
+    } finally {
+      setIsMigratingGoogleTokens(false);
+    }
+  };
 
   if (isUserLoading || isLoadingProfile) {
     return (
@@ -414,7 +465,7 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('professionLabel')}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={profile?.role !== 'admin'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={t('professionPlaceholder')} />
@@ -436,6 +487,7 @@ export default function ProfilePage() {
                     {isCustomSalary ? (
                     <FormControl>
                         <Input 
+                            disabled={profile?.role !== 'admin'}
                             type="number" 
                             placeholder={t('salaryPlaceholder')} 
                             value={form.getValues('monthlyBaseSalary')}
@@ -450,6 +502,7 @@ export default function ProfilePage() {
                     </FormControl>
                     ) : (
                         <Select
+                            disabled={profile?.role !== 'admin'}
                             value={category && echelon ? `${category}-${echelon}` : ""}
                             onValueChange={(value) => {
                                 if (value === 'custom') {
@@ -497,7 +550,7 @@ export default function ProfilePage() {
                     <FormItem>
                       <FormLabel>{t('currencyLabel')}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('currencyPlaceholder')} {...field} />
+                        <Input placeholder={t('currencyPlaceholder')} disabled={profile?.role !== 'admin'} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -512,7 +565,7 @@ export default function ProfilePage() {
                       <FormItem className="flex flex-col">
                         <FormLabel>{t('hireDateLabel')}</FormLabel>
                         <FormControl>
-                           <Input type="date" {...field} value={field.value ?? ''} />
+                           <Input type="date" disabled={profile?.role !== 'admin'} {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -554,6 +607,21 @@ export default function ProfilePage() {
                   <svg viewBox="0 0 24 24" className="h-6 w-6 mr-2"><path fill="#34a853" d="M12 22a1 1 0 0 1-1-1v-8H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v8a1 1 0 0 1-1 1H4.5l7.5 7.5V21a1 1 0 0 1-1 1z"></path><path fill="#4285f4" d="M22 12a1 1 0 0 1-1 1h-8V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8z"></path><path fill="#fbbc04" d="M12 12a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h9v9a1 1 0 0 1-1 1h-8z"></path><path fill="#ea4335" d="M12 22a1 1 0 0 1-.71-.29l-9-9A1 1 0 0 1 2 12V3a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-.5l-7.21 7.21a1 1 0 0 1-.79.29z"></path></svg>
                   Connecter Google Calendar
                 </Button>
+              )}
+              {profile?.role === 'admin' && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">{t('migrateGoogleTokensDescription')}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={isMigratingGoogleTokens}
+                    onClick={handleMigrateGoogleTokens}
+                  >
+                    {isMigratingGoogleTokens && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('migrateGoogleTokensButton')}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>

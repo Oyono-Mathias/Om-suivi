@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, orderBy, setDoc, deleteDoc, addDoc, where, getDocs } from 'firebase/firestore';
 import { Loader2, ShieldX, User, ShieldCheck, Search, AlertTriangle, CalendarIcon, HeartPulse, History } from 'lucide-react';
@@ -20,7 +21,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { shifts } from '@/lib/shifts';
-import { format, parse, differenceInMinutes, parseISO, addDays, eachDayOfInterval, getDay, startOfDay } from 'date-fns';
+import { calculateShiftDurations } from '@/lib/time-calculations';
+import { format, parse, parseISO, addDays, eachDayOfInterval, getDay, startOfDay } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -28,7 +30,9 @@ import { cn, getPayrollCycle } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+type TimeEntriesUser = Pick<Profile, 'id' | 'name' | 'profession' | 'hireDate'> & { email?: string };
+
+function BackfillDialog({ user, isOpen, onOpenChange, globalSettings }: { user: TimeEntriesUser, isOpen: boolean, onOpenChange: (open: boolean) => void, globalSettings: GlobalSettings | null }) {
     const t = useTranslations('AdminPage');
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -74,11 +78,20 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
 
                 if (status === 'present') {
                     const standardShift = shifts.find(s => s.id === 'morningB')!; // 8:00 - 16:15
+                    const scheduledEnd = parse(`${dayString} ${standardShift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+                    const { payableDuration } = calculateShiftDurations({
+                        startDate: dayString,
+                        startTime: standardShift.startTime,
+                        endTime: scheduledEnd,
+                        scheduledEndTime: standardShift.endTime,
+                        breakDurationMinutes: globalSettings?.breakDuration ?? 0,
+                        eligibleForOvertime: false,
+                    });
                     const newEntry: Omit<TimeEntry, 'id'> = {
                         date: dayString,
                         startTime: standardShift.startTime,
                         endTime: standardShift.endTime,
-                        duration: 495, // 8h 15m
+                        duration: payableDuration,
                         overtimeDuration: 0,
                         location: 'Régularisation Admin',
                         shiftId: standardShift.id,
@@ -89,7 +102,7 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
                     await addDoc(timeEntriesRef, newEntry);
                 } else if (status === 'paid_leave') {
                     const overrideRef = doc(overridesRef, dayString);
-                    await setDoc(overrideRef, { status: 'sick_leave' });
+                    await setDoc(overrideRef, { status: 'paid_leave' });
                 }
             }
             toast({ title: t('backfillSuccess') });
@@ -176,7 +189,7 @@ function BackfillDialog({ user, isOpen, onOpenChange }: { user: Profile, isOpen:
     );
 }
 
-export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | null, onOpenChange: (open: boolean) => void }) {
+export function UserTimeEntriesSheet({ user, onOpenChange }: { user: TimeEntriesUser | null, onOpenChange: (open: boolean) => void }) {
   const t = useTranslations('AdminPage');
   const locale = useLocale();
   const dateFnsLocale = locale === 'fr' ? fr : enUS;
@@ -263,24 +276,14 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
         endDateTime = addDays(endDateTime, 1);
     }
 
-    const totalDuration = differenceInMinutes(endDateTime, startDateTime);
-
-    const breakDuration = globalSettings?.breakDuration ?? 0;
-    let payableDuration = totalDuration;
-    if (totalDuration > 6 * 60 && breakDuration > 0) {
-      payableDuration -= breakDuration;
-    }
-
-    let shiftEndDateTime = parse(`${dateStr} ${shift.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
-
-    if (shift.id === 'night' && shiftEndDateTime <= startDateTime) {
-        shiftEndDateTime = addDays(shiftEndDateTime, 1);
-    }
-    
-    let overtimeDuration = 0;
-    if (endDateTime > shiftEndDateTime) {
-        overtimeDuration = differenceInMinutes(endDateTime, shiftEndDateTime);
-    }
+    const { payableDuration, overtimeDuration } = calculateShiftDurations({
+      startDate: dateStr,
+      startTime: values.startTime,
+      endTime: endDateTime,
+      scheduledEndTime: shift.endTime,
+      breakDurationMinutes: globalSettings?.breakDuration ?? 0,
+      eligibleForOvertime: true,
+    });
     
     const entryRef = doc(firestore, 'users', user.id, 'timeEntries', editingEntry.id);
     await setDoc(entryRef, {
@@ -306,7 +309,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
     setDeletingEntry(null);
   };
   
-  const handleStatusChange = async (date: Date, status: 'unjustified_absence' | 'sick_leave') => {
+  const handleStatusChange = async (date: Date, status: 'unjustified_absence' | 'sick_leave' | 'paid_leave') => {
     if (!user) return;
     const dateStr = format(date, 'yyyy-MM-dd');
     const overrideRef = doc(firestore, 'users', user.id, 'attendanceOverrides', dateStr);
@@ -353,7 +356,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                                 const entryForDay = timeEntries?.find(e => e.date === dayString);
                                 const isWorkDay = getDay(day) !== 0; // 0 is Sunday
                                 const override = attendanceOverrides?.find(o => o.id === dayString);
-                                const hireDate = user?.hireDate ? parseISO(user.hireDate) : null;
+                                const hireDate = user?.hireDate ? toDate(user.hireDate) : null;
                                 
                                 if (hireDate && day < startOfDay(hireDate)) {
                                     return (
@@ -412,26 +415,29 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
                                                 <div className="font-medium">{format(day, 'PPP', { locale: dateFnsLocale })}</div>
                                             </TableCell>
                                             <TableCell>
-                                                 <Badge variant={override?.status === 'sick_leave' ? 'default' : 'destructive'} className={override?.status === 'sick_leave' ? "bg-blue-500 hover:bg-blue-600" : ""}>
+                                                 <Badge
+                                                    variant={override?.status === 'sick_leave' || override?.status === 'paid_leave' ? 'default' : 'destructive'}
+                                                    className={override?.status === 'sick_leave' ? "bg-blue-500 hover:bg-blue-600" : override?.status === 'paid_leave' ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                                                >
                                                     {override?.status === 'sick_leave' ? (
-                                                        <>
-                                                            <HeartPulse className="h-3 w-3 mr-1" />
-                                                            {t('sickLeaveStatus')}
-                                                        </>
+                                                        <><HeartPulse className="h-3 w-3 mr-1" />{t('sickLeaveStatus')}</>
+                                                    ) : override?.status === 'paid_leave' ? (
+                                                        t('backfillStatusPaidLeave')
                                                     ) : (
-                                                         t('absentLabel')
+                                                        t('absentLabel')
                                                     )}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell></TableCell>
                                             <TableCell className="text-right">
-                                                 <Select onValueChange={(value: 'unjustified_absence' | 'sick_leave') => handleStatusChange(day, value)} defaultValue={override?.status || 'unjustified_absence'}>
+                                                 <Select onValueChange={(value: 'unjustified_absence' | 'sick_leave' | 'paid_leave') => handleStatusChange(day, value)} defaultValue={override?.status || 'unjustified_absence'}>
                                                     <SelectTrigger className="w-[200px] ml-auto">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="unjustified_absence">{t('unjustifiedAbsenceStatus')}</SelectItem>
                                                         <SelectItem value="sick_leave">{t('sickLeaveStatus')}</SelectItem>
+                                                        <SelectItem value="paid_leave">{t('backfillStatusPaidLeave')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>
@@ -447,7 +453,7 @@ export function UserTimeEntriesSheet({ user, onOpenChange }: { user: Profile | n
         </SheetContent>
       </Sheet>
 
-      {user && <BackfillDialog user={user} isOpen={isBackfillOpen} onOpenChange={setIsBackfillOpen} />}
+      {user && <BackfillDialog user={user} isOpen={isBackfillOpen} onOpenChange={setIsBackfillOpen} globalSettings={globalSettings ?? null} />}
 
       <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
         <DialogContent>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useTranslations } from "next-intl";
@@ -9,6 +10,7 @@ import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@
 import { doc, collection, query, where } from "firebase/firestore";
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import { shifts } from '@/lib/shifts';
+import { countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { parseISO, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, getDay, parse, differenceInYears, eachDayOfInterval, format } from "date-fns";
 import { Loader2 } from 'lucide-react';
 import { Link } from '@/navigation';
@@ -161,7 +163,7 @@ export default function DetailsCalculPage() {
         let seniorityBonus = 0;
         if (profile.hireDate) {
             try {
-                const seniorityYears = differenceInYears(new Date(), parseISO(profile.hireDate));
+                const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
                     seniorityBonus = baseSalary * 0.017 * seniorityYears;
                 }
@@ -175,11 +177,11 @@ export default function DetailsCalculPage() {
         const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
         const workedDays = new Set(timeEntries.map(e => e.date));
-        const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave').map(o => o.id));
+        const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
 
         let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
-            const hireDate = parseISO(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             for (const day of cycleWorkDays) {
                 const dayString = format(day, 'yyyy-MM-dd');
                 if (day >= startOfDay(hireDate) && !workedDays.has(dayString) && !sickLeaveDays.has(dayString)) {
@@ -188,7 +190,7 @@ export default function DetailsCalculPage() {
             }
         }
         
-        const totalDaysWorked = workedDays.size + sickLeaveDays.size;
+        const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
         const proratedBaseSalary = (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked;
         
         if (unjustifiedAbsenceCount > 0) {

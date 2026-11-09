@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, limit, serverTimestamp, where, doc } from 'firebase/firestore';
-import type { Profile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
+import type { Profile, PublicProfile, TimeEntry, Announcement, LeaveAnnouncement } from '@/lib/types';
 import { Loader2, Send, PartyPopper } from 'lucide-react';
 import { Link } from '@/navigation';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ const simpleHash = (str: string) => {
     return Math.abs(hash);
 };
 
-function UserStatusCard({ user, onClick }: { user: Profile, onClick?: () => void }) {
+function UserStatusCard({ user, onClick }: { user: PublicProfile, onClick?: () => void }) {
   const t = useTranslations('TeamPage');
   const tProfile = useTranslations('ProfilePage');
   const locale = useLocale();
@@ -121,16 +121,23 @@ export default function TeamPage() {
   const { toast } = useToast();
 
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
-  const [managingUser, setManagingUser] = useState<Profile | null>(null);
+  const [managingUser, setManagingUser] = useState<PublicProfile | null>(null);
 
   const currentUserProfileRef = useMemoFirebase(() => {
     if (!authUser) return null;
     return doc(firestore, 'users', authUser.uid);
   }, [firestore, authUser]);
   const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<Profile>(currentUserProfileRef);
+  const isAdmin = currentUserProfile?.role === 'admin';
 
-  const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('name')), [firestore]);
-  const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<Profile>(allProfilesQuery);
+  const managingUserProfileRef = useMemoFirebase(() => {
+    if (!isAdmin || !managingUser) return null;
+    return doc(firestore, 'users', managingUser.id);
+  }, [firestore, isAdmin, managingUser]);
+  const { data: managingUserProfile } = useDoc<Profile>(managingUserProfileRef);
+
+  const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'publicProfiles'), orderBy('name')), [firestore]);
+  const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<PublicProfile>(allProfilesQuery);
 
   const leaveAnnouncementsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -138,8 +145,6 @@ export default function TeamPage() {
     return query(collection(firestore, 'leaveAnnouncements'), where('leaveStartDate', '==', todayStr));
   }, [firestore]);
   const { data: leaveAnnouncements, isLoading: isLoadingLeaveAnnouncements } = useCollection<LeaveAnnouncement>(leaveAnnouncementsQuery);
-
-  const isAdmin = currentUserProfile?.role === 'admin';
 
   const announcementSchema = z.object({
     message: z.string().min(1, { message: "Message cannot be empty." }),
@@ -241,11 +246,11 @@ export default function TeamPage() {
       </Card>
     </div>
     
-    {isAdmin && (
-        <UserTimeEntriesSheet 
-            user={managingUser}
-            onOpenChange={(open) => !open && setManagingUser(null)}
-        />
+    {isAdmin && managingUser && managingUserProfile && (
+      <UserTimeEntriesSheet
+        user={managingUserProfile}
+        onOpenChange={(open) => !open && setManagingUser(null)}
+      />
     )}
 
     <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>

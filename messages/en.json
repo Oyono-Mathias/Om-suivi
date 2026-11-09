@@ -1,4 +1,3 @@
-
 {
   "LoginPage": {
     "title": "Welcome to OM Suivi",
@@ -76,10 +75,8 @@
     "geoNotSupportedDescription": "Your browser does not support geolocation.",
     "geoFailedTitle": "Geolocation Failed",
     "geoFailedDescription": "Could not get your position. Please check permissions.",
-    "geoSuggestErrorTitle": "Could not suggest location",
-    "geoSuggestErrorDescription": "Falling back to manual start.",
     "locationConfirmTitle": "Confirm Location",
-    "locationConfirmDescriptionPart1": "AI suggests your current location is ",
+    "locationConfirmDescriptionPart1": "The detected location is ",
     "locationConfirmDescriptionPart2": ". Do you want to associate this location with your time entry?",
     "locationConfirmCancel": "Use without location",
     "locationConfirmAction": "Confirm and Start",
@@ -226,7 +223,13 @@
     "homeConfigTitle": "Home Configuration",
     "homeConfigDescription": "Define your home zone for automatic service stop.",
     "setHomeLocationButton": "Set my current location as home",
-    "homeLocationSetSuccessTitle": "Home location updated."
+    "homeLocationSetSuccessTitle": "Home location updated.",
+    "migrateGoogleTokensDescription": "Administrator-only action. Run once after deploying the new function to move legacy Google tokens into private storage.",
+    "migrateGoogleTokensButton": "Migrate legacy Google tokens",
+    "migrateGoogleTokensSuccessTitle": "Migration completed",
+    "migrateGoogleTokensSuccessDescription": "Moved {count} legacy Google Calendar token(s) into private storage.",
+    "migrateGoogleTokensErrorTitle": "Migration failed",
+    "migrateGoogleTokensErrorDescription": "Legacy Google token migration failed. Check your permissions and try again."
   },
   "ReportsPage": {
     "title": "Dashboard",
@@ -265,6 +268,8 @@
     "absenceAlertDescription": "You have {count, plural, one {# absence} other {# absences}} this month. This represents an estimated penalty of -{penalty} FCFA on your pay.",
     "sickLeaveAlertTitle": "Justified Absences",
     "sickLeaveAlertDescription": "You have {count, plural, one {# paid sick leave day} other {# paid sick leave days}} this month.",
+    "paidLeaveAlertTitle": "Paid Leave",
+    "paidLeaveAlertDescription": "You have {count, plural, one {# paid leave day} other {# paid leave days}} this month.",
     "leaveTableBase": "Base Leave",
     "leaveTableSeniority": "Seniority Surplus",
     "leaveRequestButton": "Generate Leave Request",

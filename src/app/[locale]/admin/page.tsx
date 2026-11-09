@@ -216,22 +216,22 @@ function ConfigurationModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenC
         workplaceName: z.string().optional(),
         workLatitude: z.number().optional(),
         workLongitude: z.number().optional(),
-        geofenceRadius: z.coerce.number().min(10),
+        geofenceRadius: z.coerce.number<string | number>().min(10),
         autoClockInEnabled: z.boolean(),
-        breakDuration: z.coerce.number().min(0),
-        tier1Rate: z.coerce.number().min(1),
-        tier2Rate: z.coerce.number().min(1),
-        nightRate: z.coerce.number().min(1),
-        sundayRate: z.coerce.number().min(1),
-        holidayRate: z.coerce.number().min(1),
-        absencePenaltyAmount: z.coerce.number().min(0),
-        defaultHourlyRate: z.coerce.number().min(0),
+        breakDuration: z.coerce.number<string | number>().min(0),
+        tier1Rate: z.coerce.number<string | number>().min(1),
+        tier2Rate: z.coerce.number<string | number>().min(1),
+        nightRate: z.coerce.number<string | number>().min(1),
+        sundayRate: z.coerce.number<string | number>().min(1),
+        holidayRate: z.coerce.number<string | number>().min(1),
+        absencePenaltyAmount: z.coerce.number<string | number>().min(0),
+        defaultHourlyRate: z.coerce.number<string | number>().min(0),
     });
 
     const settingsRef = useMemoFirebase(() => doc(firestore, 'settings', 'global'), [firestore]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
     
-    const form = useForm<z.infer<typeof configSchema>>({
+    const form = useForm<z.input<typeof configSchema>, any, z.output<typeof configSchema>>({
         resolver: zodResolver(configSchema),
     });
     
@@ -269,7 +269,7 @@ function ConfigurationModal({ isOpen, onOpenChange }: { isOpen: boolean, onOpenC
         }
     };
     
-    const handleSaveChanges = async (values: z.infer<typeof configSchema>) => {
+    const handleSaveChanges = async (values: z.output<typeof configSchema>) => {
         const { tier1Rate, tier2Rate, nightRate, sundayRate, holidayRate, ...otherValues } = values;
         const dataToSave = {
             ...otherValues,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
@@ -11,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
+import { countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -173,7 +175,7 @@ export default function BulletinPage() {
         let seniorityBonus = 0;
         if (profile.hireDate) {
             try {
-                const seniorityYears = differenceInYears(new Date(), parseISO(profile.hireDate));
+                const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
                     seniorityBonus = baseSalary * 0.017 * seniorityYears;
                 }
@@ -186,11 +188,11 @@ export default function BulletinPage() {
         const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
         const workedDays = new Set(timeEntries.map(e => e.date));
-        const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave').map(o => o.id));
+        const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
 
         let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
-            const hireDate = parseISO(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
             for (const day of cycleWorkDays) {
                 const dayString = format(day, 'yyyy-MM-dd');
@@ -200,7 +202,7 @@ export default function BulletinPage() {
             }
         }
         
-        const totalDaysWorked = workedDays.size + sickLeaveDays.size;
+        const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
         const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
         
         if (unjustifiedAbsenceCount > 0) {
@@ -291,7 +293,7 @@ export default function BulletinPage() {
                     </div>
                     <div className="text-right">
                         <p>Matricule: 00123</p>
-                        <p>Ancienneté: {differenceInYears(new Date(), parseISO(profile.hireDate || ''))} ans</p>
+                        <p>Ancienneté: {differenceInYears(new Date(), toDate(profile.hireDate || ''))} ans</p>
                     </div>
                 </div>
                 <div className="overflow-x-auto">

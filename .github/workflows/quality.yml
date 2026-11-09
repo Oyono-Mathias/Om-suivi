@@ -1,0 +1,112 @@
+name: OM Suivi Quality Gate - Phase 3 Production Security
+
+on:
+  push:
+    branches:
+      - main
+      - fix/om-suivi-foundation-stability
+      - fix/phase-2-business-features
+      - fix/phase-3-production-security
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: om-suivi-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web typecheck and production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Reconcile and install web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Apply non-breaking dependency security updates
+        run: |
+          npm audit fix --no-fund --no-progress || true
+          npm ci
+      - name: Audit web dependencies (full and production)
+        run: |
+          npm audit --json > "$RUNNER_TEMP/npm-audit-full.json" || true
+          npm audit --omit=dev --json > "$RUNNER_TEMP/npm-audit-production.json" || true
+          node - "$RUNNER_TEMP/npm-audit-full.json" "$RUNNER_TEMP/npm-audit-production.json" <<'NODE'
+          const fs = require('node:fs');
+          for (const file of process.argv.slice(2)) {
+            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            const counts = report.metadata?.vulnerabilities ?? {};
+            console.log(JSON.stringify({ report: file.includes('production') ? 'production' : 'full', counts }));
+            for (const [name, item] of Object.entries(report.vulnerabilities ?? {})) {
+              if (['critical', 'high'].includes(item.severity)) {
+                console.log(JSON.stringify({ name, severity: item.severity, direct: item.isDirect, range: item.range, fixAvailable: item.fixAvailable }));
+              }
+            }
+          }
+          NODE
+      - name: Business logic tests
+        run: npm run test:business
+      - name: TypeScript check
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+
+  functions:
+    name: Firebase Functions compile
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: .
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Regenerate and verify Functions lockfile
+        run: |
+          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
+      - name: Compile Functions
+        run: npm run build
+      - name: Test trusted attendance calculations
+        run: npm run test:attendance
+      - name: Upload regenerated Functions lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-package-lock
+          path: functions/package-lock.json
+
+  firestore-rules:
+    name: Firestore security rules tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Setup Java for Firebase Emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Test Firestore rules in emulator
+        run: npx --yes firebase-tools@15.35.0 emulators:exec --only firestore,storage --project demo-om-suivi "npm run test:rules"

@@ -94,7 +94,7 @@ export default function AuthPage() {
     email: z.string().email({ message: t('emailInvalidError') }),
     password: z.string().min(6, { message: t('passwordMinLengthError') }),
     profession: z.enum(['machinist', 'storekeeper', 'deliveryDriver', 'chauffeur', 'securityAgent', 'other'], {
-      required_error: t('professionRequiredError'),
+      error: t('professionRequiredError'),
     }),
   });
 
@@ -181,7 +181,13 @@ export default function AuthPage() {
         monthlyBaseSalary: 0,
         currency: 'FCFA',
         createdAt: serverTimestamp(),
-        hireDate: format(new Date(), 'yyyy-MM-dd'),
+        hireDate: serverTimestamp(),
+        leaveStartDate: serverTimestamp(),
+      });
+      await setDoc(doc(firestore, 'publicProfiles', newUser.uid), {
+        id: newUser.uid,
+        name: values.name,
+        profession: values.profession,
       });
       
       router.replace('/');

@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { toDate } from '@/lib/date-utils';
+import { addWorkingDays } from '@/lib/leave-calculations';
+import { calculateShiftDurations } from '@/lib/time-calculations';
 import {
   Card,
   CardContent,
@@ -44,7 +47,6 @@ import { fr, enUS } from 'date-fns/locale';
 import { Loader2, Briefcase, Megaphone, Palmtree, BellOff, CalendarPlus } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useShift } from '@/context/ShiftContext';
-import { suggestWorkLocation } from '@/ai/flows/geolocation-assisted-time-entry';
 import { getDistanceFromLatLonInKm, cn, generateGoogleCalendarUrl } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from '@/navigation';
@@ -161,34 +163,27 @@ export default function TimeTrackingPage() {
 
     const effectiveEndTime = manualEndTime || new Date();
     const endTimeStr = format(effectiveEndTime, 'HH:mm');
-    const today = format(effectiveEndTime, 'yyyy-MM-dd');
-  
     const startTimeForCalc = entryToUpdate?.startTime || format(new Date(recoveryData!.startTimeISO), 'HH:mm');
     const startDateForCalc = entryToUpdate?.date || format(new Date(recoveryData!.startTimeISO), 'yyyy-MM-dd');
-  
-    const startDateTime = parseISO(`${startDateForCalc}T${startTimeForCalc}:00`);
-    const totalDuration = differenceInMinutes(effectiveEndTime, startDateTime);
-  
-    const breakDuration = globalSettings?.breakDuration ?? 0;
-    let payableDuration = totalDuration;
-    if (totalDuration > 6 * 60 && breakDuration > 0) {
-      payableDuration -= breakDuration;
-    }
 
-    const shiftEndDateTime = parseISO(`${today}T${shift.endTime}:00`);
-    let overtimeDuration = 0;
-    
     const isEligibleForAutoOvertime = ['storekeeper', 'deliveryDriver', 'chauffeur', 'machinist'].includes(profile.profession);
-
-    if (isEligibleForAutoOvertime && effectiveEndTime > shiftEndDateTime) {
-      overtimeDuration = differenceInMinutes(effectiveEndTime, shiftEndDateTime);
-    }
+    const {
+      startDateTime,
+      totalDuration,
+      payableDuration,
+      overtimeDuration,
+    } = calculateShiftDurations({
+      startDate: startDateForCalc,
+      startTime: startTimeForCalc,
+      endTime: effectiveEndTime,
+      scheduledEndTime: shift.endTime,
+      breakDurationMinutes: globalSettings?.breakDuration ?? 0,
+      eligibleForOvertime: isEligibleForAutoOvertime,
+    });
   
     const entryRef = doc(firestore, 'users', user.uid, 'timeEntries', entryId);
     updateDocumentNonBlocking(entryRef, {
-      endTime: endTimeStr,
-      duration: payableDuration > 0 ? payableDuration : 0,
-      overtimeDuration: overtimeDuration > 0 ? overtimeDuration : 0,
+      stopRequestedAt: serverTimestamp(),
       ...(entryToUpdate?.location === 'Mission' && {location: 'Mission (Terminée)'}),
       stopContext,
     });
@@ -328,25 +323,13 @@ export default function TimeTrackingPage() {
       });
   }, [setIsShiftActive]);
 
-  const addWorkingDays = useCallback((startDate: Date, daysToAdd: number): Date => {
-    let currentDate = new Date(startDate);
-    let daysAdded = 0;
-    while (daysAdded < Math.floor(daysToAdd)) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        if (getDay(currentDate) !== 0) {
-            daysAdded++;
-        }
-    }
-    return currentDate;
-  }, []);
-
   // Effect for leave welcome message
   useEffect(() => {
     const checkLeaveStart = async () => {
       if (!profile?.leaveStartDate || !profile.hireDate || !user || !firestore) return;
 
       try {
-        const leaveStartDate = parseISO(profile.leaveStartDate);
+        const leaveStartDate = toDate(profile.leaveStartDate);
         const today = startOfDay(new Date());
 
         if (isSameDay(leaveStartDate, today)) {
@@ -362,7 +345,7 @@ export default function TimeTrackingPage() {
           }
 
           // Calculate leave details
-          const hireDate = parseISO(profile.hireDate);
+          const hireDate = toDate(profile.hireDate);
           const seniorityYears = differenceInYears(today, hireDate);
           let senioritySurplus = Math.floor(seniorityYears / 3) * 2;
           
@@ -389,7 +372,7 @@ export default function TimeTrackingPage() {
     };
 
     checkLeaveStart();
-  }, [profile, user, firestore, dateFnsLocale, addWorkingDays]);
+  }, [profile, user, firestore, dateFnsLocale]);
 
 
   useEffect(() => {
@@ -402,7 +385,13 @@ export default function TimeTrackingPage() {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
             if (!response.ok) throw new Error('Failed to fetch address');
             const data = await response.json();
-            setCurrentLocationAddress(data.display_name);
+            const address = data.address ?? {};
+            const area = address.neighbourhood || address.suburb || address.quarter;
+            const locality = address.city || address.town || address.village || address.municipality || address.county;
+            const conciseAddress = [area, locality].filter(Boolean).join(', ')
+              || data.name
+              || data.display_name;
+            setCurrentLocationAddress(conciseAddress);
           } catch (error) {
             setCurrentLocationAddress(t('locationUnavailable'));
           } finally {
@@ -687,22 +676,27 @@ export default function TimeTrackingPage() {
         return;
     }
     
-    try {
-        const { suggestedLocation: aiSuggestion } = await suggestWorkLocation({
-            latitude: currentCoordinates.lat,
-            longitude: currentCoordinates.lon,
-        });
+    const hasWorkplaceCoordinates =
+        typeof globalSettings?.workLatitude === 'number'
+        && typeof globalSettings?.workLongitude === 'number';
+    const distanceToWorkplace = hasWorkplaceCoordinates
+        ? getDistanceFromLatLonInKm(
+            currentCoordinates.lat,
+            currentCoordinates.lon,
+            globalSettings.workLatitude!,
+            globalSettings.workLongitude!,
+          ) * 1000
+        : Number.POSITIVE_INFINITY;
+    const isAtConfiguredWorkplace = hasWorkplaceCoordinates
+        && distanceToWorkplace <= (globalSettings?.geofenceRadius ?? 250);
+    const locationSuggestion = isAtConfiguredWorkplace
+        ? (globalSettings?.workplaceName || 'Entrepôt')
+        : (currentLocationAddress && currentLocationAddress !== t('locationUnavailable')
+            ? currentLocationAddress
+            : `GPS ${currentCoordinates.lat.toFixed(5)}, ${currentCoordinates.lon.toFixed(5)}`);
 
-        setSuggestedLocation(aiSuggestion);
-        setShowLocationConfirm(true);
-
-    } catch (error) {
-        toast({ variant: 'destructive', title: t('geoSuggestErrorTitle'), description: t('geoSuggestErrorDescription') });
-        const shift = shifts.find(s => s.id === shiftIdToUse);
-        if (shift) {
-            await startShift(shift, currentLocationAddress || `Lat: ${currentCoordinates.lat}, Lon: ${currentCoordinates.lon}`);
-        }
-    }
+    setSuggestedLocation(locationSuggestion);
+    setShowLocationConfirm(true);
   };
 
   const handleLocationConfirm = async (useLocation: boolean) => {

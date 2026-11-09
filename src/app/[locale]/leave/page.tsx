@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
+import { addWorkingDays } from '@/lib/leave-calculations';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslations, useLocale } from 'next-intl';
-import { differenceInYears, format, parseISO, getDay, parse } from 'date-fns';
+import { differenceInYears, format, parseISO, parse } from 'date-fns';
 import { fr, enUS } from "date-fns/locale";
 import type { Profile } from '@/lib/types';
 import { Link } from '@/navigation';
@@ -16,21 +18,6 @@ import { Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Image from 'next/image';
-
-const addWorkingDays = (startDate: Date, daysToAdd: number): Date => {
-    let currentDate = new Date(startDate);
-    let daysAdded = 0;
-    while (daysAdded < daysToAdd) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        const dayOfWeek = getDay(currentDate);
-        // getDay() returns 0 for Sunday and 6 for Saturday
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-            daysAdded++;
-        }
-    }
-    return currentDate;
-};
-
 
 export default function LeaveRequestPage() {
     const t = useTranslations('LeaveRequestPage');
@@ -52,7 +39,7 @@ export default function LeaveRequestPage() {
     const leaveData = useMemo(() => {
         if (!profile?.hireDate) return { baseDays: 18, senioritySurplus: 0, totalDays: 18, seniorityYears: 0 };
         try {
-            const hireDate = parseISO(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             const now = new Date();
 
             const seniorityYears = differenceInYears(now, hireDate);

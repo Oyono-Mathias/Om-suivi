@@ -1,3 +1,5 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type Shift = {
   id: string;
   name: string;
@@ -6,6 +8,12 @@ export type Shift = {
 };
 
 export type Profession = 'machinist' | 'storekeeper' | 'deliveryDriver' | 'chauffeur' | 'securityAgent' | 'other';
+
+export interface PublicProfile {
+  id: string;
+  name: string;
+  profession: Profession;
+}
 
 export interface Profile {
   id: string;
@@ -16,8 +24,8 @@ export interface Profile {
   monthlyBaseSalary: number;
   currency: string;
   createdAt: any; // serverTimestamp
-  hireDate?: string; // YYYY-MM-DD
-  leaveStartDate?: string; // YYYY-MM-DD
+  hireDate?: string | Timestamp; // Server timestamp at registration; legacy records may be YYYY-MM-DD
+  leaveStartDate?: string | Timestamp; // Server timestamp at registration; legacy records may be YYYY-MM-DD
   category?: string; // e.g., 'III'
   echelon?: string; // e.g., 'A'
   reminders?: {
@@ -28,7 +36,6 @@ export interface Profile {
   homeLongitude?: number;
   fcmToken?: string;
   googleCalendarConnected?: boolean;
-  googleRefreshToken?: string;
 }
 
 export interface TimeEntry {
@@ -45,6 +52,9 @@ export interface TimeEntry {
   profession: Profession;
   modified_manually?: boolean;
   stopContext?: 'work_zone' | 'home_zone' | 'timeout' | 'manual' | 'mission_ended' | 'admin_edit';
+  stopRequestedAt?: Timestamp;
+  serverStartedAt?: Timestamp;
+  serverCalculatedAt?: Timestamp;
 }
 
 export interface OvertimeRates {
@@ -77,7 +87,7 @@ export interface GlobalSettings {
 
 export interface AttendanceOverride {
   id: string; // The date 'YYYY-MM-DD'
-  status: 'unjustified_absence' | 'sick_leave';
+  status: 'unjustified_absence' | 'sick_leave' | 'paid_leave';
 }
 
 export interface Announcement {

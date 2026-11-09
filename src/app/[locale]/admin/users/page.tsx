@@ -14,6 +14,9 @@ import type { Profile } from '@/lib/types';
 import { useTranslations } from 'next-intl';
 import { UserTimeEntriesSheet } from '@/components/user-time-entries-sheet';
 import { AdminAccessDenied } from '@/components/admin-access-denied';
+import { getApp } from 'firebase/app';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function AdminUsersPage() {
@@ -24,6 +27,29 @@ export default function AdminUsersPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingUser, setViewingUser] = useState<Profile | null>(null);
+  const [isSyncingProfiles, setIsSyncingProfiles] = useState(false);
+  const { toast } = useToast();
+
+  const handleSyncPublicProfiles = async () => {
+    setIsSyncingProfiles(true);
+    try {
+      const syncProfiles = httpsCallable(getFunctions(getApp()), 'syncPublicProfiles');
+      const result = await syncProfiles();
+      const data = result.data as { synced: number };
+      toast({
+        title: 'Annuaire synchronisé',
+        description: `${data.synced} profils publics ont été synchronisés.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Échec de synchronisation',
+        description: 'Impossible de synchroniser les profils. Vérifiez que les Functions sont déployées.',
+      });
+    } finally {
+      setIsSyncingProfiles(false);
+    }
+  };
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -75,9 +101,15 @@ export default function AdminUsersPage() {
       <p className="text-muted-foreground">{t('description')}</p>
       
         <Card>
-            <CardHeader>
-            <CardTitle>{t('usersTitle')}</CardTitle>
-            <CardDescription>{t('usersDescription')}</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>{t('usersTitle')}</CardTitle>
+              <CardDescription>{t('usersDescription')}</CardDescription>
+            </div>
+            <Button onClick={handleSyncPublicProfiles} disabled={isSyncingProfiles}>
+              {isSyncingProfiles && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Synchroniser l'annuaire
+            </Button>
             </CardHeader>
             <CardContent>
             <div className="sticky top-14 md:top-0 z-10 bg-background/95 backdrop-blur-sm py-2 mb-4">

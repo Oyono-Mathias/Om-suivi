@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { toDate } from '@/lib/date-utils';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useTranslations, useLocale } from 'next-intl';
@@ -10,6 +11,7 @@ import { fr, enUS } from "date-fns/locale";
 import type { Profile, LeaveAnnouncement, TimeEntry, AttendanceOverride, GlobalSettings } from '@/lib/types';
 import { Link } from '@/navigation';
 import { formatCurrency, getPayrollCycle } from '@/lib/utils';
+import { countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -58,7 +60,7 @@ export default function DetailCongesScreen() {
         if (!profile?.hireDate || !leaveAnnouncements || !allTimeEntries || !allOverrides || !globalSettings) return [];
 
         try {
-            const hireDate = parseISO(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             const firstYearOfService = hireDate.getFullYear();
             const currentYear = new Date().getFullYear();
             const years = [];
@@ -140,8 +142,8 @@ export default function DetailCongesScreen() {
                     const totalOvertimePayout = overtimeBreakdown.tier1.payout; // Simplified
 
                     const workedDays = new Set(monthData.entries.map(e => e.date));
-                    const sickLeaveDays = new Set(monthData.overrides.filter(o => o.status === 'sick_leave').map(o => o.id));
-                    const totalDaysWorked = workedDays.size + sickLeaveDays.size;
+                    const sickLeaveDays = new Set(monthData.overrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
+                    const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
                     const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
                     const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
@@ -192,7 +194,7 @@ export default function DetailCongesScreen() {
         if (!profile?.hireDate) return null;
 
         try {
-            const hireDate = new Date(profile.hireDate);
+            const hireDate = toDate(profile.hireDate);
             const now = new Date();
             const seniorityYears = differenceInYears(now, hireDate);
             const seniorityTotalMonths = differenceInMonths(now, hireDate);
