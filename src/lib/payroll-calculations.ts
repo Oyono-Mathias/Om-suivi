@@ -233,3 +233,72 @@ export function countUnjustifiedAbsences(
     (item) => item.status === "unjustified_absence" && item.adminJustified !== true
   ).length;
 }
+
+
+/** A calendar date belongs to the regular monthly payroll only Monday through Saturday. */
+export function isRegularPayrollWorkDate(date: string): boolean {
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return false;
+  const [year, month, day] = date.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) return false;
+  return parsed.getUTCDay() !== 0;
+}
+
+export interface SundayCashCalculationInput {
+  mode: "hourly" | "flat";
+  startTime?: string;
+  endTime?: string;
+  breakMinutes?: number;
+  hourlyRate?: number;
+  flatAmount?: number;
+}
+
+export interface SundayCashCalculation {
+  workedMinutes: number;
+  workedHours: number;
+  amount: number;
+}
+
+/** Calculates Sunday cash independently of the monthly payroll deductions. */
+export function calculateSundayCashPayout(
+  input: SundayCashCalculationInput
+): SundayCashCalculation {
+  if (input.mode === "flat") {
+    return {
+      workedMinutes: 0,
+      workedHours: 0,
+      amount: roundMoney(input.flatAmount ?? 0),
+    };
+  }
+
+  const parseTime = (value?: string) => {
+    if (!value || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value)) return null;
+    const [hours, minutes] = value.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const start = parseTime(input.startTime);
+  const end = parseTime(input.endTime);
+  if (start === null || end === null) {
+    return { workedMinutes: 0, workedHours: 0, amount: 0 };
+  }
+
+  let duration = end - start;
+  if (duration <= 0) duration += 24 * 60;
+  const breakMinutes = Math.max(
+    0,
+    Math.min(duration, Number.isFinite(input.breakMinutes) ? input.breakMinutes! : 0)
+  );
+  const workedMinutes = Math.max(0, duration - breakMinutes);
+  const workedHours = workedMinutes / 60;
+
+  return {
+    workedMinutes,
+    workedHours,
+    amount: roundMoney(workedHours * clampMoney(input.hourlyRate)),
+  };
+}
