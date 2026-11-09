@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { countCoveredWorkDays } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 import { AdminAccessDenied } from '@/components/admin-access-denied';
@@ -179,8 +179,9 @@ export default function AdminUserBulletinPage({ params }: any) {
             } catch (e) { /* empty */ }
         }
 
-        let attendanceBonus = 3000;
-        let performanceBonus = 4000;
+        const allowances = profile.payrollAllowances || {};
+        let attendanceBonus = allowances.attendanceMonthly ?? 3000;
+        let performanceBonus = allowances.performanceMonthly ?? 4000;
         
         const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
@@ -207,29 +208,33 @@ export default function AdminUserBulletinPage({ params }: any) {
             performanceBonus = 0;
         }
         
-        const transportBonus = (18325 / 26) * (totalDaysWorked); 
-        const housingBonus = proratedBaseSalary * 0.1;
+        const basketBonus = (allowances.basketPerDay || 0) * totalDaysWorked;
+        const transportPerDay = allowances.transportPerDay ?? (18325 / 26);
+        const transportBonus = transportPerDay * totalDaysWorked;
+        const housingBonus = allowances.housingMonthly ?? (proratedBaseSalary * 0.1);
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
-        const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + totalOvertimePayout + transportBonus + housingBonus;
-        
-        const cnpsBase = totalEarnings - transportBonus - housingBonus;
-        const cnpsDeduction = cnpsBase * 0.042;
-        const cacBase = totalEarnings - transportBonus;
-        const cacDeduction = cacBase * 0.01;
-        const irppDeduction = calculateIRPP(totalEarnings, transportBonus, housingBonus, cnpsDeduction);
-        const cacSurIRPP = irppDeduction * 0.1;
-        const redevanceCRTV = 1950;
-        const cotisationSyndicale = proratedBaseSalary * 0.01;
-        const taxeCommunale = 270;
-
-        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
+        const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + basketBonus + totalOvertimePayout + transportBonus + housingBonus;
+        const deductions = calculateCameroonPayrollDeductions({
+            grossSalary: totalEarnings,
+            baseSalary: proratedBaseSalary,
+            transportAllowance: transportBonus,
+            cnpsBase: totalEarnings - transportBonus - housingBonus,
+        });
+        const cnpsDeduction = deductions.cnps;
+        const cacDeduction = deductions.cfc;
+        const irppDeduction = deductions.irpp;
+        const cacSurIRPP = deductions.cac;
+        const redevanceCRTV = deductions.crtv;
+        const cotisationSyndicale = 0;
+        const taxeCommunale = deductions.tdl;
+        const totalDeductions = deductions.total;
         const netPay = totalEarnings - totalDeductions;
 
         return {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
-            transportBonus, housingBonus,
+            transportBonus, housingBonus, basketBonus,
             seniorityBonus, attendanceBonus, performanceBonus,
             overtimeBreakdown,
             grossSalary: totalEarnings,
@@ -315,6 +320,7 @@ export default function AdminUserBulletinPage({ params }: any) {
                             {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
                                 <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
                             ))}
+                            {payrollData.basketBonus > 0 && <TableRowItem label={t('basketBonusLabel')} base={formatCurrency(profile.payrollAllowances?.basketPerDay || 0)} rate=" / jour" gain={formatCurrency(payrollData.basketBonus)} />}
                             {payrollData.transportBonus > 0 && <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />}
                             {payrollData.housingBonus > 0 && <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />}
                             <tr className="font-bold bg-muted/50">
