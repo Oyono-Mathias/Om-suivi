@@ -30,6 +30,24 @@ const clampMoney = (value: number | undefined) =>
   Math.max(0, typeof value === "number" && Number.isFinite(value) ? value : 0);
 const roundMoney = (value: number) => Math.round(clampMoney(value));
 
+/**
+ * Jeu de données de démonstration Prima Dee-Lite Plastics.
+ * Ces valeurs ne sont utilisées que par le bouton Simulation 30 jours.
+ */
+export const FULL_MONTH_SIMULATION_REFERENCE = {
+  baseSalary: 72_799,
+  seniorityYears: 8,
+  seniorityBonus: 11_418,
+  housingMonthly: 7_280,
+  transportMonthly: 18_325,
+  overtimeHours: {
+    tier1: 34,
+    tier2: 38,
+    night: 24,
+    holiday: 15.25,
+  },
+} as const;
+
 function progressiveAnnualIrpp(taxableAnnualIncome: number): number {
   const income = clampMoney(taxableAnnualIncome);
   if (income <= 2_000_000) return income * 0.10;
