@@ -108,7 +108,7 @@ export function getSpecialDayRate(
 ): SpecialDayRate {
   const holiday = holidays.find((item) => item.date === date);
   if (holiday) return { kind: 'public_holiday', multiplier: 1.5, label: holiday.label };
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { kind: 'ordinary', multiplier: 1, label: 'Date invalide' };
   }
   const [year, month, day] = date.split('-').map(Number);
