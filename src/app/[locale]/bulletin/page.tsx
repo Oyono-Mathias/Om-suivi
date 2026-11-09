@@ -43,13 +43,25 @@ const calculateIRPP = (grossSalary: number, transportBonus: number, housingBonus
     return Math.round(annualIRPP / 12);
 }
 
-const TableRowItem = ({ label, base, rate, gain, deduction }: { label: string; base?: string | number; rate?: string | number; gain?: string | number; deduction?: string | number; }) => (
-    <tr>
-        <td className="px-2 py-1">{label}</td>
-        <td className="px-2 py-1 text-center">{base ?? ''}</td>
-        <td className="px-2 py-1 text-right">{rate ?? ''}</td>
-        <td className="px-2 py-1 text-right font-mono tabular-nums">{gain ?? ''}</td>
-        <td className="px-2 py-1 text-right font-mono tabular-nums">{deduction ?? ''}</td>
+type PayrollTableRowProps = {
+    code: string;
+    label: string;
+    base?: string | number;
+    rate?: string | number;
+    gain?: string | number;
+    deduction?: string | number;
+};
+
+const PayrollTableRow = ({
+    code, label, base = '', rate = '', gain = '', deduction = '',
+}: PayrollTableRowProps) => (
+    <tr className="border-b border-gray-400">
+        <td className="border border-gray-700 px-2 py-1 text-center">{code}</td>
+        <td className="border border-gray-700 px-2 py-1">{label}</td>
+        <td className="border border-gray-700 px-2 py-1 text-center tabular-nums">{base}</td>
+        <td className="border border-gray-700 px-2 py-1 text-center tabular-nums">{rate}</td>
+        <td className="border border-gray-700 px-2 py-1 text-right font-mono tabular-nums">{gain}</td>
+        <td className="border border-gray-700 px-2 py-1 text-right font-mono tabular-nums">{deduction}</td>
     </tr>
 );
 
@@ -259,14 +271,41 @@ export default function BulletinPage() {
     return (
         <div className="space-y-6">
              <style jsx global>{`
+                @page { size: A4 portrait; margin: 10mm; }
                 @media print {
-                    body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    main { padding: 0 !important; margin: 0 !important; width: 100%; height: 100%; }
+                    html, body {
+                        background: white !important;
+                        color: black !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    body * { visibility: hidden; }
+                    .print-container, .print-container * { visibility: visible; }
+                    .print-container {
+                        position: absolute;
+                        inset: 0;
+                        width: 100%;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: none !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        background: white !important;
+                        color: black !important;
+                    }
                     .no-print { display: none !important; }
-                    .print-container { width: 100%; height: 100%; border: none; padding: 1.5rem; margin: 0; box-shadow: none; display: flex; flex-direction: column; }
-                    .print-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-                    .print-table th, .print-table td { border: 1px solid black; padding: 4px; }
-                    .print-table th { background-color: #f2f2f2 !important; font-weight: bold; text-align: center; }
+                    .print-table {
+                        width: 100%;
+                        min-width: 0 !important;
+                        border-collapse: collapse !important;
+                        font-size: 9px !important;
+                    }
+                    .print-table th, .print-table td {
+                        border: 1px solid black !important;
+                        padding: 4px !important;
+                    }
+                    .print-table th { background: #eee !important; }
+                    .overflow-x-auto { overflow: visible !important; }
                     .break-inside-avoid { break-inside: avoid; }
                 }
             `}</style>
@@ -304,100 +343,82 @@ export default function BulletinPage() {
                         <p>Ancienneté: {differenceInYears(new Date(), toDate(profile.hireDate || ''))} ans</p>
                     </div>
                 </div>
-                <div className="md:hidden space-y-2 mb-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('gainsSectionTitle')}</p>
-                    {[
-                      [t('baseSalaryLabel'), payrollData.baseSalary],
-                      [t('seniorityBonusLabel'), payrollData.seniorityBonus],
-                      [t('attendanceBonusLabel'), payrollData.attendanceBonus],
-                      [t('performanceBonusLabel'), payrollData.performanceBonus],
-                      [t('basketBonusLabel'), payrollData.basketBonus],
-                      [t('transportBonusLabel'), payrollData.transportBonus],
-                      [t('housingBonusLabel'), payrollData.housingBonus],
-                    ].map(([label, amount]) => (
-                      <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                        <span className="min-w-0 break-words">{label}</span>
-                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
-                      </div>
-                    ))}
-                    {Object.entries(payrollData.overtimeBreakdown).map(([key, tier]) => (
-                      <div key={key} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                        <span className="min-w-0 break-words">{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, { rate: (tier.rate * 100).toFixed(0) })} · {(tier.minutes / 60).toFixed(2)} h</span>
-                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(tier.payout)}</span>
-                      </div>
-                    ))}
-                    <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('deductionsSectionTitle')}</p>
-                    {[
-                      [t('cnpsLabel'), payrollData.cnpsDeduction],
-                      [t('healthInsuranceLabel'), payrollData.assuranceMaladie],
-                      [t('cotisationSyndicaleLabel'), payrollData.cotisationSyndicale],
-                      [t('cacLabel'), payrollData.cacDeduction],
-                      [t('irppLabel'), payrollData.irppDeduction],
-                      [t('cacSurIRPPLabel'), payrollData.cacSurIRPP],
-                      [t('redevanceCRTVLabel'), payrollData.redevanceCRTV],
-                      [t('communalTaxLabel'), payrollData.taxeCommunale],
-                    ].map(([label, amount]) => (
-                      <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                        <span className="min-w-0 break-words">{label}</span>
-                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
-                      </div>
-                    ))}
-                </div>
-                <div className="hidden md:block">
-                    <table className="print-table w-full text-sm font-sans mb-4">
+                <div className="w-full overflow-x-auto mb-4">
+                    <table className="print-table w-full min-w-[900px] border-collapse border border-gray-700 text-xs font-sans">
                         <thead>
-                            <tr className="bg-muted">
-                                <th className="w-2/5 px-2 py-1 text-left">{t('tableDesignation')}</th>
-                                <th className="w-1/5 px-2 py-1 text-center">{t('tableBase')} / Nombre</th>
-                                <th className="w-1/5 px-2 py-1 text-right">{t('tableRate')}</th>
-                                <th className="w-1/5 px-2 py-1 text-right">{t('tableGain')}</th>
-                                <th className="w-1/5 px-2 py-1 text-right">{t('tableDeduction')}</th>
+                            <tr className="bg-gray-200 text-gray-900">
+                                <th className="border border-gray-700 px-2 py-2 text-center">N°</th>
+                                <th className="border border-gray-700 px-2 py-2 text-left">Désignation</th>
+                                <th className="border border-gray-700 px-2 py-2 text-center">Nombre / Base</th>
+                                <th className="border border-gray-700 px-2 py-2 text-center">Taux</th>
+                                <th className="border border-gray-700 px-2 py-2 text-right">Gain (Part salariale)</th>
+                                <th className="border border-gray-700 px-2 py-2 text-right">Retenue</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />
-                            <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
-                            <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
-                            <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
-                            {Object.entries(payrollData.overtimeBreakdown).map(([key, tier]) => (
-                                <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
-                            ))}
-                            <TableRowItem label={t('basketBonusLabel')} base={formatCurrency(profile.payrollAllowances?.basketPerDay || 0)} rate=" / jour" gain={formatCurrency(payrollData.basketBonus)} />
-                            <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />
-                            <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />
-                            <tr className="font-bold bg-muted/50">
-                                <td colSpan={3} className="px-2 py-1 text-right">{t('grossMonthlySalaryLabel')}</td>
-                                <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
-                                <td></td>
+                            <PayrollTableRow code="1001" label={t('baseSalaryLabel')} base="173,33 h" gain={formatCurrency(payrollData.baseSalary)} />
+                            <PayrollTableRow code="1020" label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
+                            <PayrollTableRow code="1111" label={t('overtimeTier1' as any, { rate: (payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0) })} base={\`\${(payrollData.overtimeBreakdown.tier1.minutes / 60).toFixed(2)} h\`} rate={\`\${(payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0)} %\`} gain={formatCurrency(payrollData.overtimeBreakdown.tier1.payout)} />
+                            <PayrollTableRow code="1112" label={t('overtimeTier2' as any, { rate: (payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0) })} base={\`\${(payrollData.overtimeBreakdown.tier2.minutes / 60).toFixed(2)} h\`} rate={\`\${(payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0)} %\`} gain={formatCurrency(payrollData.overtimeBreakdown.tier2.payout)} />
+                            <PayrollTableRow code="1113" label={t('overtimeNight' as any, { rate: (payrollData.overtimeBreakdown.night.rate * 100).toFixed(0) })} base={\`\${(payrollData.overtimeBreakdown.night.minutes / 60).toFixed(2)} h\`} rate={\`\${(payrollData.overtimeBreakdown.night.rate * 100).toFixed(0)} %\`} gain={formatCurrency(payrollData.overtimeBreakdown.night.payout)} />
+                            <PayrollTableRow code="1114" label={t('overtimeSunday' as any, { rate: (payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0) })} base={\`\${(payrollData.overtimeBreakdown.sunday.minutes / 60).toFixed(2)} h\`} rate={\`\${(payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0)} %\`} gain={formatCurrency(payrollData.overtimeBreakdown.sunday.payout)} />
+                            <PayrollTableRow code="1115" label={t('overtimeHoliday' as any, { rate: (payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0) })} base={\`\${(payrollData.overtimeBreakdown.holiday.minutes / 60).toFixed(2)} h\`} rate={\`\${(payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0)} %\`} gain={formatCurrency(payrollData.overtimeBreakdown.holiday.payout)} />
+                            <PayrollTableRow code="1200" label={t('basketBonusLabel')} base={\`\${payrollData.basketBonus > 0 && (profile.payrollAllowances?.basketPerDay ?? 0) > 0 ? (payrollData.basketBonus / (profile.payrollAllowances?.basketPerDay ?? 1)).toFixed(0) : '0'} jours\`} gain={formatCurrency(payrollData.basketBonus)} />
+                            <PayrollTableRow code="1210" label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
+                            <PayrollTableRow code="1220" label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
+                            <PayrollTableRow code="1230" label={t('transportBonusLabel')} base="Jours couverts" gain={formatCurrency(payrollData.transportBonus)} />
+                            <PayrollTableRow code="1240" label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />
+
+                            <tr className="bg-gray-200 font-bold text-gray-900">
+                                <td colSpan={4} className="border border-gray-700 px-2 py-2 text-right">TOTAL BRUT</td>
+                                <td className="border border-gray-700 px-2 py-2 text-right font-mono">{formatCurrency(payrollData.grossSalary)}</td>
+                                <td className="border border-gray-700 px-2 py-2" />
                             </tr>
-                            <TableRowItem label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus - payrollData.housingBonus)} rate="4.20%" deduction={formatCurrency(payrollData.cnpsDeduction)} />
-                            <TableRowItem label={t('healthInsuranceLabel')} deduction={formatCurrency(payrollData.assuranceMaladie)} />
-                            <TableRowItem label={t('cacLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus)} rate="1.00%" deduction={formatCurrency(payrollData.cacDeduction)} />
-                            <TableRowItem label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
-                            <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />
-                            <TableRowItem label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
-                            <TableRowItem label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10.00%" deduction={formatCurrency(payrollData.cacSurIRPP)} />
-                            <TableRowItem label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
+
+                            <PayrollTableRow code="5010" label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary)} rate="4,20 %" deduction={formatCurrency(payrollData.cnpsDeduction)} />
+                            <PayrollTableRow code="5020" label="Crédit foncier (CFC)" base={formatCurrency(payrollData.grossSalary)} rate="1 %" deduction={formatCurrency(payrollData.cacDeduction)} />
+                            <PayrollTableRow code="5030" label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
+                            <PayrollTableRow code="5040" label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />
+                            <PayrollTableRow code="5050" label={t('healthInsuranceLabel')} deduction={formatCurrency(payrollData.assuranceMaladie)} />
+                            <PayrollTableRow code="5060" label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
+                            <PayrollTableRow code="5070" label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10 %" deduction={formatCurrency(payrollData.cacSurIRPP)} />
+                            <PayrollTableRow code="5080" label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
+
+                            <tr className="bg-gray-200 font-bold text-gray-900">
+                                <td colSpan={5} className="border border-gray-700 px-2 py-2 text-right">TOTAL DES RETENUES</td>
+                                <td className="border border-gray-700 px-2 py-2 text-right font-mono">{formatCurrency(payrollData.totalDeductions)}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
-                <div className="flex justify-end break-inside-avoid mt-4">
-                    <div className="w-full max-w-xs space-y-1 text-sm">
-                        <div className="flex justify-between">
-                            <span className="font-semibold">{t('netTaxableLabel')}:</span>
-                            <span className="font-mono">{formatCurrency(payrollData.netTaxable)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="font-semibold">{t('grossSalaryLabel')}:</span>
-                            <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="font-semibold">{t('totalDeductionsLabel')}:</span>
-                            <span className="font-mono">{formatCurrency(payrollData.totalDeductions)}</span>
-                        </div>
-                        <div className="mt-2 p-2 border-2 border-black flex justify-between items-center font-bold">
-                            <span className="text-base">{t('netToPayLabel')}</span>
-                            <span className="text-lg font-mono">{formatCurrency(payrollData.netPay)}</span>
+
+                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 break-inside-avoid">
+                    <table className="w-full border-collapse border border-gray-700 text-sm">
+                        <tbody>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Total brut</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right font-mono">{formatCurrency(payrollData.grossSalary)}</td>
+                            </tr>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Charges salariales</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right font-mono">{formatCurrency(payrollData.totalDeductions)}</td>
+                            </tr>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Net imposable</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right font-mono">{formatCurrency(payrollData.netTaxable)}</td>
+                            </tr>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Charges patronales</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right">Non calculées</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div className="flex items-end justify-end">
+                        <div className="w-full border-2 border-black bg-gray-100 p-4 text-gray-950">
+                            <p className="text-sm font-bold uppercase">NET À PAYER</p>
+                            <p className="mt-2 text-right text-2xl font-black font-mono tabular-nums">{formatCurrency(payrollData.netPay)}</p>
+                            <p className="mt-1 text-right text-xs">FCFA</p>
                         </div>
                     </div>
                 </div>
