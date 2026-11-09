@@ -233,7 +233,8 @@ export default function BulletinPage() {
         const assuranceMaladie = profile.payrollDeductions?.healthInsuranceMonthly ?? 0;
         const taxeCommunale = deductions.tdl;
         const totalDeductions = deductions.total + cotisationSyndicale + assuranceMaladie;
-        const netTaxable = Math.max(0, (totalEarnings - deductions.cnps) * 0.7);
+        // Même assiette mensuelle que le moteur IRPP, après abattement annuel de 500 000 FCFA.
+        const netTaxable = Math.max(0, ((totalEarnings - deductions.cnps) * 0.7) - (500_000 / 12));
         const netPay = totalEarnings - totalDeductions;
 
         return {
