@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate, FULL_MONTH_SIMULATION_REFERENCE } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -132,8 +132,11 @@ export default function BulletinPage() {
         // jamais empêcher l'affichage du bulletin.
         const currentOverrides = attendanceOverrides ?? [];
         const rates = globalSettings?.overtimeRates || DEFAULT_OVERTIME_RATES;
-        const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
-        const baseSalary = profile.monthlyBaseSalary;
+        const isFullMonthSimulation = simulationDays === 30;
+        const baseSalary = isFullMonthSimulation
+            ? FULL_MONTH_SIMULATION_REFERENCE.baseSalary
+            : profile.monthlyBaseSalary;
+        const hourlyRate = baseSalary > 0 ? Math.round(baseSalary / 173.33) : 0;
 
         const overtimeBreakdown = {
             tier1: { minutes: 0, rate: rates.tier1, payout: 0 },
@@ -200,6 +203,16 @@ export default function BulletinPage() {
             }
         }
         
+        // Le bouton 30 jours utilise un jeu d'heures fictif explicite pour tester les retenues.
+        // Il ne lit ni ne modifie les pointages réels et n'inclut aucune heure du dimanche.
+        if (isFullMonthSimulation) {
+            overtimeBreakdown.tier1.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.tier1 * 60;
+            overtimeBreakdown.tier2.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.tier2 * 60;
+            overtimeBreakdown.night.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.night * 60;
+            overtimeBreakdown.sunday.minutes = 0;
+            overtimeBreakdown.holiday.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.holiday * 60;
+        }
+
         overtimeBreakdown.tier1.payout = (overtimeBreakdown.tier1.minutes / 60) * hourlyRate * rates.tier1;
         overtimeBreakdown.tier2.payout = (overtimeBreakdown.tier2.minutes / 60) * hourlyRate * rates.tier2;
         overtimeBreakdown.night.payout = (overtimeBreakdown.night.minutes / 60) * hourlyRate * rates.night;
@@ -210,7 +223,9 @@ export default function BulletinPage() {
         const seniority = profile.hireDate
             ? calculateSeniorityBonus(baseSalary, toDate(profile.hireDate), cycleEnd)
             : { completedYears: 0, amount: 0 };
-        let seniorityBonus = seniority.amount;
+        let seniorityBonus = isFullMonthSimulation && seniority.completedYears === FULL_MONTH_SIMULATION_REFERENCE.seniorityYears
+            ? FULL_MONTH_SIMULATION_REFERENCE.seniorityBonus
+            : seniority.amount;
 
         const attendanceMonthly = allowances.attendanceMonthly ?? 3000;
         const performanceMonthly = allowances.performanceMonthly ?? 4000;
@@ -234,14 +249,20 @@ export default function BulletinPage() {
         const hasUnjustifiedAbsence = unjustifiedAbsenceCount > 0;
         const attendanceBonus = calculateConditionalMonthlyBonus(attendanceMonthly, totalDaysWorked, hasUnjustifiedAbsence);
         const performanceBonus = calculateConditionalMonthlyBonus(performanceMonthly, totalDaysWorked, hasUnjustifiedAbsence);
-        seniorityBonus = Math.round(seniorityBonus * prorationRatio);
+        seniorityBonus = isFullMonthSimulation && seniority.completedYears === FULL_MONTH_SIMULATION_REFERENCE.seniorityYears
+            ? FULL_MONTH_SIMULATION_REFERENCE.seniorityBonus
+            : Math.round(seniorityBonus * prorationRatio);
 
         const nightShiftCount = countNightShifts(timeEntries, shifts);
         const basketUnitRate = allowances.basketPerNight ?? 1390;
         const basketBonus = calculateNightBasketAllowance(nightShiftCount, basketUnitRate);
-        const transportPerDay = allowances.transportPerDay ?? (18325 / 26);
-        const transportBonus = calculateTransportAllowance(transportPerDay, simulationDays === null ? workedDays.size : totalDaysWorked);
-        const housingMonthly = allowances.housingMonthly ?? (baseSalary * 0.1);
+        const transportPerDay = allowances.transportPerDay ?? (18_325 / 26);
+        const transportBonus = isFullMonthSimulation
+            ? FULL_MONTH_SIMULATION_REFERENCE.transportMonthly
+            : calculateTransportAllowance(transportPerDay, simulationDays === null ? workedDays.size : totalDaysWorked);
+        const housingMonthly = isFullMonthSimulation
+            ? FULL_MONTH_SIMULATION_REFERENCE.housingMonthly
+            : (allowances.housingMonthly ?? (baseSalary * 0.1));
         const housingBonus = calculatePayrollProration(housingMonthly, totalDaysWorked);
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
@@ -268,6 +289,7 @@ export default function BulletinPage() {
         return {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
+            referenceMonthlyBaseSalary: baseSalary,
             effectiveWorkDays: totalDaysWorked,
             nightShiftCount,
             isSimulation: simulationDays !== null || workedDays.size === 0,
@@ -355,7 +377,10 @@ export default function BulletinPage() {
             {payrollData.isSimulation && (
                 <div className="no-print rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm text-sky-100">
                     <strong>Mode démonstration — {payrollData.effectiveWorkDays} jours.</strong>
-                    <p className="mt-1">Montants simulés pour tester le prorata et les retenues. Ce bulletin n'est pas une paie réelle. Les heures supplémentaires restent basées uniquement sur les pointages réellement enregistrés.</p>
+                    <p className="mt-1">Montants simulés pour tester le prorata et les retenues. Ce bulletin n'est pas une paie réelle.</p>
+                    {simulationDays === 30 && (
+                        <p className="mt-1">Référence Prima Dee-Lite : base 72 799, ancienneté 11 418, logement 7 280, transport 18 325 FCFA. Heures supplémentaires fictives : 34 h à 120 %, 38 h à 130 %, 24 h de nuit à 140 % et 15 h 15 à 150 %. Aucun pointage réel n'est modifié.</p>
+                    )}
                 </div>
             )}
             
@@ -406,7 +431,7 @@ export default function BulletinPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            <PayrollTableRow code="1001" label={t('baseSalaryLabel')} base={`${payrollData.effectiveWorkDays}/30 jours`} rate={formatCurrency(profile.monthlyBaseSalary)} gain={formatCurrency(payrollData.baseSalary)} />
+                            <PayrollTableRow code="1001" label={t('baseSalaryLabel')} base={`${payrollData.effectiveWorkDays}/30 jours`} rate={formatCurrency(payrollData.referenceMonthlyBaseSalary)} gain={formatCurrency(payrollData.baseSalary)} />
                             <PayrollTableRow code="1020" label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
                             <PayrollTableRow code="1111" label={t('overtimeTier1' as any, { rate: (payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.tier1.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.tier1.payout)} />
                             <PayrollTableRow code="1112" label={t('overtimeTier2' as any, { rate: (payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.tier2.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.tier2.payout)} />
