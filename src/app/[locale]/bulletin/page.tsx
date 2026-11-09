@@ -172,17 +172,17 @@ export default function BulletinPage() {
         overtimeBreakdown.sunday.payout = (overtimeBreakdown.sunday.minutes / 60) * hourlyRate * rates.sunday;
         overtimeBreakdown.holiday.payout = (overtimeBreakdown.holiday.minutes / 60) * hourlyRate * rates.holiday;
         
+        const allowances = profile.payrollAllowances || {};
         let seniorityBonus = 0;
         if (profile.hireDate) {
             try {
                 const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
-                    seniorityBonus = baseSalary * 0.017 * seniorityYears;
+                    seniorityBonus = baseSalary * (allowances.seniorityRate ?? 0.017) * seniorityYears;
                 }
             } catch (e) { /* empty */ }
         }
 
-        const allowances = profile.payrollAllowances || {};
         let attendanceBonus = allowances.attendanceMonthly ?? 3000;
         let performanceBonus = allowances.performanceMonthly ?? 4000;
         
