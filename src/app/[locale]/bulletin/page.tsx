@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { calculateCameroonPayrollDeductions, countCoveredWorkDays } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, calculatePayrollProration } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -190,7 +190,7 @@ export default function BulletinPage() {
             try {
                 const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
-                    seniorityBonus = baseSalary * (allowances.seniorityRate ?? 0.017) * seniorityYears;
+                    seniorityBonus = calculatePayrollProration(baseSalary, new Set(timeEntries.map(e => e.date)).size) * (allowances.seniorityRate ?? 0.017) * seniorityYears;
                 }
             } catch (e) { /* empty */ }
         }
@@ -214,20 +214,26 @@ export default function BulletinPage() {
             }
         }
         
-        const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
-        // Le salaire mensuel contractuel ne tombe pas à zéro en l'absence de pointages.
-        // Les absences doivent être traitées séparément, sans effacer le salaire de base.
-        const proratedBaseSalary = baseSalary;
+        // Cycle de paie du 26 au 25, avec une base de prorata conventionnelle de 30 jours.
+        // Seuls les jours réellement pointés dans Suivi du Temps sont retenus.
+        const totalDaysWorked = workedDays.size;
+        const prorationRatio = Math.min(totalDaysWorked, 30) / 30;
+        const proratedBaseSalary = calculatePayrollProration(baseSalary, totalDaysWorked);
         
         if (unjustifiedAbsenceCount > 0) {
             attendanceBonus = 0;
             performanceBonus = 0;
         }
         
-        const basketBonus = (allowances.basketPerDay || 0) * totalDaysWorked;
+        attendanceBonus = calculatePayrollProration(attendanceBonus, totalDaysWorked);
+        performanceBonus = calculatePayrollProration(performanceBonus, totalDaysWorked);
+        seniorityBonus = Math.round(seniorityBonus * prorationRatio);
+
+        const basketBonus = Math.round((allowances.basketPerDay || 0) * totalDaysWorked);
         const transportPerDay = allowances.transportPerDay ?? (18325 / 26);
-        const transportBonus = transportPerDay * totalDaysWorked;
-        const housingBonus = allowances.housingMonthly ?? (proratedBaseSalary * 0.1);
+        const transportBonus = Math.round(transportPerDay * totalDaysWorked);
+        const housingMonthly = allowances.housingMonthly ?? (baseSalary * 0.1);
+        const housingBonus = calculatePayrollProration(housingMonthly, totalDaysWorked);
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
         const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + basketBonus + totalOvertimePayout + transportBonus + housingBonus;
@@ -356,17 +362,17 @@ export default function BulletinPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            <PayrollTableRow code="1001" label={t('baseSalaryLabel')} base="173,33 h" gain={formatCurrency(payrollData.baseSalary)} />
+                            <PayrollTableRow code="1001" label={t('baseSalaryLabel')} base={`${new Set(timeEntries?.map(e => e.date) ?? []).size}/30 jours`} rate={formatCurrency(profile.monthlyBaseSalary)} gain={formatCurrency(payrollData.baseSalary)} />
                             <PayrollTableRow code="1020" label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
                             <PayrollTableRow code="1111" label={t('overtimeTier1' as any, { rate: (payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.tier1.minutes / 60).toFixed(2)} h`} rate={`${(payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.tier1.payout)} />
                             <PayrollTableRow code="1112" label={t('overtimeTier2' as any, { rate: (payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.tier2.minutes / 60).toFixed(2)} h`} rate={`${(payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.tier2.payout)} />
                             <PayrollTableRow code="1113" label={t('overtimeNight' as any, { rate: (payrollData.overtimeBreakdown.night.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.night.minutes / 60).toFixed(2)} h`} rate={`${(payrollData.overtimeBreakdown.night.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.night.payout)} />
                             <PayrollTableRow code="1114" label={t('overtimeSunday' as any, { rate: (payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.sunday.minutes / 60).toFixed(2)} h`} rate={`${(payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.sunday.payout)} />
                             <PayrollTableRow code="1115" label={t('overtimeHoliday' as any, { rate: (payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.holiday.minutes / 60).toFixed(2)} h`} rate={`${(payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.holiday.payout)} />
-                            <PayrollTableRow code="1200" label={t('basketBonusLabel')} base={`${payrollData.basketBonus > 0 && (profile.payrollAllowances?.basketPerDay ?? 0) > 0 ? (payrollData.basketBonus / (profile.payrollAllowances?.basketPerDay ?? 1)).toFixed(0) : '0'} jours`} gain={formatCurrency(payrollData.basketBonus)} />
+                            <PayrollTableRow code="1200" label={t('basketBonusLabel')} base={`${new Set(timeEntries?.map(e => e.date) ?? []).size} jours`} rate={formatCurrency(profile.payrollAllowances?.basketPerDay ?? 0)} gain={formatCurrency(payrollData.basketBonus)} />
                             <PayrollTableRow code="1210" label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
                             <PayrollTableRow code="1220" label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
-                            <PayrollTableRow code="1230" label={t('transportBonusLabel')} base="Jours couverts" gain={formatCurrency(payrollData.transportBonus)} />
+                            <PayrollTableRow code="1230" label={t('transportBonusLabel')} base={`${new Set(timeEntries?.map(e => e.date) ?? []).size} jours`} rate={formatCurrency(profile.payrollAllowances?.transportPerDay ?? (18325 / 26))} gain={formatCurrency(payrollData.transportBonus)} />
                             <PayrollTableRow code="1240" label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />
 
                             <tr className="bg-gray-200 font-bold text-gray-900">
