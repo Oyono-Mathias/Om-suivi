@@ -28,6 +28,14 @@ export interface Profile {
   leaveStartDate?: string | Timestamp; // Server timestamp at registration; legacy records may be YYYY-MM-DD
   category?: string; // e.g., 'III'
   echelon?: string; // e.g., 'A'
+  payrollAllowances?: {
+    basketPerDay?: number;
+    transportPerDay?: number;
+    performanceMonthly?: number;
+    housingMonthly?: number;
+    attendanceMonthly?: number;
+    seniorityRate?: number;
+  };
   reminders?: {
     enabled: boolean;
     time: string; // e.g., "17:00"
