@@ -429,7 +429,7 @@ export default function AdminUserBulletinPage({ params }: any) {
                             <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
                             <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
                             <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
-                            {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                            {Object.entries(payrollData.overtimeBreakdown).map(([key, tier]) => (
                                 <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
                             ))}
                             <TableRowItem label={t('basketBonusLabel')} base={formatCurrency(profile.payrollAllowances?.basketPerDay || 0)} rate=" / jour" gain={formatCurrency(payrollData.basketBonus)} />
