@@ -221,8 +221,7 @@ export default function BulletinPage() {
         const deductions = calculateCameroonPayrollDeductions({
             grossSalary: totalEarnings,
             baseSalary: proratedBaseSalary,
-            transportAllowance: transportBonus,
-            cnpsBase: totalEarnings - transportBonus - housingBonus,
+            cnpsBase: totalEarnings,
         });
         const cnpsDeduction = deductions.cnps;
         const cacDeduction = deductions.cfc;
