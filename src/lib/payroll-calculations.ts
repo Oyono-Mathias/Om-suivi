@@ -111,3 +111,109 @@ export function calculatePayrollProration(
   const days = Math.min(denominator, Math.max(0, Number.isFinite(effectiveWorkDays) ? effectiveWorkDays : 0));
   return roundMoney((amount * days) / denominator);
 }
+
+
+export interface NightShiftEntry {
+  shiftId: string;
+}
+
+export interface NightShiftDefinition {
+  id: string;
+  startTime: string; // HH:mm
+  endTime: string;   // HH:mm
+}
+
+/**
+ * Compte une vacation une seule fois si elle chevauche la plage de nuit 22:00–06:00.
+ * Les vacations de nuit sont déterminées par les horaires de shift, pas par les heures sup.
+ */
+export function countNightShifts(
+  entries: Iterable<NightShiftEntry>,
+  shiftDefinitions: Iterable<NightShiftDefinition>,
+  nightStartHour = 22,
+  nightEndHour = 6
+): number {
+  const shiftsById = new Map([...shiftDefinitions].map((shift) => [shift.id, shift]));
+  let count = 0;
+
+  for (const entry of entries) {
+    const shift = shiftsById.get(entry.shiftId);
+    if (!shift) continue;
+
+    const [startHour, startMinute] = shift.startTime.split(":").map(Number);
+    const [endHour, endMinute] = shift.endTime.split(":").map(Number);
+    if (![startHour, startMinute, endHour, endMinute].every(Number.isFinite)) continue;
+
+    const start = startHour * 60 + startMinute;
+    let end = endHour * 60 + endMinute;
+    if (end <= start) end += 24 * 60;
+
+    const nightStart = nightStartHour * 60;
+    const nightEnd = 24 * 60 + nightEndHour * 60;
+    const overlapsNight = (start < nightEnd && end > 24 * 60) ||
+      (start < 24 * 60 && end > nightStart) ||
+      (start < nightEnd && end > nightStart);
+
+    if (overlapsNight) count += 1;
+  }
+
+  return count;
+}
+
+/** Prime de panier due par vacation de nuit effectivement pointée. */
+export function calculateNightBasketAllowance(
+  nightShifts: number,
+  unitRate = 1_390
+): number {
+  const count = Math.max(0, Number.isFinite(nightShifts) ? Math.floor(nightShifts) : 0);
+  return roundMoney(count * clampMoney(unitRate));
+}
+
+/**
+ * Ancienneté: 2 % du salaire mensuel de base par année de service révolue.
+ * La date de référence doit être la fin de la période de paie, pas la date du rendu.
+ */
+export function calculateSeniorityBonus(
+  monthlyBaseSalary: number,
+  hireDate: Date | string,
+  asOfDate: Date,
+  annualRate = 0.02
+): { completedYears: number; amount: number } {
+  const hire = hireDate instanceof Date ? hireDate : new Date(hireDate);
+  if (!Number.isFinite(hire.getTime()) || !Number.isFinite(asOfDate.getTime())) {
+    return { completedYears: 0, amount: 0 };
+  }
+
+  let years = asOfDate.getFullYear() - hire.getFullYear();
+  const anniversaryHasPassed =
+    asOfDate.getMonth() > hire.getMonth() ||
+    (asOfDate.getMonth() === hire.getMonth() && asOfDate.getDate() >= hire.getDate());
+  if (!anniversaryHasPassed) years -= 1;
+
+  const completedYears = Math.max(0, years);
+  const rate = Number.isFinite(annualRate) ? Math.max(0, annualRate) : 0.02;
+  return {
+    completedYears,
+    amount: roundMoney(clampMoney(monthlyBaseSalary) * rate * completedYears),
+  };
+}
+
+/** Assiduité/rendement: une absence non justifiée coupe la prime, sauf justification admin. */
+export function calculateConditionalMonthlyBonus(
+  monthlyAmount: number,
+  effectiveWorkDays: number,
+  hasUnjustifiedAbsence: boolean,
+  adminJustifiedAbsence = false
+): number {
+  if (hasUnjustifiedAbsence && !adminJustifiedAbsence) return 0;
+  return calculatePayrollProration(monthlyAmount, effectiveWorkDays);
+}
+
+/** Transport: montant journalier multiplié par les jours réellement travaillés. */
+export function calculateTransportAllowance(
+  perDayRate: number,
+  effectiveWorkedDays: number
+): number {
+  const days = Math.max(0, Number.isFinite(effectiveWorkedDays) ? effectiveWorkedDays : 0);
+  return roundMoney(clampMoney(perDayRate) * days);
+}
