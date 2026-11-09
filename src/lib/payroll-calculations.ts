@@ -13,7 +13,6 @@ export function countCoveredWorkDays(
 export interface CameroonPayrollDeductionsInput {
   grossSalary: number;
   baseSalary: number;
-  transportAllowance?: number;
   cnpsBase?: number;
 }
 
@@ -71,15 +70,15 @@ export function calculateCameroonPayrollDeductions(
 ): CameroonPayrollDeductions {
   const gross = clampMoney(input.grossSalary);
   const base = clampMoney(input.baseSalary);
-  const transport = clampMoney(input.transportAllowance);
-  const cnpsBase = Math.min(750_000, clampMoney(input.cnpsBase ?? gross - transport));
+  const cnpsBase = Math.min(750_000, clampMoney(input.cnpsBase ?? gross));
 
-  const cnps = gross < 62_000 ? 0 : roundMoney(cnpsBase * 0.042);
-  const cfc = gross < 62_000 ? 0 : roundMoney(Math.max(0, gross - transport) * 0.01);
+  // CNPS PVID is a social contribution; the 62,000 FCFA tax withholding threshold does not apply.
+  const cnps = roundMoney(cnpsBase * 0.042);
+  const cfc = gross < 62_000 ? 0 : roundMoney(gross * 0.01);
 
   // Taxable salary: 30% professional-expense allowance, mandatory CNPS deduction,
   // then the annual 500,000 FCFA salary abatement before the progressive IRPP scale.
-  const monthlyNetTaxable = Math.max(0, (gross - transport - cnps) * 0.70);
+  const monthlyNetTaxable = Math.max(0, (gross - cnps) * 0.70);
   const annualTaxable = Math.max(0, monthlyNetTaxable * 12 - 500_000);
   const irpp = gross < 62_000 ? 0 : roundMoney(progressiveAnnualIrpp(annualTaxable) / 12);
   const cac = roundMoney(irpp * 0.10);
