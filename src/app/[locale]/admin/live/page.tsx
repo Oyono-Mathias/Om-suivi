@@ -122,7 +122,13 @@ export default function LiveTrackingPage() {
   }, [firestore, authUser]);
   const { data: currentUserProfile, isLoading: isLoadingCurrentUserProfile } = useDoc<Profile>(currentUserProfileRef);
 
-  const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('name')), [firestore]);
+  const isAdmin = currentUserProfile?.role === 'admin';
+
+  // Never issue a private employee-directory query until the user's admin role is confirmed.
+  const allProfilesQuery = useMemoFirebase(() => {
+    if (!firestore || !isAdmin) return null;
+    return query(collection(firestore, 'users'), orderBy('name'));
+  }, [firestore, isAdmin]);
   const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<Profile>(allProfilesQuery);
 
   const leaveAnnouncementsQuery = useMemoFirebase(() => {
@@ -132,7 +138,6 @@ export default function LiveTrackingPage() {
   }, [firestore]);
   const { data: leaveAnnouncements, isLoading: isLoadingLeaveAnnouncements } = useCollection<LeaveAnnouncement>(leaveAnnouncementsQuery);
 
-  const isAdmin = currentUserProfile?.role === 'admin';
 
   const isLoading = isUserLoading || isLoadingProfiles || isLoadingCurrentUserProfile || isLoadingLeaveAnnouncements;
 
