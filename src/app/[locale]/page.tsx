@@ -20,14 +20,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -78,8 +70,7 @@ const formatDuration = (minutes?: number | null): string | null => {
   const remainingMinutes = minutes % 60;
 
   if (hours === 0) return `${remainingMinutes}min`;
-  if (remainingMinutes === 0) return `${hours}h`;
-  return `${hours}h ${remainingMinutes}min`;
+  return `${hours}h${String(remainingMinutes).padStart(2, '0')}`;
 };
 
 export default function TimeTrackingPage() {
@@ -902,7 +893,7 @@ export default function TimeTrackingPage() {
         )}
       </div>
 
-      <Card className="overflow-hidden rounded-2xl border border-gray-800 bg-card/90 shadow-sm">
+      <Card className="w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-gray-800 bg-card/90 shadow-sm">
         <CardHeader className="space-y-1 pb-4">
           <CardTitle className="text-lg font-semibold tracking-tight">
             {t('recentEntriesTitle')}
@@ -911,92 +902,61 @@ export default function TimeTrackingPage() {
             {t('recentEntriesDescription')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-3 pb-4 sm:px-6">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-gray-800 hover:bg-transparent">
-                  <TableHead>{t('tableDate')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('tableShift')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('tableHours')}</TableHead>
-                  <TableHead>{t('tableDuration')}</TableHead>
-                  <TableHead>{t('tableOvertime')}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{t('tableLocation')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingEntries ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : timeEntries && timeEntries.length > 0 ? (
-                  timeEntries.map(entry => {
-                    const duration = formatDuration(entry.duration);
-                    const overtime = formatDuration(entry.overtimeDuration);
+        <CardContent className="w-full min-w-0 px-3 pb-4 sm:px-6">
+          <div className="w-full max-w-full min-w-0 overflow-x-hidden">
+            {isLoadingEntries ? (
+              <div className="space-y-3" aria-label={tShared('loading')}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-gray-800/80 bg-gray-900/30 p-3">
+                    <Skeleton className="h-5 w-32 max-w-[55%]" />
+                    <Skeleton className="h-8 w-20 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            ) : timeEntries && timeEntries.length > 0 ? (
+              <ul className="w-full min-w-0 divide-y divide-gray-800/80">
+                {timeEntries.map(entry => {
+                  const duration = formatDuration(entry.duration);
+                  const overtime = formatDuration(entry.overtimeDuration);
+                  const shiftName = shifts.find(s => s.id === entry.shiftId)?.name || entry.shiftId;
 
-                    return (
-                      <TableRow
-                        key={entry.id}
-                        className="border-gray-800/80 transition-colors hover:bg-white/[0.02]"
-                      >
-                        <TableCell className="whitespace-nowrap text-sm font-medium">
+                  return (
+                    <li key={entry.id} className="flex w-full min-w-0 items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-sm font-medium leading-5 text-foreground">
                           {format(parseISO(entry.date), 'PPP', { locale: dateFnsLocale })}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <span className="text-sm text-foreground">
-                            {shifts.find(s => s.id === entry.shiftId)?.name || entry.shiftId}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {shiftName}
+                          {entry.location ? \` · \${entry.location}\` : ''}
+                          {entry.isPublicHoliday ? \` · \${t('holidaySuffix')}\` : ''}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+                        {duration ? (
+                          <span className="inline-flex max-w-full items-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-sm font-semibold tabular-nums text-emerald-400">
+                            {duration}
                           </span>
-                          {entry.isPublicHoliday && (
-                            <span className="ml-2 text-xs text-primary">{t('holidaySuffix')}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden whitespace-nowrap md:table-cell">
-                          <span className="text-sm tabular-nums text-muted-foreground">
-                            {entry.startTime || '—'} - {entry.endTime || '—'}
+                        ) : (
+                          <span className="inline-flex items-center rounded-lg border border-gray-700/60 bg-gray-800/40 px-2.5 py-1 text-xs text-muted-foreground">
+                            {t('durationUnavailable')}
                           </span>
-                        </TableCell>
-                        <TableCell>
-                          {duration ? (
-                            <span className="inline-flex whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-emerald-400">
-                              {duration}
-                            </span>
-                          ) : (
-                            <span className="inline-flex whitespace-nowrap rounded-lg border border-gray-700/60 bg-gray-800/40 px-2.5 py-1 text-xs text-muted-foreground">
-                              {t('durationUnavailable')}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {overtime ? (
-                            <span className="inline-flex whitespace-nowrap rounded-lg border border-orange-500/20 bg-orange-500/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-orange-400">
-                              {overtime}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground/50">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden max-w-[180px] truncate text-sm text-muted-foreground sm:table-cell">
-                          {entry.location || t('noLocation')}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
-                      {t('noEntries')}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                        )}
+                        {overtime ? (
+                          <span className="text-xs font-semibold tabular-nums text-orange-400">
+                            +{overtime}
+                          </span>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="px-2 py-8 text-center text-sm text-muted-foreground">
+                {t('noEntries')}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
