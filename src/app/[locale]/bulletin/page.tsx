@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { calculateCameroonPayrollDeductions, calculatePayrollProration } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, calculatePayrollProration, calculateNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -205,22 +205,18 @@ export default function BulletinPage() {
         overtimeBreakdown.holiday.payout = (overtimeBreakdown.holiday.minutes / 60) * hourlyRate * rates.holiday;
         
         const allowances = profile.payrollAllowances || {};
-        let seniorityBonus = 0;
-        if (profile.hireDate) {
-            try {
-                const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
-                if (seniorityYears > 0) {
-                    seniorityBonus = baseSalary * (allowances.seniorityRate ?? 0.017) * seniorityYears;
-                }
-            } catch (e) { /* empty */ }
-        }
+        const seniority = profile.hireDate
+            ? calculateSeniorityBonus(baseSalary, toDate(profile.hireDate), cycleEnd, allowances.seniorityRate ?? 0.02)
+            : { completedYears: 0, amount: 0 };
+        let seniorityBonus = seniority.amount;
 
-        let attendanceBonus = allowances.attendanceMonthly ?? 3000;
-        let performanceBonus = allowances.performanceMonthly ?? 4000;
+        const attendanceMonthly = allowances.attendanceMonthly ?? 3000;
+        const performanceMonthly = allowances.performanceMonthly ?? 4000;
         
 
         const workedDays = new Set(timeEntries.map(e => e.date));
-        const sickLeaveDays = new Set(currentOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
+        const sickLeaveDays = new Set(currentOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave' || o.adminJustified === true).map(o => o.id));
+        const adminJustifiedAbsence = currentOverrides.some(o => o.adminJustified === true);
 
         let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
@@ -242,18 +238,16 @@ export default function BulletinPage() {
         const prorationRatio = Math.min(totalDaysWorked, 30) / 30;
         const proratedBaseSalary = calculatePayrollProration(baseSalary, totalDaysWorked);
         
-        if (unjustifiedAbsenceCount > 0) {
-            attendanceBonus = 0;
-            performanceBonus = 0;
-        }
-        
-        attendanceBonus = calculatePayrollProration(attendanceBonus, totalDaysWorked);
-        performanceBonus = calculatePayrollProration(performanceBonus, totalDaysWorked);
+        const hasUnjustifiedAbsence = unjustifiedAbsenceCount > 0;
+        const attendanceBonus = calculateConditionalMonthlyBonus(attendanceMonthly, totalDaysWorked, hasUnjustifiedAbsence, adminJustifiedAbsence);
+        const performanceBonus = calculateConditionalMonthlyBonus(performanceMonthly, totalDaysWorked, hasUnjustifiedAbsence, adminJustifiedAbsence);
         seniorityBonus = Math.round(seniorityBonus * prorationRatio);
 
-        const basketBonus = Math.round((allowances.basketPerDay || 0) * totalDaysWorked);
+        const nightShiftCount = countNightShifts(timeEntries, shifts);
+        const basketUnitRate = allowances.basketPerNight ?? 1390;
+        const basketBonus = calculateNightBasketAllowance(nightShiftCount, basketUnitRate);
         const transportPerDay = allowances.transportPerDay ?? (18325 / 26);
-        const transportBonus = Math.round(transportPerDay * totalDaysWorked);
+        const transportBonus = calculateTransportAllowance(transportPerDay, simulationDays === null ? workedDays.size : totalDaysWorked);
         const housingMonthly = allowances.housingMonthly ?? (baseSalary * 0.1);
         const housingBonus = calculatePayrollProration(housingMonthly, totalDaysWorked);
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
@@ -281,6 +275,7 @@ export default function BulletinPage() {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
             effectiveWorkDays: totalDaysWorked,
+            nightShiftCount,
             isSimulation: simulationDays !== null || workedDays.size === 0,
             hourlyRate,
             transportBonus, housingBonus, basketBonus,
@@ -424,7 +419,7 @@ export default function BulletinPage() {
                             <PayrollTableRow code="1113" label={t('overtimeNight' as any, { rate: (payrollData.overtimeBreakdown.night.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.night.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.night.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.night.payout)} />
                             <PayrollTableRow code="1114" label={t('overtimeSunday' as any, { rate: (payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.sunday.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.sunday.payout)} />
                             <PayrollTableRow code="1115" label={t('overtimeHoliday' as any, { rate: (payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.holiday.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.holiday.payout)} />
-                            <PayrollTableRow code="1200" label={t('basketBonusLabel')} base={`${payrollData.effectiveWorkDays} jours`} rate={formatCurrency(profile.payrollAllowances?.basketPerDay ?? 0)} gain={formatCurrency(payrollData.basketBonus)} />
+                            <PayrollTableRow code="1200" label={t('basketBonusLabel')} base={`${payrollData.nightShiftCount} nuits`} rate={formatCurrency(profile.payrollAllowances?.basketPerNight ?? 1390)} gain={formatCurrency(payrollData.basketBonus)} />
                             <PayrollTableRow code="1210" label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
                             <PayrollTableRow code="1220" label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
                             <PayrollTableRow code="1230" label={t('transportBonusLabel')} base={`${payrollData.effectiveWorkDays} jours`} rate={formatCurrency(profile.payrollAllowances?.transportPerDay ?? (18325 / 26))} gain={formatCurrency(payrollData.transportBonus)} />
