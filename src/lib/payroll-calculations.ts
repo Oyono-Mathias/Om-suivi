@@ -107,7 +107,7 @@ export function calculatePayrollProration(
   referenceDays = 30
 ): number {
   const amount = clampMoney(monthlyAmount);
-  const days = Math.min(referenceDays, Math.max(0, Number.isFinite(effectiveWorkDays) ? effectiveWorkDays : 0));
   const denominator = Number.isFinite(referenceDays) && referenceDays > 0 ? referenceDays : 30;
+  const days = Math.min(denominator, Math.max(0, Number.isFinite(effectiveWorkDays) ? effectiveWorkDays : 0));
   return roundMoney((amount * days) / denominator);
 }
