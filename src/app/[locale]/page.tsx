@@ -928,8 +928,8 @@ export default function TimeTrackingPage() {
                         </p>
                         <p className="mt-1 truncate text-xs text-muted-foreground">
                           {shiftName}
-                          {entry.location ? \` · \${entry.location}\` : ''}
-                          {entry.isPublicHoliday ? \` · \${t('holidaySuffix')}\` : ''}
+                          {entry.location ? ' · ' + entry.location : ''}
+                          {entry.isPublicHoliday ? ' · ' + t('holidaySuffix') : ''}
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1 text-right">
