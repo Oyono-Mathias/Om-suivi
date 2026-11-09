@@ -329,6 +329,8 @@ export default function BulletinPage() {
                     <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('deductionsSectionTitle')}</p>
                     {[
                       [t('cnpsLabel'), payrollData.cnpsDeduction],
+                      [t('healthInsuranceLabel'), payrollData.assuranceMaladie],
+                      [t('cotisationSyndicaleLabel'), payrollData.cotisationSyndicale],
                       [t('cacLabel'), payrollData.cacDeduction],
                       [t('irppLabel'), payrollData.irppDeduction],
                       [t('cacSurIRPPLabel'), payrollData.cacSurIRPP],
