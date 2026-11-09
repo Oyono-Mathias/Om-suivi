@@ -279,6 +279,21 @@ export default function AdminUserBulletinPage({ params }: any) {
             <details className="no-print rounded-xl border bg-card p-4">
                 <summary className="cursor-pointer font-semibold">Paramètres individuels des indemnités</summary>
                 <p className="mt-2 text-sm text-muted-foreground">Montants en FCFA. Les indemnités journalières sont multipliées par les jours couverts du cycle. Chaque valeur est enregistrée au changement de champ.</p>
+                <label className="mt-4 grid max-w-sm gap-1 text-sm">
+                    <span>Salaire de base mensuel (FCFA)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      defaultValue={profile.monthlyBaseSalary || 0}
+                      className="h-10 w-full rounded-md border bg-background px-3"
+                      onBlur={async (event) => {
+                        const value = Number(event.currentTarget.value);
+                        if (!Number.isFinite(value) || value < 0) return;
+                        await setDoc(doc(firestore, 'users', userId), { monthlyBaseSalary: value, currency: 'FCFA' }, { merge: true });
+                      }}
+                    />
+                </label>
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {([
                       ['basketPerDay', 'Prime de panier / jour'],
