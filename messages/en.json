@@ -81,6 +81,7 @@
     "locationConfirmCancel": "Use without location",
     "locationConfirmAction": "Confirm and Start",
     "minutes": "min",
+    "durationUnavailable": "Not available",
     "noLocation": "N/A",
     "manualLocation": "Manual Entry",
     "currentLocationLabel": "Current Location",
