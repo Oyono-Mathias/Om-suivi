@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { toDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
@@ -74,6 +74,8 @@ export default function BulletinPage() {
 
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
+    // null = mode automatique : pointages réels, ou démonstration 30 jours si aucun pointage.
+    const [simulationDays, setSimulationDays] = useState<number | null>(null);
 
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
@@ -234,7 +236,9 @@ export default function BulletinPage() {
         
         // Cycle de paie du 26 au 25, avec une base de prorata conventionnelle de 30 jours.
         // Seuls les jours réellement pointés dans Suivi du Temps sont retenus.
-        const totalDaysWorked = workedDays.size;
+        // En l'absence de pointage, le bulletin présente un mois complet en mode démo.
+        // Le sélecteur permet de forcer 10 ou 30 jours, ou de revenir aux données réelles.
+        const totalDaysWorked = simulationDays ?? (workedDays.size > 0 ? workedDays.size : 30);
         const prorationRatio = Math.min(totalDaysWorked, 30) / 30;
         const proratedBaseSalary = calculatePayrollProration(baseSalary, totalDaysWorked);
         
@@ -277,6 +281,7 @@ export default function BulletinPage() {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
             effectiveWorkDays: totalDaysWorked,
+            isSimulation: simulationDays !== null || workedDays.size === 0,
             hourlyRate,
             transportBonus, housingBonus, basketBonus,
             seniorityBonus, attendanceBonus, performanceBonus,
@@ -285,7 +290,7 @@ export default function BulletinPage() {
             cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, assuranceMaladie, taxeCommunale,
             netTaxable, totalDeductions, netPay
         };
-    }, [allTimeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd, cycleStartString, cycleEndString]);
+    }, [allTimeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd, cycleStartString, cycleEndString, simulationDays]);
     
     const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries;
 
@@ -350,8 +355,20 @@ export default function BulletinPage() {
                     <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
                     <p className="text-muted-foreground">{t('description', { startDate: format(payrollData.cycleStart, 'd MMMM', { locale: dateFnsLocale }), endDate: format(payrollData.cycleEnd, 'd MMMM yyyy', { locale: dateFnsLocale })})}</p>
                 </div>
-                <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Jours à tester :</span>
+                    <Button type="button" variant={simulationDays === 10 ? 'default' : 'outline'} size="sm" onClick={() => setSimulationDays(10)}>10 jours</Button>
+                    <Button type="button" variant={simulationDays === 30 ? 'default' : 'outline'} size="sm" onClick={() => setSimulationDays(30)}>30 jours</Button>
+                    <Button type="button" variant={simulationDays === null ? 'default' : 'outline'} size="sm" onClick={() => setSimulationDays(null)}>Automatique / réel</Button>
+                    <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
+                </div>
             </div>
+            {payrollData.isSimulation && (
+                <div className="no-print rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm text-sky-100">
+                    <strong>Mode démonstration — {payrollData.effectiveWorkDays} jours.</strong>
+                    <p className="mt-1">Montants simulés pour tester le prorata et les retenues. Ce bulletin n'est pas une paie réelle. Les heures supplémentaires restent basées uniquement sur les pointages réellement enregistrés.</p>
+                </div>
+            )}
             
             {payrollData.effectiveWorkDays === 0 && (
                 <div className="no-print rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
@@ -371,6 +388,7 @@ export default function BulletinPage() {
                         </div>
                     </div>
                     <div className="text-right">
+                        {payrollData.isSimulation && <p className="mb-1 text-xs font-bold uppercase text-red-600">Simulation — document non officiel</p>}
                         <h1 className="text-xl font-bold">BULLETIN DE PAIE</h1>
                         <p className="text-sm">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yyyy')} au {format(payrollData.cycleEnd, 'dd/MM/yyyy')}</p>
                     </div>
@@ -409,7 +427,7 @@ export default function BulletinPage() {
                             <PayrollTableRow code="1200" label={t('basketBonusLabel')} base={`${payrollData.effectiveWorkDays} jours`} rate={formatCurrency(profile.payrollAllowances?.basketPerDay ?? 0)} gain={formatCurrency(payrollData.basketBonus)} />
                             <PayrollTableRow code="1210" label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
                             <PayrollTableRow code="1220" label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
-                            <PayrollTableRow code="1230" label={t('transportBonusLabel')} base={`${new Set(timeEntries?.map(e => e.date) ?? []).size} jours`} rate={formatCurrency(profile.payrollAllowances?.transportPerDay ?? (18325 / 26))} gain={formatCurrency(payrollData.transportBonus)} />
+                            <PayrollTableRow code="1230" label={t('transportBonusLabel')} base={`${payrollData.effectiveWorkDays} jours`} rate={formatCurrency(profile.payrollAllowances?.transportPerDay ?? (18325 / 26))} gain={formatCurrency(payrollData.transportBonus)} />
                             <PayrollTableRow code="1240" label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />
 
                             <tr className="bg-gray-200 font-bold text-gray-900">
