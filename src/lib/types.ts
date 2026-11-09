@@ -36,6 +36,10 @@ export interface Profile {
     attendanceMonthly?: number;
     seniorityRate?: number;
   };
+  payrollDeductions?: {
+    unionMonthly?: number;
+    healthInsuranceMonthly?: number;
+  };
   reminders?: {
     enabled: boolean;
     time: string; // e.g., "17:00"
