@@ -81,6 +81,7 @@
     "locationConfirmCancel": "Utiliser sans emplacement",
     "locationConfirmAction": "Confirmer et Démarrer",
     "minutes": "min",
+    "durationUnavailable": "Non renseigné",
     "noLocation": "N/A",
     "manualLocation": "Entrée Manuelle",
     "currentLocationLabel": "Position actuelle",
