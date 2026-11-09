@@ -401,6 +401,8 @@ export default function AdminUserBulletinPage({ params }: any) {
                       [t('cnpsLabel'), payrollData.cnpsDeduction],
                       [t('healthInsuranceLabel'), payrollData.assuranceMaladie],
                       [t('cotisationSyndicaleLabel'), payrollData.cotisationSyndicale],
+                      [t('healthInsuranceLabel'), payrollData.assuranceMaladie],
+                      [t('cotisationSyndicaleLabel'), payrollData.cotisationSyndicale],
                       [t('cacLabel'), payrollData.cacDeduction],
                       [t('irppLabel'), payrollData.irppDeduction],
                       [t('cacSurIRPPLabel'), payrollData.cacSurIRPP],
