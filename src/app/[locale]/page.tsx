@@ -71,6 +71,17 @@ interface ActiveShiftState {
   lastSeenISO: string;
 }
 
+const formatDuration = (minutes?: number | null): string | null => {
+  if (minutes == null || !Number.isFinite(minutes) || minutes <= 0) return null;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours === 0) return `${remainingMinutes}min`;
+  if (remainingMinutes === 0) return `${hours}h`;
+  return `${hours}h ${remainingMinutes}min`;
+};
+
 export default function TimeTrackingPage() {
   const t = useTranslations('TimeTrackingPage');
   const tShared = useTranslations('Shared');
@@ -790,7 +801,7 @@ export default function TimeTrackingPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {latestAnnouncement && (
         <Alert>
           <Megaphone className="h-4 w-4" />
@@ -798,10 +809,19 @@ export default function TimeTrackingPage() {
           <AlertDescription>{latestAnnouncement.message}</AlertDescription>
         </Alert>
       )}
-      <Alert variant="default" className="bg-orange-950/50 border-orange-500/50 text-orange-300">
-        <BellOff className="h-4 w-4 text-orange-400" />
-        <AlertTitle>{t('offlineModeWarning.title')}</AlertTitle>
-        <AlertDescription>{t('offlineModeWarning.description')}</AlertDescription>
+      <Alert
+        variant="default"
+        className="rounded-xl border border-amber-500/20 bg-amber-950/20 px-4 py-3 text-amber-200 shadow-sm"
+      >
+        <BellOff className="mt-0.5 h-4 w-4 text-amber-400" />
+        <div className="space-y-1">
+          <AlertTitle className="text-sm font-semibold tracking-wide text-amber-200">
+            {t('offlineModeWarning.title')}
+          </AlertTitle>
+          <AlertDescription className="text-xs leading-5 text-amber-200/70 sm:text-sm">
+            {t('offlineModeWarning.description')}
+          </AlertDescription>
+        </div>
       </Alert>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -820,7 +840,7 @@ export default function TimeTrackingPage() {
         </div>
       </div>
 
-      <Card className="text-center p-6">
+      <Card className="border border-gray-800 bg-card/90 p-6 text-center shadow-sm">
         <CardContent className="p-0">
           <div className="text-6xl font-bold font-mono tracking-tighter mb-4">
             {formatElapsedTime(elapsedTime)}
@@ -882,58 +902,102 @@ export default function TimeTrackingPage() {
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('recentEntriesTitle')}</CardTitle>
-          <CardDescription>{t('recentEntriesDescription')}</CardDescription>
+      <Card className="overflow-hidden rounded-2xl border border-gray-800 bg-card/90 shadow-sm">
+        <CardHeader className="space-y-1 pb-4">
+          <CardTitle className="text-lg font-semibold tracking-tight">
+            {t('recentEntriesTitle')}
+          </CardTitle>
+          <CardDescription className="text-sm leading-relaxed">
+            {t('recentEntriesDescription')}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('tableDate')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('tableShift')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('tableHours')}</TableHead>
-                <TableHead>{t('tableDuration')}</TableHead>
-                <TableHead>{t('tableOvertime')}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t('tableLocation')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoadingEntries ? (
-                Array.from({length: 3}).map((_, i) => (
-                    <TableRow key={i}>
-                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                    </TableRow>
-                ))
-              ) : timeEntries && timeEntries.length > 0 ? (
-                timeEntries.map(entry => (
-                  <TableRow key={entry.id}>
-                    <TableCell>{format(parseISO(entry.date), 'PPP', { locale: dateFnsLocale })}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {shifts.find(s => s.id === entry.shiftId)?.name || entry.shiftId}
-                      {entry.isPublicHoliday ? <span className="text-xs text-primary">{t('holidaySuffix')}</span> : ''}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{entry.startTime} - {entry.endTime}</TableCell>
-                    <TableCell>{entry.duration > 0 ? `${entry.duration} ${t('minutes')}` : '-'}</TableCell>
-                    <TableCell className="text-destructive font-mono tabular-nums">{entry.overtimeDuration > 0 ? `${entry.overtimeDuration} ${t('minutes')}` : '-'}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{entry.location || t('noLocation')}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    {t('noEntries')}
-                  </TableCell>
+        <CardContent className="px-3 pb-4 sm:px-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800 hover:bg-transparent">
+                  <TableHead>{t('tableDate')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('tableShift')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('tableHours')}</TableHead>
+                  <TableHead>{t('tableDuration')}</TableHead>
+                  <TableHead>{t('tableOvertime')}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t('tableLocation')}</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoadingEntries ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : timeEntries && timeEntries.length > 0 ? (
+                  timeEntries.map(entry => {
+                    const duration = formatDuration(entry.duration);
+                    const overtime = formatDuration(entry.overtimeDuration);
+
+                    return (
+                      <TableRow
+                        key={entry.id}
+                        className="border-gray-800/80 transition-colors hover:bg-white/[0.02]"
+                      >
+                        <TableCell className="whitespace-nowrap text-sm font-medium">
+                          {format(parseISO(entry.date), 'PPP', { locale: dateFnsLocale })}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <span className="text-sm text-foreground">
+                            {shifts.find(s => s.id === entry.shiftId)?.name || entry.shiftId}
+                          </span>
+                          {entry.isPublicHoliday && (
+                            <span className="ml-2 text-xs text-primary">{t('holidaySuffix')}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden whitespace-nowrap md:table-cell">
+                          <span className="text-sm tabular-nums text-muted-foreground">
+                            {entry.startTime || '—'} - {entry.endTime || '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {duration ? (
+                            <span className="inline-flex whitespace-nowrap rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-emerald-400">
+                              {duration}
+                            </span>
+                          ) : (
+                            <span className="inline-flex whitespace-nowrap rounded-lg border border-gray-700/60 bg-gray-800/40 px-2.5 py-1 text-xs text-muted-foreground">
+                              {t('durationUnavailable')}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {overtime ? (
+                            <span className="inline-flex whitespace-nowrap rounded-lg border border-orange-500/20 bg-orange-500/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-orange-400">
+                              {overtime}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/50">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden max-w-[180px] truncate text-sm text-muted-foreground sm:table-cell">
+                          {entry.location || t('noLocation')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                      {t('noEntries')}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
       
