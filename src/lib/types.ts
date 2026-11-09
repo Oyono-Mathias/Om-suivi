@@ -29,7 +29,8 @@ export interface Profile {
   category?: string; // e.g., 'III'
   echelon?: string; // e.g., 'A'
   payrollAllowances?: {
-    basketPerDay?: number;
+    basketPerDay?: number; // legacy field; no longer used for night basket calculation
+    basketPerNight?: number;
     transportPerDay?: number;
     performanceMonthly?: number;
     housingMonthly?: number;
@@ -100,6 +101,8 @@ export interface GlobalSettings {
 export interface AttendanceOverride {
   id: string; // The date 'YYYY-MM-DD'
   status: 'unjustified_absence' | 'sick_leave' | 'paid_leave';
+  /** Set only by an administrator after approving the absence justification. */
+  adminJustified?: boolean;
 }
 
 export interface Announcement {
