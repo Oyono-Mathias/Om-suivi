@@ -102,7 +102,8 @@ export default function BulletinPage() {
         if (!allTimeEntries) return [];
         return allTimeEntries.filter((entry) => {
             const entryDate = typeof entry.date === 'string' ? entry.date.slice(0, 10) : '';
-            return entryDate >= cycleStartString && entryDate <= cycleEndString;
+            const isCompleted = typeof entry.endTime === 'string' && entry.endTime.trim().length > 0;
+            return isCompleted && entryDate >= cycleStartString && entryDate <= cycleEndString;
         });
     }, [allTimeEntries, cycleStartString, cycleEndString]);
 
