@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
-import { CalendarDays, Clock3, Moon, Sun, Wallet, Loader2, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, Moon, Sun, Loader2, CheckCircle2 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { calculateSpecialDayCashPayout } from '@/lib/payroll-calculations';
