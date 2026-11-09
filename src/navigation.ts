@@ -38,6 +38,10 @@ export const pathnames = {
     en: '/paystub',
     fr: '/bulletin'
   },
+  '/sunday-cash': {
+    en: '/sunday-cash',
+    fr: '/pointage-dimanche'
+  },
   '/team': {
     en: '/team',
     fr: '/equipe'
