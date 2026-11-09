@@ -215,19 +215,13 @@ export default function BulletinPage() {
         
 
         const workedDays = new Set(timeEntries.map(e => e.date));
-        const sickLeaveDays = new Set(currentOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave' || o.adminJustified === true).map(o => o.id));
 
-        let unjustifiedAbsenceCount = 0;
-        if (profile.hireDate) {
-            const hireDate = toDate(profile.hireDate);
-            const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
-            for (const day of cycleWorkDays) {
-                const dayString = format(day, 'yyyy-MM-dd');
-                if (day >= startOfDay(hireDate) && !workedDays.has(dayString) && !sickLeaveDays.has(dayString)) {
-                    unjustifiedAbsenceCount++;
-                }
-            }
-        }
+        // Une absence n'est pénalisée que si elle est explicitement enregistrée
+        // comme injustifiée. L'absence de pointage seule ne prouve pas une absence
+        // (repos, jour non planifié, congé ou jour férié).
+        const unjustifiedAbsenceCount = currentOverrides.filter(
+            override => override.status === 'unjustified_absence' && override.adminJustified !== true
+        ).length;
         
         // Cycle de paie du 26 au 25, avec une base de prorata conventionnelle de 30 jours.
         // Seuls les jours réellement pointés dans Suivi du Temps sont retenus.
