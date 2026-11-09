@@ -252,3 +252,31 @@ test('a registered weekday holiday is paid at 150 percent and ordinary dates are
   assert.equal(ordinary.dayKind, 'ordinary');
   assert.equal(ordinary.amount, 5000);
 });
+
+const holidaySource = readFileSync(fileURLToPath(new URL('../src/lib/public-holidays.ts', import.meta.url)), 'utf8');
+const holidayCompiled = ts.transpileModule(holidaySource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText;
+const holidayModule = { exports: {} };
+vm.runInNewContext(holidayCompiled, { module: holidayModule, exports: holidayModule.exports });
+const { getEasterSunday, getCameroonHolidaySeeds, getSpecialDayRate } = holidayModule.exports;
+
+test('Cameroon holiday seed includes fixed dates and calculated movable Christian holidays', () => {
+  assert.equal(getEasterSunday(2026), '2026-04-05');
+  const dates = getCameroonHolidaySeeds(2026);
+  assert.ok(dates.some((item) => item.date === '2026-01-01' && item.label === "Jour de l'An"));
+  assert.ok(dates.some((item) => item.date === '2026-04-03' && item.label === 'Vendredi Saint'));
+  assert.ok(dates.some((item) => item.date === '2026-05-14' && item.label === 'Ascension'));
+  assert.ok(dates.some((item) => item.date === '2026-12-25' && item.label === 'Noël'));
+});
+
+test('holiday calendar rate takes priority over Sunday rate', () => {
+  assert.deepEqual(
+    getSpecialDayRate('2026-11-08', [{ date: '2026-11-08', label: 'Fête déclarée' }]),
+    { kind: 'public_holiday', multiplier: 1.5, label: 'Fête déclarée' }
+  );
+  assert.deepEqual(
+    getSpecialDayRate('2026-11-08', []),
+    { kind: 'sunday', multiplier: 1.4, label: 'Dimanche' }
+  );
+});
