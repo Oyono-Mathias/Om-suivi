@@ -301,7 +301,44 @@ export default function BulletinPage() {
                         <p>Ancienneté: {differenceInYears(new Date(), toDate(profile.hireDate || ''))} ans</p>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="md:hidden space-y-2 mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('gainsSectionTitle')}</p>
+                    {[
+                      [t('baseSalaryLabel'), payrollData.baseSalary],
+                      [t('seniorityBonusLabel'), payrollData.seniorityBonus],
+                      [t('attendanceBonusLabel'), payrollData.attendanceBonus],
+                      [t('performanceBonusLabel'), payrollData.performanceBonus],
+                      [t('basketBonusLabel'), payrollData.basketBonus],
+                      [t('transportBonusLabel'), payrollData.transportBonus],
+                      [t('housingBonusLabel'), payrollData.housingBonus],
+                    ].filter(([, amount]) => Number(amount) > 0).map(([label, amount]) => (
+                      <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <span className="min-w-0 break-words">{label}</span>
+                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
+                      </div>
+                    ))}
+                    {Object.entries(payrollData.overtimeBreakdown).filter(([, tier]) => tier.minutes > 0).map(([key, tier]) => (
+                      <div key={key} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <span className="min-w-0 break-words">{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, { rate: (tier.rate * 100).toFixed(0) })} · {(tier.minutes / 60).toFixed(2)} h</span>
+                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(tier.payout)}</span>
+                      </div>
+                    ))}
+                    <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('deductionsSectionTitle')}</p>
+                    {[
+                      [t('cnpsLabel'), payrollData.cnpsDeduction],
+                      [t('cacLabel'), payrollData.cacDeduction],
+                      [t('irppLabel'), payrollData.irppDeduction],
+                      [t('cacSurIRPPLabel'), payrollData.cacSurIRPP],
+                      [t('redevanceCRTVLabel'), payrollData.redevanceCRTV],
+                      [t('communalTaxLabel'), payrollData.taxeCommunale],
+                    ].filter(([, amount]) => Number(amount) > 0).map(([label, amount]) => (
+                      <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <span className="min-w-0 break-words">{label}</span>
+                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
+                      </div>
+                    ))}
+                </div>
+                <div className="hidden md:block">
                     <table className="print-table w-full text-sm font-sans mb-4">
                         <thead>
                             <tr className="bg-muted">
