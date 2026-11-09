@@ -150,9 +150,15 @@ export function countNightShifts(
 
     const nightStart = nightStartHour * 60;
     const nightEnd = 24 * 60 + nightEndHour * 60;
-    const overlapsNight = (start < nightEnd && end > 24 * 60) ||
-      (start < 24 * 60 && end > nightStart) ||
-      (start < nightEnd && end > nightStart);
+    // Compare with the night window on the previous, current and next day.
+    const nightWindows = [
+      [nightStart - 24 * 60, nightEnd - 24 * 60],
+      [nightStart, nightEnd],
+      [nightStart + 24 * 60, nightEnd + 24 * 60],
+    ];
+    const overlapsNight = nightWindows.some(([windowStart, windowEnd]) =>
+      start < windowEnd && end > windowStart
+    );
 
     if (overlapsNight) count += 1;
   }
