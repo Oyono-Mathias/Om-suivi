@@ -26,7 +26,8 @@ export interface CameroonPayrollDeductions {
   total: number;
 }
 
-const clampMoney = (value: number) => Math.max(0, Number.isFinite(value) ? value : 0);
+const clampMoney = (value: number | undefined) =>
+  Math.max(0, typeof value === "number" && Number.isFinite(value) ? value : 0);
 const roundMoney = (value: number) => Math.round(clampMoney(value));
 
 function progressiveAnnualIrpp(taxableAnnualIncome: number): number {
