@@ -255,7 +255,7 @@ export function countUnjustifiedAbsences(
 
 /** A calendar date belongs to the regular monthly payroll only Monday through Saturday. */
 export function isRegularPayrollWorkDate(date: string): boolean {
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   const [year, month, day] = date.split("-").map(Number);
   const parsed = new Date(Date.UTC(year, month - 1, day));
   if (
@@ -294,7 +294,7 @@ export function calculateSundayCashPayout(
   }
 
   const parseTime = (value?: string) => {
-    if (!value || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value)) return null;
+    if (!value || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return null;
     const [hours, minutes] = value.split(":").map(Number);
     return hours * 60 + minutes;
   };
@@ -348,7 +348,7 @@ export function calculateSpecialDayCashPayout(
   input: SpecialDayCashInput
 ): SpecialDayCashCalculation {
   const parseTime = (value: string) => {
-    if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value)) return null;
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return null;
     const [hours, minutes] = value.split(':').map(Number);
     return hours * 60 + minutes;
   };
@@ -374,7 +374,7 @@ export function calculateSpecialDayCashPayout(
     dayKind = 'public_holiday';
     multiplier = 1.5;
     dayLabel = holiday.label;
-  } else if (/^\\d{4}-\\d{2}-\\d{2}$/.test(input.date)) {
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
     const [year, month, day] = input.date.split('-').map(Number);
     const parsed = new Date(Date.UTC(year, month - 1, day));
     if (parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day && parsed.getUTCDay() === 0) {
