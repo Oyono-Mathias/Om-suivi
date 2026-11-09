@@ -7,7 +7,7 @@ import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, 
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, orderBy } from "firebase/firestore";
+import { doc, collection, query, where, orderBy } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
@@ -107,7 +107,7 @@ export default function BulletinPage() {
     }, [allTimeEntries, cycleStartString, cycleEndString]);
 
     const settingsRef = useMemoFirebase(() => (user ? doc(firestore, 'settings', 'global') : null), [firestore, user]);
-    const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
+    const { data: globalSettings } = useDoc<GlobalSettings>(settingsRef);
     
     const overridesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -116,7 +116,7 @@ export default function BulletinPage() {
             where('__name__', '<=', cycleEndString)
         );
     }, [firestore, user, cycleStartString, cycleEndString]);
-    const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
+    const { data: attendanceOverrides } = useCollection<AttendanceOverride>(overridesQuery);
 
     const handlePrint = () => { window.print(); };
 
