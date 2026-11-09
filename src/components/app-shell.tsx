@@ -25,6 +25,7 @@ import {
   LogOut,
   Shield,
   Newspaper,
+  CalendarDays,
   HelpCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -133,6 +134,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/", label: t('timeTracking'), icon: Clock },
     { href: "/reports", label: t('reports'), icon: BarChart3 },
     { href: "/bulletin", label: t('bulletin'), icon: Newspaper },
+    { href: "/sunday-cash", label: 'Dimanche cash', icon: CalendarDays },
   ];
   const secondaryNavItems: NavItem[] = [
     { href: "/team", label: t('team'), icon: Users },
