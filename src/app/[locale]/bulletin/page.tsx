@@ -204,7 +204,9 @@ export default function BulletinPage() {
         }
         
         const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
-        const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
+        // Le salaire mensuel contractuel ne tombe pas à zéro en l'absence de pointages.
+        // Les absences doivent être traitées séparément, sans effacer le salaire de base.
+        const proratedBaseSalary = baseSalary;
         
         if (unjustifiedAbsenceCount > 0) {
             attendanceBonus = 0;
@@ -228,9 +230,11 @@ export default function BulletinPage() {
         const irppDeduction = deductions.irpp;
         const cacSurIRPP = deductions.cac;
         const redevanceCRTV = deductions.crtv;
-        const cotisationSyndicale = 0;
+        const cotisationSyndicale = profile.payrollDeductions?.unionMonthly ?? 0;
+        const assuranceMaladie = profile.payrollDeductions?.healthInsuranceMonthly ?? 0;
         const taxeCommunale = deductions.tdl;
-        const totalDeductions = deductions.total;
+        const totalDeductions = deductions.total + cotisationSyndicale + assuranceMaladie;
+        const netTaxable = Math.max(0, (totalEarnings - deductions.cnps) * 0.7);
         const netPay = totalEarnings - totalDeductions;
 
         return {
@@ -240,8 +244,8 @@ export default function BulletinPage() {
             seniorityBonus, attendanceBonus, performanceBonus,
             overtimeBreakdown,
             grossSalary: totalEarnings,
-            cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
-            totalDeductions, netPay
+            cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, assuranceMaladie, taxeCommunale,
+            netTaxable, totalDeductions, netPay
         };
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
     
@@ -310,13 +314,13 @@ export default function BulletinPage() {
                       [t('basketBonusLabel'), payrollData.basketBonus],
                       [t('transportBonusLabel'), payrollData.transportBonus],
                       [t('housingBonusLabel'), payrollData.housingBonus],
-                    ].filter(([, amount]) => Number(amount) > 0).map(([label, amount]) => (
+                    ].map(([label, amount]) => (
                       <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
                         <span className="min-w-0 break-words">{label}</span>
                         <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
                       </div>
                     ))}
-                    {Object.entries(payrollData.overtimeBreakdown).filter(([, tier]) => tier.minutes > 0).map(([key, tier]) => (
+                    {Object.entries(payrollData.overtimeBreakdown).map(([key, tier]) => (
                       <div key={key} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
                         <span className="min-w-0 break-words">{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, { rate: (tier.rate * 100).toFixed(0) })} · {(tier.minutes / 60).toFixed(2)} h</span>
                         <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(tier.payout)}</span>
@@ -330,7 +334,7 @@ export default function BulletinPage() {
                       [t('cacSurIRPPLabel'), payrollData.cacSurIRPP],
                       [t('redevanceCRTVLabel'), payrollData.redevanceCRTV],
                       [t('communalTaxLabel'), payrollData.taxeCommunale],
-                    ].filter(([, amount]) => Number(amount) > 0).map(([label, amount]) => (
+                    ].map(([label, amount]) => (
                       <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
                         <span className="min-w-0 break-words">{label}</span>
                         <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
@@ -349,25 +353,26 @@ export default function BulletinPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {payrollData.baseSalary > 0 && <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />}
-                            {payrollData.seniorityBonus > 0 && <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />}
-                            {payrollData.attendanceBonus > 0 && <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />}
-                            {payrollData.performanceBonus > 0 && <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />}
+                            <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />
+                            <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
+                            <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
+                            <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
                             {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
                                 <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
                             ))}
-                            {payrollData.basketBonus > 0 && <TableRowItem label={t('basketBonusLabel')} base={formatCurrency(profile.payrollAllowances?.basketPerDay || 0)} rate=" / jour" gain={formatCurrency(payrollData.basketBonus)} />}
-                            {payrollData.transportBonus > 0 && <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />}
-                            {payrollData.housingBonus > 0 && <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />}
+                            <TableRowItem label={t('basketBonusLabel')} base={formatCurrency(profile.payrollAllowances?.basketPerDay || 0)} rate=" / jour" gain={formatCurrency(payrollData.basketBonus)} />
+                            <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />
+                            <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />
                             <tr className="font-bold bg-muted/50">
                                 <td colSpan={3} className="px-2 py-1 text-right">{t('grossMonthlySalaryLabel')}</td>
                                 <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
                                 <td></td>
                             </tr>
                             <TableRowItem label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus - payrollData.housingBonus)} rate="4.20%" deduction={formatCurrency(payrollData.cnpsDeduction)} />
+                            <TableRowItem label={t('healthInsuranceLabel')} deduction={formatCurrency(payrollData.assuranceMaladie)} />
                             <TableRowItem label={t('cacLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus)} rate="1.00%" deduction={formatCurrency(payrollData.cacDeduction)} />
                             <TableRowItem label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
-                            {payrollData.cotisationSyndicale > 0 && <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />}
+                            <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />
                             <TableRowItem label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
                             <TableRowItem label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10.00%" deduction={formatCurrency(payrollData.cacSurIRPP)} />
                             <TableRowItem label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
@@ -376,6 +381,10 @@ export default function BulletinPage() {
                 </div>
                 <div className="flex justify-end break-inside-avoid mt-4">
                     <div className="w-full max-w-xs space-y-1 text-sm">
+                        <div className="flex justify-between">
+                            <span className="font-semibold">{t('netTaxableLabel')}:</span>
+                            <span className="font-mono">{formatCurrency(payrollData.netTaxable)}</span>
+                        </div>
                         <div className="flex justify-between">
                             <span className="font-semibold">{t('grossSalaryLabel')}:</span>
                             <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span>
