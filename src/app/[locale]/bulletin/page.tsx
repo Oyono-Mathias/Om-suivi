@@ -190,7 +190,7 @@ export default function BulletinPage() {
             try {
                 const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
-                    seniorityBonus = calculatePayrollProration(baseSalary, new Set(timeEntries.map(e => e.date)).size) * (allowances.seniorityRate ?? 0.017) * seniorityYears;
+                    seniorityBonus = baseSalary * (allowances.seniorityRate ?? 0.017) * seniorityYears;
                 }
             } catch (e) { /* empty */ }
         }
