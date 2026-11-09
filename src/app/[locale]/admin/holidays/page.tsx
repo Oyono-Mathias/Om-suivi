@@ -21,7 +21,7 @@ export default function AdminHolidaysPage() {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: profile, isLoading: isProfileLoading } = useDoc<{ role?: string }>(profileRef);
+  const { data: profile, isLoading: isProfileLoading } = useDoc<{ role?: string }>(profileRef);\n  const isAdmin = profile?.role === 'admin';
   const [year, setYear] = useState(new Date().getFullYear());
   const [holidays, setHolidays] = useState<PublicHolidayRecord[]>([]);
   const [loading, setLoading] = useState(true);
