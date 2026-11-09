@@ -320,3 +320,75 @@ export function calculateSundayCashPayout(
     amount: roundMoney(workedHours * clampMoney(input.hourlyRate)),
   };
 }
+
+export interface SpecialDayCashInput {
+  date: string;
+  startTime: string;
+  endTime: string;
+  breakMinutes?: number;
+  hourlyRate: number;
+  shiftType: 'day' | 'night';
+  holidays: { date: string; label: string }[];
+}
+
+export interface SpecialDayCashCalculation {
+  workedMinutes: number;
+  workedHours: number;
+  multiplier: number;
+  dayKind: 'ordinary' | 'sunday' | 'public_holiday';
+  dayLabel: string;
+  ration: number;
+  nightBasket: number;
+  hourlyWage: number;
+  amount: number;
+}
+
+/** Computes special-day cash: holiday 150% wins over Sunday 140%; primes are additive. */
+export function calculateSpecialDayCashPayout(
+  input: SpecialDayCashInput
+): SpecialDayCashCalculation {
+  const parseTime = (value: string) => {
+    if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value)) return null;
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const start = parseTime(input.startTime);
+  const end = parseTime(input.endTime);
+  if (start === null || end === null) {
+    return { workedMinutes: 0, workedHours: 0, multiplier: 1, dayKind: 'ordinary', dayLabel: 'Horaires invalides', ration: 0, nightBasket: 0, hourlyWage: 0, amount: 0 };
+  }
+
+  let duration = end - start;
+  if (duration <= 0) duration += 24 * 60;
+  const breakMinutes = Math.max(0, Math.min(duration, Number.isFinite(input.breakMinutes) ? input.breakMinutes ?? 0 : 0));
+  const workedMinutes = Math.max(0, duration - breakMinutes);
+  const workedHours = workedMinutes / 60;
+
+  // Import-free weekday check keeps this payroll utility deterministic and easy to unit-test.
+  const holiday = input.holidays.find((item) => item.date === input.date);
+  let dayKind: SpecialDayCashCalculation['dayKind'] = 'ordinary';
+  let multiplier = 1;
+  let dayLabel = 'Jour ordinaire';
+  if (holiday) {
+    dayKind = 'public_holiday';
+    multiplier = 1.5;
+    dayLabel = holiday.label;
+  } else if (/^\\d{4}-\\d{2}-\\d{2}$/.test(input.date)) {
+    const [year, month, day] = input.date.split('-').map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day && parsed.getUTCDay() === 0) {
+      dayKind = 'sunday';
+      multiplier = 1.4;
+      dayLabel = 'Dimanche';
+    }
+  }
+
+  const hourlyWage = roundMoney(workedHours * clampMoney(input.hourlyRate) * multiplier);
+  const ration = workedMinutes > 0 ? 1000 : 0;
+  const nightBasket = workedMinutes > 0 && input.shiftType === 'night' ? 1390 : 0;
+  return {
+    workedMinutes, workedHours, multiplier, dayKind, dayLabel, ration, nightBasket, hourlyWage,
+    amount: roundMoney(hourlyWage + ration + nightBasket),
+  };
+}
