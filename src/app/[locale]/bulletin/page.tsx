@@ -206,7 +206,7 @@ export default function BulletinPage() {
         
         const allowances = profile.payrollAllowances || {};
         const seniority = profile.hireDate
-            ? calculateSeniorityBonus(baseSalary, toDate(profile.hireDate), cycleEnd, allowances.seniorityRate ?? 0.02)
+            ? calculateSeniorityBonus(baseSalary, toDate(profile.hireDate), cycleEnd)
             : { completedYears: 0, amount: 0 };
         let seniorityBonus = seniority.amount;
 
