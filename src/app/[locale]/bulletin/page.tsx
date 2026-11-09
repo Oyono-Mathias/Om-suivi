@@ -7,7 +7,7 @@ import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, 
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, where } from "firebase/firestore";
+import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
@@ -82,15 +82,29 @@ export default function BulletinPage() {
     const cycleStartString = useMemo(() => format(cycleStart, 'yyyy-MM-dd'), [cycleStart]);
     const cycleEndString = useMemo(() => format(cycleEnd, 'yyyy-MM-dd'), [cycleEnd]);
 
+    // Abonnement temps réel à toute la sous-collection du compte connecté.
+    // Le filtrage du cycle est fait côté client pour éviter qu'une requête bornée
+    // masque des pointages dont le format de date aurait varié.
     const timeEntriesQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user?.uid) return null;
         return query(
             collection(firestore, 'users', user.uid, 'timeEntries'),
-            where('date', '>=', cycleStartString),
-            where('date', '<=', cycleEndString)
+            orderBy('date', 'asc')
         );
-    }, [firestore, user, cycleStartString, cycleEndString]);
-    const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+    }, [firestore, user?.uid]);
+    const {
+        data: allTimeEntries,
+        isLoading: isLoadingEntries,
+        error: timeEntriesError,
+    } = useCollection<TimeEntry>(timeEntriesQuery);
+
+    const timeEntries = useMemo(() => {
+        if (!allTimeEntries) return [];
+        return allTimeEntries.filter((entry) => {
+            const entryDate = typeof entry.date === 'string' ? entry.date.slice(0, 10) : '';
+            return entryDate >= cycleStartString && entryDate <= cycleEndString;
+        });
+    }, [allTimeEntries, cycleStartString, cycleEndString]);
 
     const settingsRef = useMemoFirebase(() => (user ? doc(firestore, 'settings', 'global') : null), [firestore, user]);
     const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
@@ -107,9 +121,12 @@ export default function BulletinPage() {
     const handlePrint = () => { window.print(); };
 
     const payrollData = useMemo(() => {
-        if (!timeEntries || !profile || !globalSettings || !attendanceOverrides) return null;
-        
-        const rates = globalSettings.overtimeRates || DEFAULT_OVERTIME_RATES;
+        if (!allTimeEntries || !profile) return null;
+
+        // Les paramètres et dérogations sont facultatifs : leur absence ne doit
+        // jamais empêcher l'affichage du bulletin.
+        const currentOverrides = attendanceOverrides ?? [];
+        const rates = globalSettings?.overtimeRates || DEFAULT_OVERTIME_RATES;
         const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
         const baseSalary = profile.monthlyBaseSalary;
 
@@ -200,7 +217,7 @@ export default function BulletinPage() {
         
 
         const workedDays = new Set(timeEntries.map(e => e.date));
-        const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
+        const sickLeaveDays = new Set(currentOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
 
         let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
@@ -267,13 +284,22 @@ export default function BulletinPage() {
             cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, assuranceMaladie, taxeCommunale,
             netTaxable, totalDeductions, netPay
         };
-    }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
+    }, [allTimeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd, cycleStartString, cycleEndString]);
     
-    const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
+    const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries;
 
     if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
     if (!user) return <div className="flex flex-col justify-center items-center h-screen gap-4"><p className="text-xl">{tShared('pleaseLogin')}</p><Link href="/login"><Button>{tShared('loginButton')}</Button></Link></div>;
     if (!profile || profile.monthlyBaseSalary === 0 || !profile.hireDate || !profile.leaveStartDate) return <div className="flex flex-col justify-center items-center h-screen gap-4 text-center"><p className="text-xl">{tShared('pleaseCompleteProfile')}</p><p className="text-muted-foreground max-w-sm">Assurez-vous que le salaire de base, la date d'embauche et la date de début du cycle de congé sont définis dans votre profil.</p><Link href="/profile"><Button>{tShared('goToProfileButton')}</Button></Link></div>;
+    if (timeEntriesError) return (
+        <div className="space-y-4 rounded-lg border border-red-500/40 bg-red-500/10 p-5">
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
+            <p className="text-sm text-red-200">
+                Impossible de lire les pointages de votre compte. Vérifiez votre connexion et les droits Firestore, puis rechargez le bulletin.
+            </p>
+            <p className="break-all text-xs text-muted-foreground">{timeEntriesError.message}</p>
+        </div>
+    );
     if (!payrollData) return <div className="space-y-6 pb-28"><h1 className="text-3xl font-headline font-bold">{t('title')}</h1><p className="text-muted-foreground">{t('noData')}</p></div>;
     
     return (
@@ -326,6 +352,14 @@ export default function BulletinPage() {
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
             
+            {payrollData.effectiveWorkDays === 0 && (
+                <div className="no-print rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <strong>Aucun pointage trouvé pour cette période.</strong>
+                    <p className="mt-1">Le bulletin reste calculé sans données simulées : le salaire proratisé et les heures supplémentaires resteront à zéro jusqu'à l'enregistrement des pointages dans « Suivi du Temps ».</p>
+                    <p className="mt-1 text-xs text-amber-200/80">Période recherchée : {cycleStartString} au {cycleEndString} · Compte : {user.uid}</p>
+                </div>
+            )}
+
             <div className="print-container bg-card md:border md:rounded-lg md:p-6">
                  <header className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
