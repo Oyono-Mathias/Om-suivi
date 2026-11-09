@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -105,7 +105,9 @@ export default function BulletinPage() {
         return allTimeEntries.filter((entry) => {
             const entryDate = typeof entry.date === 'string' ? entry.date.slice(0, 10) : '';
             const isCompleted = typeof entry.endTime === 'string' && entry.endTime.trim().length > 0;
-            return isCompleted && entryDate >= cycleStartString && entryDate <= cycleEndString;
+            // Le dimanche est réglé en cash dans son module dédié : il ne doit jamais
+            // entrer dans le brut, les heures supplémentaires ou le panier du bulletin mensuel.
+            return isCompleted && entryDate >= cycleStartString && entryDate <= cycleEndString && isRegularPayrollWorkDate(entryDate);
         });
     }, [allTimeEntries, cycleStartString, cycleEndString]);
 
@@ -243,6 +245,7 @@ export default function BulletinPage() {
         const housingBonus = calculatePayrollProration(housingMonthly, totalDaysWorked);
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
+        // Le panier de nuit est une prime additionnelle au salaire de base, jamais un remplacement.
         const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + basketBonus + totalOvertimePayout + transportBonus + housingBonus;
         const deductions = calculateCameroonPayrollDeductions({
             grossSalary: totalEarnings,
