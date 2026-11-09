@@ -73,7 +73,7 @@ export function getCameroonHolidaySeeds(year: number): Omit<PublicHolidayRecord,
     ] : []),
   ];
 
-  const records = [
+  const records: Omit<PublicHolidayRecord, 'id'>[] = [
     ...fixed.map(([monthDay, label, category]) => ({
       date: `${year}-${monthDay}`, year, label, category,
       source: 'Loi n°73/5 du 7 décembre 1973', seeded: true,
