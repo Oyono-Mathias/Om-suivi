@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const module = { exports: {} };
 vm.runInNewContext(compiled, { module, exports: module.exports });
-const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance } = module.exports;
+const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences } = module.exports;
 
 test('a date with both a time entry and sick leave counts once', () => {
   assert.equal(
@@ -125,4 +125,14 @@ test('attendance and performance bonuses are zero after an unexcused absence', (
 
 test('transport is strictly proportional to actual worked days', () => {
   assert.equal(calculateTransportAllowance(1000, 10), 10000);
+});
+
+
+test('only explicit unexcused absences without admin approval disable bonuses', () => {
+  assert.equal(countUnjustifiedAbsences([
+    { status: 'unjustified_absence' },
+    { status: 'unjustified_absence', adminJustified: true },
+    { status: 'sick_leave' },
+    { status: 'paid_leave' },
+  ]), 1);
 });
