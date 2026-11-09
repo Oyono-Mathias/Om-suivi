@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { doc as firestoreDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { getCameroonHolidaySeeds, type PublicHolidayRecord } from '@/lib/public-holidays';
 
@@ -21,7 +20,7 @@ export default function AdminHolidaysPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
-  const profileRef = useMemoFirebase(() => user ? firestoreDoc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isProfileLoading } = useDoc<{ role?: string }>(profileRef);
   const [year, setYear] = useState(new Date().getFullYear());
   const [holidays, setHolidays] = useState<PublicHolidayRecord[]>([]);
@@ -30,7 +29,30 @@ export default function AdminHolidaysPage() {
   const [date, setDate] = useState('');
   const [label, setLabel] = useState('');
   const [category, setCategory] = useState<HolidayCategory>('civil');
-  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [editingDate, setEditingDate] = useState<string | null>(null);\n  const [autoSeededYears, setAutoSeededYears] = useState<number[]>([]);
+
+  // On first admin visit, add missing statutory dates without overwriting manual edits.
+  useEffect(() => {
+    if (!isAdmin || autoSeededYears.includes(year)) return;
+    setAutoSeededYears((current) => [...current, year]);
+    void (async () => {
+      try {
+        const snapshot = await getDocs(query(collection(firestore, 'public_holidays'), where('year', '==', year)));
+        const existingDates = new Set(snapshot.docs.map((item) => item.id));
+        const missing = getCameroonHolidaySeeds(year).filter((item) => !existingDates.has(item.date));
+        if (missing.length === 0) return;
+        const batch = writeBatch(firestore);
+        for (const item of missing) {
+          batch.set(doc(firestore, 'public_holidays', item.date), {
+            ...item, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          });
+        }
+        await batch.commit();
+      } catch (error) {
+        console.error('Automatic holiday calendar preload failed:', error);
+      }
+    })();
+  }, [isAdmin, autoSeededYears, year, firestore]);
 
   const holidaysQuery = useMemo(
     () => query(collection(firestore, 'public_holidays'), where('year', '==', year), orderBy('date', 'asc')),
