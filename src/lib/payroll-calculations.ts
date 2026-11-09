@@ -95,3 +95,19 @@ export function calculateCameroonPayrollDeductions(
       (gross < 62_000 ? 0 : roundMoney(tdlAnnualFromBaseSalary(base) / 12)),
   };
 }
+
+
+/**
+ * Prorata salarial sur une base conventionnelle de 30 jours.
+ * Les jours effectifs sont dédupliqués en amont depuis les pointages du cycle.
+ */
+export function calculatePayrollProration(
+  monthlyAmount: number,
+  effectiveWorkDays: number,
+  referenceDays = 30
+): number {
+  const amount = clampMoney(monthlyAmount);
+  const days = Math.min(referenceDays, Math.max(0, Number.isFinite(effectiveWorkDays) ? effectiveWorkDays : 0));
+  const denominator = Number.isFinite(referenceDays) && referenceDays > 0 ? referenceDays : 30;
+  return roundMoney((amount * days) / denominator);
+}
