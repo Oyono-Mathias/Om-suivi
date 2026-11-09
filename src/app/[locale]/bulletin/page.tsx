@@ -186,7 +186,6 @@ export default function BulletinPage() {
         let attendanceBonus = allowances.attendanceMonthly ?? 3000;
         let performanceBonus = allowances.performanceMonthly ?? 4000;
         
-        const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
         const workedDays = new Set(timeEntries.map(e => e.date));
         const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
@@ -359,7 +358,7 @@ export default function BulletinPage() {
                             <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
                             <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
                             <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
-                            {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                            {Object.entries(payrollData.overtimeBreakdown).map(([key, tier]) => (
                                 <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
                             ))}
                             <TableRowItem label={t('basketBonusLabel')} base={formatCurrency(profile.payrollAllowances?.basketPerDay || 0)} rate=" / jour" gain={formatCurrency(payrollData.basketBonus)} />
