@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { calculateCameroonPayrollDeductions, calculatePayrollProration, calculateNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, calculatePayrollProration, calculateNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -219,9 +219,7 @@ export default function BulletinPage() {
         // Une absence n'est pénalisée que si elle est explicitement enregistrée
         // comme injustifiée. L'absence de pointage seule ne prouve pas une absence
         // (repos, jour non planifié, congé ou jour férié).
-        const unjustifiedAbsenceCount = currentOverrides.filter(
-            override => override.status === 'unjustified_absence' && override.adminJustified !== true
-        ).length;
+        const unjustifiedAbsenceCount = countUnjustifiedAbsences(currentOverrides);
         
         // Cycle de paie du 26 au 25, avec une base de prorata conventionnelle de 30 jours.
         // Seuls les jours réellement pointés dans Suivi du Temps sont retenus.
