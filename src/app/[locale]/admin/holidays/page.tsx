@@ -21,7 +21,8 @@ export default function AdminHolidaysPage() {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const profileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: profile, isLoading: isProfileLoading } = useDoc<{ role?: string }>(profileRef);\n  const isAdmin = profile?.role === 'admin';
+  const { data: profile, isLoading: isProfileLoading } = useDoc<{ role?: string }>(profileRef);
+  const isAdmin = profile?.role === 'admin';
   const [year, setYear] = useState(new Date().getFullYear());
   const [holidays, setHolidays] = useState<PublicHolidayRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,8 @@ export default function AdminHolidaysPage() {
   const [date, setDate] = useState('');
   const [label, setLabel] = useState('');
   const [category, setCategory] = useState<HolidayCategory>('civil');
-  const [editingDate, setEditingDate] = useState<string | null>(null);\n  const [autoSeededYears, setAutoSeededYears] = useState<number[]>([]);
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [autoSeededYears, setAutoSeededYears] = useState<number[]>([]);
 
   // On first admin visit, add missing statutory dates without overwriting manual edits.
   useEffect(() => {
@@ -71,7 +73,6 @@ export default function AdminHolidaysPage() {
     });
   }, [holidaysQuery, toast]);
 
-  const isAdmin = profile?.role === 'admin';
   const resetForm = () => { setDate(''); setLabel(''); setCategory('civil'); setEditingDate(null); };
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
