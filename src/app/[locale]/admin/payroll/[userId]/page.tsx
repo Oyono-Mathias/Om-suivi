@@ -169,6 +169,7 @@ export default function AdminUserBulletinPage({ params }: any) {
         overtimeBreakdown.sunday.payout = (overtimeBreakdown.sunday.minutes / 60) * hourlyRate * rates.sunday;
         overtimeBreakdown.holiday.payout = (overtimeBreakdown.holiday.minutes / 60) * hourlyRate * rates.holiday;
         
+        const allowances = profile.payrollAllowances || {};
         let seniorityBonus = 0;
         if (profile.hireDate) {
             try {
@@ -179,7 +180,6 @@ export default function AdminUserBulletinPage({ params }: any) {
             } catch (e) { /* empty */ }
         }
 
-        const allowances = profile.payrollAllowances || {};
         let attendanceBonus = allowances.attendanceMonthly ?? 3000;
         let performanceBonus = allowances.performanceMonthly ?? 4000;
         
