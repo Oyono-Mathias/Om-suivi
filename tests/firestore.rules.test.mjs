@@ -151,11 +151,17 @@ test('employee records are private and cannot be escalated', async (t) => {
   });
 
   await t.test('the public directory exposes only limited profile fields', async () => {
+    const unauthenticatedDb = testEnv.unauthenticatedContext().firestore();
+
     await assertSucceeds(setDoc(doc(employeeDb, 'publicProfiles/employee-1'), {
       id: 'employee-1',
       name: 'Employé',
       profession: 'storekeeper',
     }));
+    await assertSucceeds(getDoc(doc(employeeDb, 'publicProfiles/employee-1')));
+    await assertSucceeds(getDoc(doc(otherEmployeeDb, 'publicProfiles/employee-1')));
+    await assertSucceeds(getDocs(collection(otherEmployeeDb, 'publicProfiles')));
+    await assertFails(getDoc(doc(unauthenticatedDb, 'publicProfiles/employee-1')));
     await assertFails(setDoc(doc(employeeDb, 'publicProfiles/employee-1'), {
       id: 'employee-1',
       name: 'Employé',
