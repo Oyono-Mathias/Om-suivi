@@ -55,7 +55,7 @@ export default function AdminHolidaysPage() {
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isAdmin || !date || !label.trim()) return;
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       toast({ variant: 'destructive', title: 'Date invalide.' });
       return;
     }
