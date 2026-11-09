@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const module = { exports: {} };
 vm.runInNewContext(compiled, { module, exports: module.exports });
-const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration } = module.exports;
+const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance } = module.exports;
 
 test('a date with both a time entry and sick leave counts once', () => {
   assert.equal(
@@ -97,4 +97,32 @@ test('payroll proration is bounded between zero and the monthly amount', () => {
   assert.equal(calculatePayrollProration(200000, 0), 0);
   assert.equal(calculatePayrollProration(200000, 45), 200000);
   assert.equal(calculatePayrollProration(-200000, 10), 0);
+});
+
+
+test('night basket counts each completed night vacation once, including early-morning shifts', () => {
+  const shifts = [
+    { id: 'night', startTime: '22:00', endTime: '06:00' },
+    { id: 'early', startTime: '03:00', endTime: '10:00' },
+    { id: 'day', startTime: '08:00', endTime: '16:00' },
+  ];
+  assert.equal(countNightShifts([
+    { shiftId: 'night' }, { shiftId: 'early' }, { shiftId: 'day' },
+  ], shifts), 2);
+  assert.equal(calculateNightBasketAllowance(2), 2780);
+});
+
+test('seniority uses completed years at 2 percent per year', () => {
+  const result = calculateSeniorityBonus(71362.5, '2018-11-01T00:00:00.000Z', new Date('2026-11-09T12:00:00.000Z'));
+  assert.equal(result.completedYears, 8);
+  assert.equal(result.amount, 11418);
+});
+
+test('attendance and performance bonuses are zero after an unexcused absence', () => {
+  assert.equal(calculateConditionalMonthlyBonus(3000, 30, true), 0);
+  assert.equal(calculateConditionalMonthlyBonus(4000, 30, false), 4000);
+});
+
+test('transport is strictly proportional to actual worked days', () => {
+  assert.equal(calculateTransportAllowance(1000, 10), 10000);
 });
