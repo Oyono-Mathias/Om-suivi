@@ -7,12 +7,12 @@ import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, 
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, where } from "firebase/firestore";
+import { doc, collection, query, where, setDoc } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { countCoveredWorkDays } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, countCoveredWorkDays } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 import { AdminAccessDenied } from '@/components/admin-access-denied';
@@ -169,20 +169,20 @@ export default function AdminUserBulletinPage({ params }: any) {
         overtimeBreakdown.sunday.payout = (overtimeBreakdown.sunday.minutes / 60) * hourlyRate * rates.sunday;
         overtimeBreakdown.holiday.payout = (overtimeBreakdown.holiday.minutes / 60) * hourlyRate * rates.holiday;
         
+        const allowances = profile.payrollAllowances || {};
         let seniorityBonus = 0;
         if (profile.hireDate) {
             try {
                 const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
                 if (seniorityYears > 0) {
-                    seniorityBonus = baseSalary * 0.017 * seniorityYears;
+                    seniorityBonus = baseSalary * (allowances.seniorityRate ?? 0.017) * seniorityYears;
                 }
             } catch (e) { /* empty */ }
         }
 
-        let attendanceBonus = 3000;
-        let performanceBonus = 4000;
+        let attendanceBonus = allowances.attendanceMonthly ?? 3000;
+        let performanceBonus = allowances.performanceMonthly ?? 4000;
         
-        const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
         const workedDays = new Set(timeEntries.map(e => e.date));
         const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
@@ -200,41 +200,49 @@ export default function AdminUserBulletinPage({ params }: any) {
         }
         
         const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
-        const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
+        // Le salaire mensuel contractuel ne tombe pas à zéro en l'absence de pointages.
+        // Les absences doivent être traitées séparément, sans effacer le salaire de base.
+        const proratedBaseSalary = baseSalary;
         
         if (unjustifiedAbsenceCount > 0) {
             attendanceBonus = 0;
             performanceBonus = 0;
         }
         
-        const transportBonus = (18325 / 26) * (totalDaysWorked); 
-        const housingBonus = proratedBaseSalary * 0.1;
+        const basketBonus = (allowances.basketPerDay || 0) * totalDaysWorked;
+        const transportPerDay = allowances.transportPerDay ?? (18325 / 26);
+        const transportBonus = transportPerDay * totalDaysWorked;
+        const housingBonus = allowances.housingMonthly ?? (proratedBaseSalary * 0.1);
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
-        const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + totalOvertimePayout + transportBonus + housingBonus;
-        
-        const cnpsBase = totalEarnings - transportBonus - housingBonus;
-        const cnpsDeduction = cnpsBase * 0.042;
-        const cacBase = totalEarnings - transportBonus;
-        const cacDeduction = cacBase * 0.01;
-        const irppDeduction = calculateIRPP(totalEarnings, transportBonus, housingBonus, cnpsDeduction);
-        const cacSurIRPP = irppDeduction * 0.1;
-        const redevanceCRTV = 1950;
-        const cotisationSyndicale = proratedBaseSalary * 0.01;
-        const taxeCommunale = 270;
-
-        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
+        const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + basketBonus + totalOvertimePayout + transportBonus + housingBonus;
+        const deductions = calculateCameroonPayrollDeductions({
+            grossSalary: totalEarnings,
+            baseSalary: proratedBaseSalary,
+            cnpsBase: totalEarnings,
+        });
+        const cnpsDeduction = deductions.cnps;
+        const cacDeduction = deductions.cfc;
+        const irppDeduction = deductions.irpp;
+        const cacSurIRPP = deductions.cac;
+        const redevanceCRTV = deductions.crtv;
+        const cotisationSyndicale = profile.payrollDeductions?.unionMonthly ?? 0;
+        const assuranceMaladie = profile.payrollDeductions?.healthInsuranceMonthly ?? 0;
+        const taxeCommunale = deductions.tdl;
+        const totalDeductions = deductions.total + cotisationSyndicale + assuranceMaladie;
+        // Même assiette mensuelle que le moteur IRPP, après abattement annuel de 500 000 FCFA.
+        const netTaxable = Math.max(0, ((totalEarnings - deductions.cnps) * 0.7) - (500_000 / 12));
         const netPay = totalEarnings - totalDeductions;
 
         return {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
-            transportBonus, housingBonus,
+            transportBonus, housingBonus, basketBonus,
             seniorityBonus, attendanceBonus, performanceBonus,
             overtimeBreakdown,
             grossSalary: totalEarnings,
-            cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
-            totalDeductions, netPay
+            cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, assuranceMaladie, taxeCommunale,
+            netTaxable, totalDeductions, netPay
         };
     }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
     
@@ -271,6 +279,77 @@ export default function AdminUserBulletinPage({ params }: any) {
                 <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
             </div>
             
+            <details className="no-print rounded-xl border bg-card p-4">
+                <summary className="cursor-pointer font-semibold">Paramètres individuels des indemnités</summary>
+                <p className="mt-2 text-sm text-muted-foreground">Montants en FCFA. Les indemnités journalières sont multipliées par les jours couverts du cycle. Chaque valeur est enregistrée au changement de champ.</p>
+                <label className="mt-4 grid max-w-sm gap-1 text-sm">
+                    <span>Salaire de base mensuel (FCFA)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      defaultValue={profile.monthlyBaseSalary || 0}
+                      className="h-10 w-full rounded-md border bg-background px-3"
+                      onBlur={async (event) => {
+                        const value = Number(event.currentTarget.value);
+                        if (!Number.isFinite(value) || value < 0) return;
+                        await setDoc(doc(firestore, 'users', userId), { monthlyBaseSalary: value, currency: 'FCFA' }, { merge: true });
+                      }}
+                    />
+                </label>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {([
+                      ['basketPerDay', 'Prime de panier / jour'],
+                      ['transportPerDay', 'Transport / jour'],
+                      ['performanceMonthly', 'Prime de rendement / mois'],
+                      ['housingMonthly', 'Indemnité logement / mois'],
+                      ['attendanceMonthly', 'Prime d’assiduité / mois'],
+                      ['seniorityRate', 'Taux ancienneté (ex. 0.017)'],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="grid gap-1 text-sm">
+                        <span>{label}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step={key === 'seniorityRate' ? '0.001' : '1'}
+                          defaultValue={profile.payrollAllowances?.[key] ?? (key === 'transportPerDay' ? 18325 / 26 : key === 'performanceMonthly' ? 4000 : key === 'attendanceMonthly' ? 3000 : key === 'seniorityRate' ? 0.017 : 0)}
+                          className="h-10 w-full rounded-md border bg-background px-3"
+                          onBlur={async (event) => {
+                            const value = Number(event.currentTarget.value);
+                            if (!Number.isFinite(value) || value < 0) return;
+                            await setDoc(doc(firestore, 'users', userId), {
+                              payrollAllowances: { ...(profile.payrollAllowances || {}), [key]: value }
+                            }, { merge: true });
+                          }}
+                        />
+                      </label>
+                    ))}
+                </div>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {([
+                      ['unionMonthly', 'Cotisation syndicale mensuelle'],
+                      ['healthInsuranceMonthly', 'Assurance maladie mensuelle'],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="grid gap-1 text-sm">
+                        <span>{label} (FCFA)</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          defaultValue={profile.payrollDeductions?.[key] ?? 0}
+                          className="h-10 w-full rounded-md border bg-background px-3"
+                          onBlur={async (event) => {
+                            const value = Number(event.currentTarget.value);
+                            if (!Number.isFinite(value) || value < 0) return;
+                            await setDoc(doc(firestore, 'users', userId), {
+                              payrollDeductions: { ...(profile.payrollDeductions || {}), [key]: value }
+                            }, { merge: true });
+                          }}
+                        />
+                      </label>
+                    ))}
+                </div>
+            </details>
             <div className="print-container bg-card md:border md:rounded-lg md:p-6">
                  <header className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
@@ -296,7 +375,46 @@ export default function AdminUserBulletinPage({ params }: any) {
                         <p>Ancienneté: {differenceInYears(new Date(), toDate(profile.hireDate || ''))} ans</p>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="md:hidden space-y-2 mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('gainsSectionTitle')}</p>
+                    {[
+                      [t('baseSalaryLabel'), payrollData.baseSalary],
+                      [t('seniorityBonusLabel'), payrollData.seniorityBonus],
+                      [t('attendanceBonusLabel'), payrollData.attendanceBonus],
+                      [t('performanceBonusLabel'), payrollData.performanceBonus],
+                      [t('basketBonusLabel'), payrollData.basketBonus],
+                      [t('transportBonusLabel'), payrollData.transportBonus],
+                      [t('housingBonusLabel'), payrollData.housingBonus],
+                    ].map(([label, amount]) => (
+                      <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <span className="min-w-0 break-words">{label}</span>
+                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
+                      </div>
+                    ))}
+                    {Object.entries(payrollData.overtimeBreakdown).map(([key, tier]) => (
+                      <div key={key} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <span className="min-w-0 break-words">{t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, { rate: (tier.rate * 100).toFixed(0) })} · {(tier.minutes / 60).toFixed(2)} h</span>
+                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(tier.payout)}</span>
+                      </div>
+                    ))}
+                    <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('deductionsSectionTitle')}</p>
+                    {[
+                      [t('cnpsLabel'), payrollData.cnpsDeduction],
+                      [t('healthInsuranceLabel'), payrollData.assuranceMaladie],
+                      [t('cotisationSyndicaleLabel'), payrollData.cotisationSyndicale],
+                      [t('cacLabel'), payrollData.cacDeduction],
+                      [t('irppLabel'), payrollData.irppDeduction],
+                      [t('cacSurIRPPLabel'), payrollData.cacSurIRPP],
+                      [t('redevanceCRTVLabel'), payrollData.redevanceCRTV],
+                      [t('communalTaxLabel'), payrollData.taxeCommunale],
+                    ].map(([label, amount]) => (
+                      <div key={String(label)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <span className="min-w-0 break-words">{label}</span>
+                        <span className="shrink-0 font-mono tabular-nums font-semibold">{formatCurrency(Number(amount))}</span>
+                      </div>
+                    ))}
+                </div>
+                <div className="hidden md:block">
                     <table className="print-table w-full text-sm font-sans mb-4">
                         <thead>
                             <tr className="bg-muted">
@@ -308,24 +426,26 @@ export default function AdminUserBulletinPage({ params }: any) {
                             </tr>
                         </thead>
                         <tbody>
-                            {payrollData.baseSalary > 0 && <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />}
-                            {payrollData.seniorityBonus > 0 && <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />}
-                            {payrollData.attendanceBonus > 0 && <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />}
-                            {payrollData.performanceBonus > 0 && <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />}
-                            {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
+                            <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />
+                            <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
+                            <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
+                            <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
+                            {Object.entries(payrollData.overtimeBreakdown).map(([key, tier]) => (
                                 <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
                             ))}
-                            {payrollData.transportBonus > 0 && <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />}
-                            {payrollData.housingBonus > 0 && <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />}
+                            <TableRowItem label={t('basketBonusLabel')} base={formatCurrency(profile.payrollAllowances?.basketPerDay || 0)} rate=" / jour" gain={formatCurrency(payrollData.basketBonus)} />
+                            <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />
+                            <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />
                             <tr className="font-bold bg-muted/50">
                                 <td colSpan={3} className="px-2 py-1 text-right">{t('grossMonthlySalaryLabel')}</td>
                                 <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
                                 <td></td>
                             </tr>
                             <TableRowItem label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus - payrollData.housingBonus)} rate="4.20%" deduction={formatCurrency(payrollData.cnpsDeduction)} />
+                            <TableRowItem label={t('healthInsuranceLabel')} deduction={formatCurrency(payrollData.assuranceMaladie)} />
                             <TableRowItem label={t('cacLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus)} rate="1.00%" deduction={formatCurrency(payrollData.cacDeduction)} />
                             <TableRowItem label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
-                            {payrollData.cotisationSyndicale > 0 && <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />}
+                            <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />
                             <TableRowItem label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
                             <TableRowItem label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10.00%" deduction={formatCurrency(payrollData.cacSurIRPP)} />
                             <TableRowItem label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
@@ -334,6 +454,10 @@ export default function AdminUserBulletinPage({ params }: any) {
                 </div>
                 <div className="flex justify-end break-inside-avoid mt-4">
                     <div className="w-full max-w-xs space-y-1 text-sm">
+                        <div className="flex justify-between">
+                            <span className="font-semibold">{t('netTaxableLabel')}:</span>
+                            <span className="font-mono">{formatCurrency(payrollData.netTaxable)}</span>
+                        </div>
                         <div className="flex justify-between">
                             <span className="font-semibold">{t('grossSalaryLabel')}:</span>
                             <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span>

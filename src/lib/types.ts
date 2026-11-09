@@ -28,6 +28,19 @@ export interface Profile {
   leaveStartDate?: string | Timestamp; // Server timestamp at registration; legacy records may be YYYY-MM-DD
   category?: string; // e.g., 'III'
   echelon?: string; // e.g., 'A'
+  payrollAllowances?: {
+    basketPerDay?: number; // legacy field; no longer used for night basket calculation
+    basketPerNight?: number;
+    transportPerDay?: number;
+    performanceMonthly?: number;
+    housingMonthly?: number;
+    attendanceMonthly?: number;
+    seniorityRate?: number;
+  };
+  payrollDeductions?: {
+    unionMonthly?: number;
+    healthInsuranceMonthly?: number;
+  };
   reminders?: {
     enabled: boolean;
     time: string; // e.g., "17:00"
@@ -88,6 +101,8 @@ export interface GlobalSettings {
 export interface AttendanceOverride {
   id: string; // The date 'YYYY-MM-DD'
   status: 'unjustified_absence' | 'sick_leave' | 'paid_leave';
+  /** Set only by an administrator after approving the absence justification. */
+  adminJustified?: boolean;
 }
 
 export interface Announcement {

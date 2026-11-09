@@ -513,7 +513,9 @@
     "transportBonusLabel": "Transport Allowance",
     "housingBonusLabel": "Housing Allowance",
     "overtimeLabel": "Overtime",
-    "grossSalaryLabel": "Gross Salary",
+        "netTaxableLabel": "Taxable net salary",
+    "healthInsuranceLabel": "Health insurance",
+"grossSalaryLabel": "Gross Salary",
     "deductionsSectionTitle": "Deductions",
     "cnpsLabel": "CNPS Deduction (4.2%)",
     "irppLabel": "IRPP (Income Tax)",
@@ -547,7 +549,8 @@
     "leaveDaysUnit": "days",
     "confidentialityNote": "To help you assert your rights, please keep this payslip indefinitely.",
     "directorSignature": "Management",
-    "signatureAndStamp": "(Signature and Stamp)"
+    "signatureAndStamp": "(Signature and Stamp)",
+    "basketBonusLabel": "Meal allowance"
   },
   "LeaveRequestPage": {
     "title": "Annual Leave Request",

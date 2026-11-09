@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut, Building, MapPin, TrendingUp } from 'lucide-react';
+import { Loader2, Users, Activity, FileText, Wallet, Settings, Bell, LogOut, Building, MapPin, TrendingUp, CalendarDays } from 'lucide-react';
 import type { Profile, GlobalSettings, Announcement } from '@/lib/types';
 import { salaryGrid as staticSalaryGrid } from '@/lib/salary-grid';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -365,6 +365,7 @@ export default function AdminDashboardPage() {
         { title: t('liveTrackingTitle'), description: t('liveTrackingDescription'), href: '/admin/live', icon: Activity, color: 'text-green-500', bgColor: 'bg-green-950' },
         { title: t('reportsPdfTitle'), description: t('reportsPdfDescription'), href: '/admin/reports', icon: FileText, color: 'text-purple-500', bgColor: 'bg-purple-950' },
         { title: t('payrollCalculationTitle'), description: t('payrollCalculationDescription'), href: '/admin/payroll', icon: Wallet, color: 'text-yellow-500', bgColor: 'bg-yellow-950' },
+        { title: 'Calendrier des jours fériés', description: 'Gérer les dates légales et exceptionnelles utilisées par la paie cash.', href: '/admin/holidays', icon: CalendarDays, color: 'text-emerald-400', bgColor: 'bg-emerald-950' },
         { title: t('salaryGridTitle'), description: t('salaryGridDescription'), action: () => setIsSalaryGridOpen(true), icon: Settings, color: 'text-gray-500', bgColor: 'bg-gray-950' },
         { title: t('alertCenterTitle'), description: t('alertCenterDescription'), action: () => setIsAlertCenterOpen(true), icon: Bell, color: 'text-orange-500', bgColor: 'bg-orange-950' },
         { title: t('configTab'), description: t('configDescription'), action: () => setIsConfigOpen(true), icon: Building, color: 'text-pink-500', bgColor: 'bg-pink-950' },

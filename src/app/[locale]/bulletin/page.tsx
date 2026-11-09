@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { toDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, parse } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, where } from "firebase/firestore";
+import { doc, collection, query, where, orderBy } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { countCoveredWorkDays } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate, FULL_MONTH_SIMULATION_REFERENCE } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -43,13 +43,25 @@ const calculateIRPP = (grossSalary: number, transportBonus: number, housingBonus
     return Math.round(annualIRPP / 12);
 }
 
-const TableRowItem = ({ label, base, rate, gain, deduction }: { label: string; base?: string | number; rate?: string | number; gain?: string | number; deduction?: string | number; }) => (
-    <tr>
-        <td className="px-2 py-1">{label}</td>
-        <td className="px-2 py-1 text-center">{base ?? ''}</td>
-        <td className="px-2 py-1 text-right">{rate ?? ''}</td>
-        <td className="px-2 py-1 text-right font-mono tabular-nums">{gain ?? ''}</td>
-        <td className="px-2 py-1 text-right font-mono tabular-nums">{deduction ?? ''}</td>
+type PayrollTableRowProps = {
+    code: string;
+    label: string;
+    base?: string | number;
+    rate?: string | number;
+    gain?: string | number;
+    deduction?: string | number;
+};
+
+const PayrollTableRow = ({
+    code, label, base = '', rate = '', gain = '', deduction = '',
+}: PayrollTableRowProps) => (
+    <tr className="border-b border-gray-400">
+        <td className="border border-gray-700 px-2 py-1 text-center">{code}</td>
+        <td className="border border-gray-700 px-2 py-1">{label}</td>
+        <td className="border border-gray-700 px-2 py-1 text-center tabular-nums">{base}</td>
+        <td className="border border-gray-700 px-2 py-1 text-center tabular-nums">{rate}</td>
+        <td className="border border-gray-700 px-2 py-1 text-right font-mono tabular-nums">{gain}</td>
+        <td className="border border-gray-700 px-2 py-1 text-right font-mono tabular-nums">{deduction}</td>
     </tr>
 );
 
@@ -62,6 +74,8 @@ export default function BulletinPage() {
 
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
+    // null = mode automatique : pointages réels, ou démonstration 30 jours si aucun pointage.
+    const [simulationDays, setSimulationDays] = useState<number | null>(null);
 
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: profile, isLoading: isLoadingProfile } = useDoc<Profile>(userProfileRef);
@@ -70,18 +84,35 @@ export default function BulletinPage() {
     const cycleStartString = useMemo(() => format(cycleStart, 'yyyy-MM-dd'), [cycleStart]);
     const cycleEndString = useMemo(() => format(cycleEnd, 'yyyy-MM-dd'), [cycleEnd]);
 
+    // Abonnement temps réel à toute la sous-collection du compte connecté.
+    // Le filtrage du cycle est fait côté client pour éviter qu'une requête bornée
+    // masque des pointages dont le format de date aurait varié.
     const timeEntriesQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user?.uid) return null;
         return query(
             collection(firestore, 'users', user.uid, 'timeEntries'),
-            where('date', '>=', cycleStartString),
-            where('date', '<=', cycleEndString)
+            orderBy('date', 'asc')
         );
-    }, [firestore, user, cycleStartString, cycleEndString]);
-    const { data: timeEntries, isLoading: isLoadingEntries } = useCollection<TimeEntry>(timeEntriesQuery);
+    }, [firestore, user?.uid]);
+    const {
+        data: allTimeEntries,
+        isLoading: isLoadingEntries,
+        error: timeEntriesError,
+    } = useCollection<TimeEntry>(timeEntriesQuery);
+
+    const timeEntries = useMemo(() => {
+        if (!allTimeEntries) return [];
+        return allTimeEntries.filter((entry) => {
+            const entryDate = typeof entry.date === 'string' ? entry.date.slice(0, 10) : '';
+            const isCompleted = typeof entry.endTime === 'string' && entry.endTime.trim().length > 0;
+            // Le dimanche est réglé en cash dans son module dédié : il ne doit jamais
+            // entrer dans le brut, les heures supplémentaires ou le panier du bulletin mensuel.
+            return isCompleted && entryDate >= cycleStartString && entryDate <= cycleEndString && isRegularPayrollWorkDate(entryDate);
+        });
+    }, [allTimeEntries, cycleStartString, cycleEndString]);
 
     const settingsRef = useMemoFirebase(() => (user ? doc(firestore, 'settings', 'global') : null), [firestore, user]);
-    const { data: globalSettings, isLoading: isLoadingSettings } = useDoc<GlobalSettings>(settingsRef);
+    const { data: globalSettings } = useDoc<GlobalSettings>(settingsRef);
     
     const overridesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -90,16 +121,22 @@ export default function BulletinPage() {
             where('__name__', '<=', cycleEndString)
         );
     }, [firestore, user, cycleStartString, cycleEndString]);
-    const { data: attendanceOverrides, isLoading: isLoadingOverrides } = useCollection<AttendanceOverride>(overridesQuery);
+    const { data: attendanceOverrides } = useCollection<AttendanceOverride>(overridesQuery);
 
     const handlePrint = () => { window.print(); };
 
     const payrollData = useMemo(() => {
-        if (!timeEntries || !profile || !globalSettings || !attendanceOverrides) return null;
-        
-        const rates = globalSettings.overtimeRates || DEFAULT_OVERTIME_RATES;
-        const hourlyRate = profile.monthlyBaseSalary > 0 ? Math.round(profile.monthlyBaseSalary / 173.33) : 0;
-        const baseSalary = profile.monthlyBaseSalary;
+        if (!allTimeEntries || !profile) return null;
+
+        // Les paramètres et dérogations sont facultatifs : leur absence ne doit
+        // jamais empêcher l'affichage du bulletin.
+        const currentOverrides = attendanceOverrides ?? [];
+        const rates = globalSettings?.overtimeRates || DEFAULT_OVERTIME_RATES;
+        const isFullMonthSimulation = simulationDays === 30;
+        const baseSalary = isFullMonthSimulation
+            ? FULL_MONTH_SIMULATION_REFERENCE.baseSalary
+            : profile.monthlyBaseSalary;
+        const hourlyRate = baseSalary > 0 ? Math.round(baseSalary / 173.33) : 0;
 
         const overtimeBreakdown = {
             tier1: { minutes: 0, rate: rates.tier1, payout: 0 },
@@ -166,99 +203,160 @@ export default function BulletinPage() {
             }
         }
         
+        // Le bouton 30 jours utilise un jeu d'heures fictif explicite pour tester les retenues.
+        // Il ne lit ni ne modifie les pointages réels et n'inclut aucune heure du dimanche.
+        if (isFullMonthSimulation) {
+            overtimeBreakdown.tier1.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.tier1 * 60;
+            overtimeBreakdown.tier2.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.tier2 * 60;
+            overtimeBreakdown.night.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.night * 60;
+            overtimeBreakdown.sunday.minutes = 0;
+            overtimeBreakdown.holiday.minutes = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours.holiday * 60;
+        }
+
         overtimeBreakdown.tier1.payout = (overtimeBreakdown.tier1.minutes / 60) * hourlyRate * rates.tier1;
         overtimeBreakdown.tier2.payout = (overtimeBreakdown.tier2.minutes / 60) * hourlyRate * rates.tier2;
         overtimeBreakdown.night.payout = (overtimeBreakdown.night.minutes / 60) * hourlyRate * rates.night;
         overtimeBreakdown.sunday.payout = (overtimeBreakdown.sunday.minutes / 60) * hourlyRate * rates.sunday;
         overtimeBreakdown.holiday.payout = (overtimeBreakdown.holiday.minutes / 60) * hourlyRate * rates.holiday;
         
-        let seniorityBonus = 0;
-        if (profile.hireDate) {
-            try {
-                const seniorityYears = differenceInYears(new Date(), toDate(profile.hireDate));
-                if (seniorityYears > 0) {
-                    seniorityBonus = baseSalary * 0.017 * seniorityYears;
-                }
-            } catch (e) { /* empty */ }
-        }
+        const allowances = profile.payrollAllowances || {};
+        const seniority = profile.hireDate
+            ? calculateSeniorityBonus(baseSalary, toDate(profile.hireDate), cycleEnd)
+            : { completedYears: 0, amount: 0 };
+        let seniorityBonus = isFullMonthSimulation && seniority.completedYears === FULL_MONTH_SIMULATION_REFERENCE.seniorityYears
+            ? FULL_MONTH_SIMULATION_REFERENCE.seniorityBonus
+            : seniority.amount;
 
-        let attendanceBonus = 3000;
-        let performanceBonus = 4000;
+        const attendanceMonthly = allowances.attendanceMonthly ?? 3000;
+        const performanceMonthly = allowances.performanceMonthly ?? 4000;
         
-        const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
         const workedDays = new Set(timeEntries.map(e => e.date));
-        const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
 
-        let unjustifiedAbsenceCount = 0;
-        if (profile.hireDate) {
-            const hireDate = toDate(profile.hireDate);
-            const cycleWorkDays = eachDayOfInterval({ start: cycleStart, end: min([cycleEnd, new Date()]) }).filter(d => getDay(d) !== 0);
-            for (const day of cycleWorkDays) {
-                const dayString = format(day, 'yyyy-MM-dd');
-                if (day >= startOfDay(hireDate) && !workedDays.has(dayString) && !sickLeaveDays.has(dayString)) {
-                    unjustifiedAbsenceCount++;
-                }
-            }
-        }
+        // Une absence n'est pénalisée que si elle est explicitement enregistrée
+        // comme injustifiée. L'absence de pointage seule ne prouve pas une absence
+        // (repos, jour non planifié, congé ou jour férié).
+        const unjustifiedAbsenceCount = countUnjustifiedAbsences(currentOverrides);
         
-        const totalDaysWorked = countCoveredWorkDays(workedDays, sickLeaveDays);
-        const proratedBaseSalary = totalWorkableDaysInFullCycle > 0 ? (baseSalary / totalWorkableDaysInFullCycle) * totalDaysWorked : 0;
+        // Cycle de paie du 26 au 25, avec une base de prorata conventionnelle de 30 jours.
+        // Seuls les jours réellement pointés dans Suivi du Temps sont retenus.
+        // En l'absence de pointage, le bulletin présente un mois complet en mode démo.
+        // Le sélecteur permet de forcer 10 ou 30 jours, ou de revenir aux données réelles.
+        const totalDaysWorked = simulationDays ?? (workedDays.size > 0 ? workedDays.size : 30);
+        const prorationRatio = Math.min(totalDaysWorked, 30) / 30;
+        const proratedBaseSalary = calculatePayrollProration(baseSalary, totalDaysWorked);
         
-        if (unjustifiedAbsenceCount > 0) {
-            attendanceBonus = 0;
-            performanceBonus = 0;
-        }
-        
-        const transportBonus = (18325 / 26) * (totalDaysWorked); 
-        const housingBonus = proratedBaseSalary * 0.1;
+        const hasUnjustifiedAbsence = unjustifiedAbsenceCount > 0;
+        const attendanceBonus = calculateConditionalMonthlyBonus(attendanceMonthly, totalDaysWorked, hasUnjustifiedAbsence);
+        const performanceBonus = calculateConditionalMonthlyBonus(performanceMonthly, totalDaysWorked, hasUnjustifiedAbsence);
+        seniorityBonus = isFullMonthSimulation && seniority.completedYears === FULL_MONTH_SIMULATION_REFERENCE.seniorityYears
+            ? FULL_MONTH_SIMULATION_REFERENCE.seniorityBonus
+            : Math.round(seniorityBonus * prorationRatio);
+
+        const nightShiftCount = countNightShifts(timeEntries, shifts);
+        const basketUnitRate = allowances.basketPerNight ?? 1390;
+        const basketBonus = calculateNightBasketAllowance(nightShiftCount, basketUnitRate);
+        const transportPerDay = allowances.transportPerDay ?? (18_325 / 26);
+        const transportBonus = isFullMonthSimulation
+            ? FULL_MONTH_SIMULATION_REFERENCE.transportMonthly
+            : calculateTransportAllowance(transportPerDay, simulationDays === null ? workedDays.size : totalDaysWorked);
+        const housingMonthly = isFullMonthSimulation
+            ? FULL_MONTH_SIMULATION_REFERENCE.housingMonthly
+            : (allowances.housingMonthly ?? (baseSalary * 0.1));
+        const housingBonus = calculatePayrollProration(housingMonthly, totalDaysWorked);
         const totalOvertimePayout = Object.values(overtimeBreakdown).reduce((sum, tier) => sum + tier.payout, 0);
 
-        const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + totalOvertimePayout + transportBonus + housingBonus;
-        
-        const cnpsBase = totalEarnings - transportBonus - housingBonus;
-        const cnpsDeduction = cnpsBase * 0.042;
-        const cacBase = totalEarnings - transportBonus;
-        const cacDeduction = cacBase * 0.01;
-        const irppDeduction = calculateIRPP(totalEarnings, transportBonus, housingBonus, cnpsDeduction);
-        const cacSurIRPP = irppDeduction * 0.1;
-        const redevanceCRTV = 1950;
-        const cotisationSyndicale = proratedBaseSalary * 0.01;
-        const taxeCommunale = 270;
-
-        const totalDeductions = cnpsDeduction + cacDeduction + irppDeduction + cacSurIRPP + redevanceCRTV + taxeCommunale + cotisationSyndicale;
+        // Le panier de nuit est une prime additionnelle au salaire de base, jamais un remplacement.
+        const totalEarnings = proratedBaseSalary + seniorityBonus + attendanceBonus + performanceBonus + basketBonus + totalOvertimePayout + transportBonus + housingBonus;
+        const deductions = calculateCameroonPayrollDeductions({
+            grossSalary: totalEarnings,
+            baseSalary: proratedBaseSalary,
+            cnpsBase: totalEarnings,
+        });
+        const cnpsDeduction = deductions.cnps;
+        const cacDeduction = deductions.cfc;
+        const irppDeduction = deductions.irpp;
+        const cacSurIRPP = deductions.cac;
+        const redevanceCRTV = deductions.crtv;
+        const cotisationSyndicale = profile.payrollDeductions?.unionMonthly ?? 0;
+        const assuranceMaladie = profile.payrollDeductions?.healthInsuranceMonthly ?? 0;
+        const taxeCommunale = deductions.tdl;
+        const totalDeductions = deductions.total + cotisationSyndicale + assuranceMaladie;
+        // Même assiette mensuelle que le moteur IRPP, après abattement annuel de 500 000 FCFA.
+        const netTaxable = Math.max(0, ((totalEarnings - deductions.cnps) * 0.7) - (500_000 / 12));
         const netPay = totalEarnings - totalDeductions;
 
         return {
             cycleStart, cycleEnd, 
             baseSalary: proratedBaseSalary,
-            transportBonus, housingBonus,
+            referenceMonthlyBaseSalary: baseSalary,
+            effectiveWorkDays: totalDaysWorked,
+            nightShiftCount,
+            isSimulation: simulationDays !== null || workedDays.size === 0,
+            hourlyRate,
+            transportBonus, housingBonus, basketBonus,
             seniorityBonus, attendanceBonus, performanceBonus,
             overtimeBreakdown,
             grossSalary: totalEarnings,
-            cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, taxeCommunale,
-            totalDeductions, netPay
+            cnpsDeduction, cacDeduction, irppDeduction, cacSurIRPP, redevanceCRTV, cotisationSyndicale, assuranceMaladie, taxeCommunale,
+            netTaxable, totalDeductions, netPay
         };
-    }, [timeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd]);
+    }, [allTimeEntries, profile, globalSettings, attendanceOverrides, cycleStart, cycleEnd, cycleStartString, cycleEndString, simulationDays]);
     
-    const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries || isLoadingSettings || isLoadingOverrides;
+    const isLoading = isUserLoading || isLoadingProfile || isLoadingEntries;
 
     if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
     if (!user) return <div className="flex flex-col justify-center items-center h-screen gap-4"><p className="text-xl">{tShared('pleaseLogin')}</p><Link href="/login"><Button>{tShared('loginButton')}</Button></Link></div>;
     if (!profile || profile.monthlyBaseSalary === 0 || !profile.hireDate || !profile.leaveStartDate) return <div className="flex flex-col justify-center items-center h-screen gap-4 text-center"><p className="text-xl">{tShared('pleaseCompleteProfile')}</p><p className="text-muted-foreground max-w-sm">Assurez-vous que le salaire de base, la date d'embauche et la date de début du cycle de congé sont définis dans votre profil.</p><Link href="/profile"><Button>{tShared('goToProfileButton')}</Button></Link></div>;
+    if (timeEntriesError) return (
+        <div className="space-y-4 rounded-lg border border-red-500/40 bg-red-500/10 p-5">
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
+            <p className="text-sm text-red-200">
+                Impossible de lire les pointages de votre compte. Vérifiez votre connexion et les droits Firestore, puis rechargez le bulletin.
+            </p>
+            <p className="break-all text-xs text-muted-foreground">{timeEntriesError.message}</p>
+        </div>
+    );
     if (!payrollData) return <div className="space-y-6 pb-28"><h1 className="text-3xl font-headline font-bold">{t('title')}</h1><p className="text-muted-foreground">{t('noData')}</p></div>;
     
     return (
         <div className="space-y-6">
              <style jsx global>{`
+                @page { size: A4 portrait; margin: 10mm; }
                 @media print {
-                    body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    main { padding: 0 !important; margin: 0 !important; width: 100%; height: 100%; }
+                    html, body {
+                        background: white !important;
+                        color: black !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    body * { visibility: hidden; }
+                    .print-container, .print-container * { visibility: visible; }
+                    .print-container {
+                        position: absolute;
+                        inset: 0;
+                        width: 100%;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: none !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        background: white !important;
+                        color: black !important;
+                    }
                     .no-print { display: none !important; }
-                    .print-container { width: 100%; height: 100%; border: none; padding: 1.5rem; margin: 0; box-shadow: none; display: flex; flex-direction: column; }
-                    .print-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-                    .print-table th, .print-table td { border: 1px solid black; padding: 4px; }
-                    .print-table th { background-color: #f2f2f2 !important; font-weight: bold; text-align: center; }
+                    .print-table {
+                        width: 100%;
+                        min-width: 0 !important;
+                        border-collapse: collapse !important;
+                        font-size: 9px !important;
+                    }
+                    .print-table th, .print-table td {
+                        border: 1px solid black !important;
+                        padding: 4px !important;
+                    }
+                    .print-table th { background: #eee !important; }
+                    .overflow-x-auto { overflow: visible !important; }
                     .break-inside-avoid { break-inside: avoid; }
                 }
             `}</style>
@@ -268,9 +366,32 @@ export default function BulletinPage() {
                     <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
                     <p className="text-muted-foreground">{t('description', { startDate: format(payrollData.cycleStart, 'd MMMM', { locale: dateFnsLocale }), endDate: format(payrollData.cycleEnd, 'd MMMM yyyy', { locale: dateFnsLocale })})}</p>
                 </div>
-                <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Jours à tester :</span>
+                    <Button type="button" variant={simulationDays === 10 ? 'default' : 'outline'} size="sm" onClick={() => setSimulationDays(10)}>10 jours</Button>
+                    <Button type="button" variant={simulationDays === 30 ? 'default' : 'outline'} size="sm" onClick={() => setSimulationDays(30)}>30 jours</Button>
+                    <Button type="button" variant={simulationDays === null ? 'default' : 'outline'} size="sm" onClick={() => setSimulationDays(null)}>Automatique / réel</Button>
+                    <Button onClick={handlePrint} className="h-12">{t('printButton')}</Button>
+                </div>
             </div>
+            {payrollData.isSimulation && (
+                <div className="no-print rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm text-sky-100">
+                    <strong>Mode démonstration — {payrollData.effectiveWorkDays} jours.</strong>
+                    <p className="mt-1">Montants simulés pour tester le prorata et les retenues. Ce bulletin n'est pas une paie réelle.</p>
+                    {simulationDays === 30 && (
+                        <p className="mt-1">Référence Prima Dee-Lite : base 72 799, ancienneté 11 418, logement 7 280, transport 18 325 FCFA. Heures supplémentaires fictives : 34 h à 120 %, 38 h à 130 %, 24 h de nuit à 140 % et 15 h 15 à 150 %. Aucun pointage réel n'est modifié.</p>
+                    )}
+                </div>
+            )}
             
+            {payrollData.effectiveWorkDays === 0 && (
+                <div className="no-print rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <strong>Aucun pointage trouvé pour cette période.</strong>
+                    <p className="mt-1">Le bulletin reste calculé sans données simulées : le salaire proratisé et les heures supplémentaires resteront à zéro jusqu'à l'enregistrement des pointages dans « Suivi du Temps ».</p>
+                    <p className="mt-1 text-xs text-amber-200/80">Période recherchée : {cycleStartString} au {cycleEndString} · Compte : {user.uid}</p>
+                </div>
+            )}
+
             <div className="print-container bg-card md:border md:rounded-lg md:p-6">
                  <header className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
@@ -281,6 +402,7 @@ export default function BulletinPage() {
                         </div>
                     </div>
                     <div className="text-right">
+                        {payrollData.isSimulation && <p className="mb-1 text-xs font-bold uppercase text-red-600">Simulation — document non officiel</p>}
                         <h1 className="text-xl font-bold">BULLETIN DE PAIE</h1>
                         <p className="text-sm">{t('periodLabel')}: {format(payrollData.cycleStart, 'dd/MM/yyyy')} au {format(payrollData.cycleEnd, 'dd/MM/yyyy')}</p>
                     </div>
@@ -296,55 +418,82 @@ export default function BulletinPage() {
                         <p>Ancienneté: {differenceInYears(new Date(), toDate(profile.hireDate || ''))} ans</p>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="print-table w-full text-sm font-sans mb-4">
+                <div className="w-full overflow-x-auto mb-4">
+                    <table className="print-table w-full min-w-[900px] border-collapse border border-gray-700 text-xs font-sans">
                         <thead>
-                            <tr className="bg-muted">
-                                <th className="w-2/5 px-2 py-1 text-left">{t('tableDesignation')}</th>
-                                <th className="w-1/5 px-2 py-1 text-center">{t('tableBase')} / Nombre</th>
-                                <th className="w-1/5 px-2 py-1 text-right">{t('tableRate')}</th>
-                                <th className="w-1/5 px-2 py-1 text-right">{t('tableGain')}</th>
-                                <th className="w-1/5 px-2 py-1 text-right">{t('tableDeduction')}</th>
+                            <tr className="bg-gray-200 text-gray-900">
+                                <th className="border border-gray-700 px-2 py-2 text-center">N°</th>
+                                <th className="border border-gray-700 px-2 py-2 text-left">Désignation</th>
+                                <th className="border border-gray-700 px-2 py-2 text-center">Nombre / Base</th>
+                                <th className="border border-gray-700 px-2 py-2 text-center">Taux</th>
+                                <th className="border border-gray-700 px-2 py-2 text-right">Gain (Part salariale)</th>
+                                <th className="border border-gray-700 px-2 py-2 text-right">Retenue</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {payrollData.baseSalary > 0 && <TableRowItem label={t('baseSalaryLabel')} base="173.33" rate={Math.round(profile.monthlyBaseSalary / 173.33)} gain={formatCurrency(payrollData.baseSalary)} />}
-                            {payrollData.seniorityBonus > 0 && <TableRowItem label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />}
-                            {payrollData.attendanceBonus > 0 && <TableRowItem label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />}
-                            {payrollData.performanceBonus > 0 && <TableRowItem label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />}
-                            {Object.entries(payrollData.overtimeBreakdown).filter(([,tier]) => tier.minutes > 0).map(([key, tier]) => (
-                                <TableRowItem key={`gain-${key}`} label={t(`overtime${key.charAt(0).toUpperCase() + key.slice(1)}` as any, {rate: (tier.rate * 100).toFixed(0)})} base={(tier.minutes/60).toFixed(2)} rate={Math.round(tier.rate * (profile.monthlyBaseSalary / 173.33))} gain={formatCurrency(tier.payout)} />
-                            ))}
-                            {payrollData.transportBonus > 0 && <TableRowItem label={t('transportBonusLabel')} gain={formatCurrency(payrollData.transportBonus)} />}
-                            {payrollData.housingBonus > 0 && <TableRowItem label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />}
-                            <tr className="font-bold bg-muted/50">
-                                <td colSpan={3} className="px-2 py-1 text-right">{t('grossMonthlySalaryLabel')}</td>
-                                <td className="px-2 py-1 text-right font-mono tabular-nums">{formatCurrency(payrollData.grossSalary)}</td>
-                                <td></td>
+                            <PayrollTableRow code="1001" label={t('baseSalaryLabel')} base={`${payrollData.effectiveWorkDays}/30 jours`} rate={formatCurrency(payrollData.referenceMonthlyBaseSalary)} gain={formatCurrency(payrollData.baseSalary)} />
+                            <PayrollTableRow code="1020" label={t('seniorityBonusLabel')} gain={formatCurrency(payrollData.seniorityBonus)} />
+                            <PayrollTableRow code="1111" label={t('overtimeTier1' as any, { rate: (payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.tier1.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.tier1.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.tier1.payout)} />
+                            <PayrollTableRow code="1112" label={t('overtimeTier2' as any, { rate: (payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.tier2.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.tier2.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.tier2.payout)} />
+                            <PayrollTableRow code="1113" label={t('overtimeNight' as any, { rate: (payrollData.overtimeBreakdown.night.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.night.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.night.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.night.payout)} />
+                            <PayrollTableRow code="1114" label={t('overtimeSunday' as any, { rate: (payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.sunday.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.sunday.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.sunday.payout)} />
+                            <PayrollTableRow code="1115" label={t('overtimeHoliday' as any, { rate: (payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0) })} base={`${(payrollData.overtimeBreakdown.holiday.minutes / 60).toFixed(2)} h`} rate={`${Math.round(payrollData.hourlyRate).toLocaleString('fr-FR')} FCFA × ${(payrollData.overtimeBreakdown.holiday.rate * 100).toFixed(0)} %`} gain={formatCurrency(payrollData.overtimeBreakdown.holiday.payout)} />
+                            <PayrollTableRow code="1200" label={t('basketBonusLabel')} base={`${payrollData.nightShiftCount} nuits`} rate={formatCurrency(profile.payrollAllowances?.basketPerNight ?? 1390)} gain={formatCurrency(payrollData.basketBonus)} />
+                            <PayrollTableRow code="1210" label={t('attendanceBonusLabel')} gain={formatCurrency(payrollData.attendanceBonus)} />
+                            <PayrollTableRow code="1220" label={t('performanceBonusLabel')} gain={formatCurrency(payrollData.performanceBonus)} />
+                            <PayrollTableRow code="1230" label={t('transportBonusLabel')} base={`${payrollData.effectiveWorkDays} jours`} rate={formatCurrency(profile.payrollAllowances?.transportPerDay ?? (18325 / 26))} gain={formatCurrency(payrollData.transportBonus)} />
+                            <PayrollTableRow code="1240" label={t('housingBonusLabel')} gain={formatCurrency(payrollData.housingBonus)} />
+
+                            <tr className="bg-gray-200 font-bold text-gray-900">
+                                <td colSpan={4} className="border border-gray-700 px-2 py-2 text-right">TOTAL BRUT</td>
+                                <td className="border border-gray-700 px-2 py-2 text-right font-mono">{formatCurrency(payrollData.grossSalary)}</td>
+                                <td className="border border-gray-700 px-2 py-2" />
                             </tr>
-                            <TableRowItem label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus - payrollData.housingBonus)} rate="4.20%" deduction={formatCurrency(payrollData.cnpsDeduction)} />
-                            <TableRowItem label={t('cacLabel')} base={formatCurrency(payrollData.grossSalary - payrollData.transportBonus)} rate="1.00%" deduction={formatCurrency(payrollData.cacDeduction)} />
-                            <TableRowItem label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
-                            {payrollData.cotisationSyndicale > 0 && <TableRowItem label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />}
-                            <TableRowItem label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
-                            <TableRowItem label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10.00%" deduction={formatCurrency(payrollData.cacSurIRPP)} />
-                            <TableRowItem label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
+
+                            <PayrollTableRow code="5010" label={t('cnpsLabel')} base={formatCurrency(payrollData.grossSalary)} rate="4,20 %" deduction={formatCurrency(payrollData.cnpsDeduction)} />
+                            <PayrollTableRow code="5020" label="Crédit foncier (CFC)" base={formatCurrency(payrollData.grossSalary)} rate="1 %" deduction={formatCurrency(payrollData.cacDeduction)} />
+                            <PayrollTableRow code="5030" label={t('redevanceCRTVLabel')} deduction={formatCurrency(payrollData.redevanceCRTV)} />
+                            <PayrollTableRow code="5040" label={t('cotisationSyndicaleLabel')} deduction={formatCurrency(payrollData.cotisationSyndicale)} />
+                            <PayrollTableRow code="5050" label={t('healthInsuranceLabel')} deduction={formatCurrency(payrollData.assuranceMaladie)} />
+                            <PayrollTableRow code="5060" label={t('irppLabel')} deduction={formatCurrency(payrollData.irppDeduction)} />
+                            <PayrollTableRow code="5070" label={t('cacSurIRPPLabel')} base={formatCurrency(payrollData.irppDeduction)} rate="10 %" deduction={formatCurrency(payrollData.cacSurIRPP)} />
+                            <PayrollTableRow code="5080" label={t('communalTaxLabel')} deduction={formatCurrency(payrollData.taxeCommunale)} />
+
+                            <tr className="bg-gray-200 font-bold text-gray-900">
+                                <td colSpan={5} className="border border-gray-700 px-2 py-2 text-right">TOTAL DES RETENUES</td>
+                                <td className="border border-gray-700 px-2 py-2 text-right font-mono">{formatCurrency(payrollData.totalDeductions)}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
-                <div className="flex justify-end break-inside-avoid mt-4">
-                    <div className="w-full max-w-xs space-y-1 text-sm">
-                        <div className="flex justify-between">
-                            <span className="font-semibold">{t('grossSalaryLabel')}:</span>
-                            <span className="font-mono">{formatCurrency(payrollData.grossSalary)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="font-semibold">{t('totalDeductionsLabel')}:</span>
-                            <span className="font-mono">{formatCurrency(payrollData.totalDeductions)}</span>
-                        </div>
-                        <div className="mt-2 p-2 border-2 border-black flex justify-between items-center font-bold">
-                            <span className="text-base">{t('netToPayLabel')}</span>
-                            <span className="text-lg font-mono">{formatCurrency(payrollData.netPay)}</span>
+
+                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 break-inside-avoid">
+                    <table className="w-full border-collapse border border-gray-700 text-sm">
+                        <tbody>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Total brut</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right font-mono">{formatCurrency(payrollData.grossSalary)}</td>
+                            </tr>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Charges salariales</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right font-mono">{formatCurrency(payrollData.totalDeductions)}</td>
+                            </tr>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Net imposable</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right font-mono">{formatCurrency(payrollData.netTaxable)}</td>
+                            </tr>
+                            <tr>
+                                <th className="border border-gray-700 bg-gray-200 px-3 py-2 text-left text-gray-900">Charges patronales</th>
+                                <td className="border border-gray-700 px-3 py-2 text-right">Non calculées</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div className="flex items-end justify-end">
+                        <div className="w-full border-2 border-black bg-gray-100 p-4 text-gray-950">
+                            <p className="text-sm font-bold uppercase">NET À PAYER</p>
+                            <p className="mt-2 text-right text-2xl font-black font-mono tabular-nums">{formatCurrency(payrollData.netPay)}</p>
+                            <p className="mt-1 text-right text-xs">FCFA</p>
                         </div>
                     </div>
                 </div>

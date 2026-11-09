@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePathname, Link } from '@/navigation';
-import { BarChart3, Clock, Newspaper } from 'lucide-react';
+import { BarChart3, Clock, Newspaper, CalendarDays } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +22,7 @@ export default function MobileBottomNav() {
   const navItems = [
     { href: "/", label: t('timeTracking'), icon: Clock },
     { href: "/bulletin", label: t('bulletin'), icon: Newspaper },
+    { href: "/sunday-cash", label: 'Dimanche', icon: CalendarDays },
     { href: "/reports", label: t('reports'), icon: BarChart3 },
   ];
 

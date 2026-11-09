@@ -215,6 +215,81 @@ service cloud.firestore {
         allow update, delete: if isAdmin();
     }
 
+    // Public holiday calendar: visible to signed-in employees, managed only by admins.
+    match /public_holidays/{holidayId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasAll(['date', 'year', 'label', 'category', 'seeded', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['date', 'year', 'label', 'category', 'source', 'seeded', 'createdAt', 'updatedAt'])
+        && request.resource.data.date == holidayId
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.year is int
+        && request.resource.data.label is string
+        && request.resource.data.label.size() > 0
+        && request.resource.data.label.size() <= 120
+        && request.resource.data.category in ['civil', 'religious', 'exceptional']
+        && request.resource.data.seeded is bool
+        && request.resource.data.updatedAt == request.time
+        && (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 300));
+      allow delete: if isAdmin();
+    }
+
+    // Special-day cash payouts remain separate from monthly payroll.
+    match /sunday_cash_payouts/{payoutId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll([
+          'userId', 'employeeName', 'date', 'shiftType', 'startTime', 'endTime',
+          'breakMinutes', 'hourlyRate', 'workedMinutes', 'workedHours', 'dayKind',
+          'dayLabel', 'multiplier', 'hourlyWage', 'ration', 'nightBasket',
+          'amount', 'currency', 'status', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'userId', 'employeeName', 'date', 'shiftType', 'startTime', 'endTime',
+          'breakMinutes', 'hourlyRate', 'workedMinutes', 'workedHours', 'dayKind',
+          'dayLabel', 'multiplier', 'hourlyWage', 'ration', 'nightBasket',
+          'amount', 'currency', 'status', 'createdAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.employeeName is string
+        && request.resource.data.employeeName.size() <= 120
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.shiftType in ['day', 'night']
+        && request.resource.data.startTime is string
+        && request.resource.data.startTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && request.resource.data.endTime is string
+        && request.resource.data.endTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && request.resource.data.breakMinutes is number
+        && request.resource.data.breakMinutes >= 0
+        && request.resource.data.breakMinutes <= 1440
+        && request.resource.data.hourlyRate is number
+        && request.resource.data.hourlyRate > 0
+        && request.resource.data.workedMinutes is number
+        && request.resource.data.workedMinutes > 0
+        && request.resource.data.workedMinutes <= 1440
+        && request.resource.data.workedHours is number
+        && request.resource.data.workedHours > 0
+        && request.resource.data.workedHours <= 24
+        && request.resource.data.dayKind in ['sunday', 'public_holiday']
+        && request.resource.data.dayLabel is string
+        && request.resource.data.multiplier == (request.resource.data.dayKind == 'public_holiday' ? 1.5 : 1.4)
+        && (request.resource.data.dayKind != 'public_holiday'
+          || exists(/databases/$(database)/documents/public_holidays/$(request.resource.data.date)))
+        && request.resource.data.hourlyWage is number
+        && request.resource.data.hourlyWage >= 0
+        && request.resource.data.ration == 1000
+        && request.resource.data.nightBasket == (request.resource.data.shiftType == 'night' ? 1390 : 0)
+        && request.resource.data.amount == request.resource.data.hourlyWage + request.resource.data.ration + request.resource.data.nightBasket
+        && request.resource.data.amount > 0
+        && request.resource.data.amount <= 10000000
+        && request.resource.data.currency == 'XAF'
+        && request.resource.data.status == 'recorded'
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if isAdmin();
+    }
+
     match /faq/{faqId} {
       allow read: if true;
       allow write: if isAdmin();
