@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const module = { exports: {} };
 vm.runInNewContext(compiled, { module, exports: module.exports });
-const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences } = module.exports;
+const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate, calculateSundayCashPayout } = module.exports;
 
 test('a date with both a time entry and sick leave counts once', () => {
   assert.equal(
@@ -135,4 +135,35 @@ test('only explicit unexcused absences without admin approval disable bonuses', 
     { status: 'sick_leave' },
     { status: 'paid_leave' },
   ]), 1);
+});
+
+
+test('Sunday dates are excluded from regular monthly payroll but Monday through Saturday remain eligible', () => {
+  assert.equal(isRegularPayrollWorkDate('2026-11-08'), false); // Sunday
+  assert.equal(isRegularPayrollWorkDate('2026-11-09'), true);  // Monday
+  assert.equal(isRegularPayrollWorkDate('2026-11-14'), true);  // Saturday
+  assert.equal(isRegularPayrollWorkDate('invalid-date'), false);
+});
+
+test('Sunday hourly cash is calculated from actual duration, less break time', () => {
+  const result = calculateSundayCashPayout({
+    mode: 'hourly',
+    startTime: '08:00',
+    endTime: '16:00',
+    breakMinutes: 60,
+    hourlyRate: 1500,
+  });
+  assert.deepEqual(result, { workedMinutes: 420, workedHours: 7, amount: 10500 });
+});
+
+test('Sunday overnight cash shift and flat forfait are calculated independently', () => {
+  const overnight = calculateSundayCashPayout({
+    mode: 'hourly',
+    startTime: '22:00',
+    endTime: '06:00',
+    hourlyRate: 1250,
+  });
+  assert.equal(overnight.workedMinutes, 480);
+  assert.equal(overnight.amount, 10000);
+  assert.equal(calculateSundayCashPayout({ mode: 'flat', flatAmount: 12000 }).amount, 12000);
 });
