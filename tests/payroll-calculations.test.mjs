@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const module = { exports: {} };
 vm.runInNewContext(compiled, { module, exports: module.exports });
-const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate, calculateSundayCashPayout } = module.exports;
+const { countCoveredWorkDays, calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences, isRegularPayrollWorkDate, calculateSundayCashPayout, FULL_MONTH_SIMULATION_REFERENCE } = module.exports;
 
 test('a date with both a time entry and sick leave counts once', () => {
   assert.equal(
@@ -166,4 +166,28 @@ test('Sunday overnight cash shift and flat forfait are calculated independently'
   assert.equal(overnight.workedMinutes, 480);
   assert.equal(overnight.amount, 10000);
   assert.equal(calculateSundayCashPayout({ mode: 'flat', flatAmount: 12000 }).amount, 12000);
+});
+
+
+test('Prima Dee-Lite full-month simulation uses the exact reference amounts and a separate overtime fixture', () => {
+  assert.equal(FULL_MONTH_SIMULATION_REFERENCE.baseSalary, 72799);
+  assert.equal(FULL_MONTH_SIMULATION_REFERENCE.seniorityYears, 8);
+  assert.equal(FULL_MONTH_SIMULATION_REFERENCE.seniorityBonus, 11418);
+  assert.equal(FULL_MONTH_SIMULATION_REFERENCE.housingMonthly, 7280);
+  assert.equal(FULL_MONTH_SIMULATION_REFERENCE.transportMonthly, 18325);
+
+  const hourlyRate = Math.round(FULL_MONTH_SIMULATION_REFERENCE.baseSalary / 173.33);
+  const overtime = FULL_MONTH_SIMULATION_REFERENCE.overtimeHours;
+  const overtimeGross = Math.round(
+    overtime.tier1 * hourlyRate * 1.2 +
+    overtime.tier2 * hourlyRate * 1.3 +
+    overtime.night * hourlyRate * 1.4 +
+    overtime.holiday * hourlyRate * 1.5
+  );
+  const gross = FULL_MONTH_SIMULATION_REFERENCE.baseSalary +
+    FULL_MONTH_SIMULATION_REFERENCE.seniorityBonus +
+    FULL_MONTH_SIMULATION_REFERENCE.housingMonthly +
+    FULL_MONTH_SIMULATION_REFERENCE.transportMonthly +
+    3000 + 4000 + overtimeGross;
+  assert.equal(gross, 178426);
 });
