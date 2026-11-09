@@ -16,6 +16,8 @@ import { calculateCameroonPayrollDeductions, calculatePayrollProration, countNig
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
+const DEFAULT_OVERTIME_RATES = {
+  tier1: 1.2,
   tier2: 1.3,
   night: 1.4,
   sunday: 1.5,
