@@ -183,7 +183,6 @@ export default function AdminUserBulletinPage({ params }: any) {
         let attendanceBonus = allowances.attendanceMonthly ?? 3000;
         let performanceBonus = allowances.performanceMonthly ?? 4000;
         
-        const totalWorkableDaysInFullCycle = eachDayOfInterval({ start: cycleStart, end: cycleEnd }).filter(d => getDay(d) !== 0).length;
 
         const workedDays = new Set(timeEntries.map(e => e.date));
         const sickLeaveDays = new Set(attendanceOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave').map(o => o.id));
@@ -325,6 +324,30 @@ export default function AdminUserBulletinPage({ params }: any) {
                       </label>
                     ))}
                 </div>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {([
+                      ['unionMonthly', 'Cotisation syndicale mensuelle'],
+                      ['healthInsuranceMonthly', 'Assurance maladie mensuelle'],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="grid gap-1 text-sm">
+                        <span>{label} (FCFA)</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          defaultValue={profile.payrollDeductions?.[key] ?? 0}
+                          className="h-10 w-full rounded-md border bg-background px-3"
+                          onBlur={async (event) => {
+                            const value = Number(event.currentTarget.value);
+                            if (!Number.isFinite(value) || value < 0) return;
+                            await setDoc(doc(firestore, 'users', userId), {
+                              payrollDeductions: { ...(profile.payrollDeductions || {}), [key]: value }
+                            }, { merge: true });
+                          }}
+                        />
+                      </label>
+                    ))}
+                </div>
             </details>
             <div className="print-container bg-card md:border md:rounded-lg md:p-6">
                  <header className="flex justify-between items-start mb-6">
@@ -376,6 +399,8 @@ export default function AdminUserBulletinPage({ params }: any) {
                     <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('deductionsSectionTitle')}</p>
                     {[
                       [t('cnpsLabel'), payrollData.cnpsDeduction],
+                      [t('healthInsuranceLabel'), payrollData.assuranceMaladie],
+                      [t('cotisationSyndicaleLabel'), payrollData.cotisationSyndicale],
                       [t('cacLabel'), payrollData.cacDeduction],
                       [t('irppLabel'), payrollData.irppDeduction],
                       [t('cacSurIRPPLabel'), payrollData.cacSurIRPP],
