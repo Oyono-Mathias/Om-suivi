@@ -111,11 +111,11 @@ export default function SundayCashPage() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setMode('hourly')}
-              className={\`rounded-xl border p-3 text-sm font-semibold transition-colors \${mode === 'hourly' ? 'border-primary bg-primary/10 text-primary' : 'border-border'}\`}>
+              className={`rounded-xl border p-3 text-sm font-semibold transition-colors ${mode === 'hourly' ? 'border-primary bg-primary/10 text-primary' : 'border-border'}`}>
               <Clock3 className="mx-auto mb-1 h-5 w-5" /> À l'heure
             </button>
             <button type="button" onClick={() => setMode('flat')}
-              className={\`rounded-xl border p-3 text-sm font-semibold transition-colors \${mode === 'flat' ? 'border-primary bg-primary/10 text-primary' : 'border-border'}\`}>
+              className={`rounded-xl border p-3 text-sm font-semibold transition-colors ${mode === 'flat' ? 'border-primary bg-primary/10 text-primary' : 'border-border'}`}>
               <Wallet className="mx-auto mb-1 h-5 w-5" /> Forfait fixe
             </button>
           </div>
