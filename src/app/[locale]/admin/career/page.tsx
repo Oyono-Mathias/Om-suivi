@@ -125,7 +125,11 @@ export default function AdminCareerPage() {
     const adminProfileRef = useMemoFirebase(() => adminUser ? doc(firestore, 'users', adminUser.uid) : null, [firestore, adminUser]);
     const { data: adminProfile } = useDoc<Profile>(adminProfileRef);
 
-    const allProfilesQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('hireDate', 'asc')), [firestore]);
+    // Private employee profiles are queried only after the current user's admin role is confirmed.
+    const allProfilesQuery = useMemoFirebase(() => {
+        if (!firestore || adminProfile?.role !== 'admin') return null;
+        return query(collection(firestore, 'users'), orderBy('hireDate', 'asc'));
+    }, [firestore, adminProfile?.role]);
     const { data: allProfiles, isLoading: isLoadingProfiles } = useCollection<Profile>(allProfilesQuery);
 
     const processedUsers = useMemo(() => {
