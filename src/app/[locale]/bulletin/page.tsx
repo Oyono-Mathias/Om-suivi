@@ -12,12 +12,10 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { shifts } from '@/lib/shifts';
-import { calculateCameroonPayrollDeductions, calculatePayrollProration, calculateNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences } from '@/lib/payroll-calculations';
+import { calculateCameroonPayrollDeductions, calculatePayrollProration, countNightShifts, calculateNightBasketAllowance, calculateSeniorityBonus, calculateConditionalMonthlyBonus, calculateTransportAllowance, countUnjustifiedAbsences } from '@/lib/payroll-calculations';
 import { getPayrollCycle, formatCurrency } from '@/lib/utils';
 import Image from 'next/image';
 
-const DEFAULT_OVERTIME_RATES = {
-  tier1: 1.2,
   tier2: 1.3,
   night: 1.4,
   sunday: 1.5,
