@@ -267,7 +267,9 @@ test('Cameroon holiday seed includes fixed dates and calculated movable Christia
   assert.ok(dates.some((item) => item.date === '2026-01-01' && item.label === "Jour de l'An"));
   assert.ok(dates.some((item) => item.date === '2026-04-03' && item.label === 'Vendredi Saint'));
   assert.ok(dates.some((item) => item.date === '2026-05-14' && item.label === 'Ascension'));
-  assert.ok(dates.some((item) => item.date === '2026-12-25' && item.label === 'Noël'));\n  assert.ok(dates.some((item) => item.date === '2026-03-20' && item.label.includes('Djouldé Soumaé')));\n  assert.ok(dates.some((item) => item.date === '2026-05-27' && item.label.includes('Djouldé Laïhadji')));
+  assert.ok(dates.some((item) => item.date === '2026-12-25' && item.label === 'Noël'));
+  assert.ok(dates.some((item) => item.date === '2026-03-20' && item.label.includes('Djouldé Soumaé')));
+  assert.ok(dates.some((item) => item.date === '2026-05-27' && item.label.includes('Djouldé Laïhadji')));
 });
 
 test('holiday calendar rate takes priority over Sunday rate', () => {
