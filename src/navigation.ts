@@ -50,7 +50,11 @@ export const pathnames = {
     en: '/admin',
     fr: '/admin'
   },
-  '/admin/holidays': {\n    en: '/admin/holidays',\n    fr: '/admin/jours-feries'\n  },\n  '/admin/users': {
+  '/admin/holidays': {
+    en: '/admin/holidays',
+    fr: '/admin/jours-feries'
+  },
+  '/admin/users': {
     en: '/admin/users',
     fr: '/admin/utilisateurs'
   },
