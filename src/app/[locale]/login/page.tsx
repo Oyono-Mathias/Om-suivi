@@ -229,9 +229,19 @@ export default function AuthPage() {
               <CardDescription>{t('description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 px-4 md:px-6 pb-6">
-              <TabsList className="grid w-full grid-cols-2 bg-secondary/30">
-                <TabsTrigger value="login" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('loginTab')}</TabsTrigger>
-                <TabsTrigger value="register" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">{t('registerTab')}</TabsTrigger>
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-white/10 bg-slate-800/80 p-1.5 shadow-inner">
+                <TabsTrigger
+                  value="login"
+                  className="min-h-11 w-full rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-300 transition-all duration-200 hover:bg-white/10 hover:text-white data-[state=active]:!bg-[#00D6A0] data-[state=active]:!text-[#0D1422] data-[state=active]:!font-bold data-[state=active]:!shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D6A0] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D1422]"
+                >
+                  {t('loginTab')}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="register"
+                  className="min-h-11 w-full rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-300 transition-all duration-200 hover:bg-white/10 hover:text-white data-[state=active]:!bg-[#00D6A0] data-[state=active]:!text-[#0D1422] data-[state=active]:!font-bold data-[state=active]:!shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D6A0] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D1422]"
+                >
+                  {t('registerTab')}
+                </TabsTrigger>
               </TabsList>
               
               {authError && (
