@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { toDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, eachDayOfInterval, parse } from "date-fns";
+import { format, parseISO, getDay, getWeek, addDays, set, getHours, startOfDay, addMinutes, differenceInMinutes, max, min, differenceInYears, parse } from "date-fns";
 import { fr, enUS } from "date-fns/locale";
 import type { TimeEntry, Profile, GlobalSettings, AttendanceOverride } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
