@@ -66,6 +66,11 @@ export function getCameroonHolidaySeeds(year: number): Omit<PublicHolidayRecord,
   const movable = [
     { date: addUtcDays(easter, -2), label: 'Vendredi Saint', category: 'religious' as const },
     { date: addUtcDays(easter, 39), label: 'Ascension', category: 'religious' as const },
+    // 2026 dates were announced by the Cameroon National Crescent Commission.
+    ...(year === 2026 ? [
+      { date: '2026-03-20', label: 'Djouldé Soumaé (fin du Ramadan)', category: 'religious' as const },
+      { date: '2026-05-27', label: 'Djouldé Laïhadji (Tabaski)', category: 'religious' as const },
+    ] : []),
   ];
 
   const records = [
