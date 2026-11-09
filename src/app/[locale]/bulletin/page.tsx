@@ -216,7 +216,6 @@ export default function BulletinPage() {
 
         const workedDays = new Set(timeEntries.map(e => e.date));
         const sickLeaveDays = new Set(currentOverrides.filter(o => o.status === 'sick_leave' || o.status === 'paid_leave' || o.adminJustified === true).map(o => o.id));
-        const adminJustifiedAbsence = currentOverrides.some(o => o.adminJustified === true);
 
         let unjustifiedAbsenceCount = 0;
         if (profile.hireDate) {
@@ -239,8 +238,8 @@ export default function BulletinPage() {
         const proratedBaseSalary = calculatePayrollProration(baseSalary, totalDaysWorked);
         
         const hasUnjustifiedAbsence = unjustifiedAbsenceCount > 0;
-        const attendanceBonus = calculateConditionalMonthlyBonus(attendanceMonthly, totalDaysWorked, hasUnjustifiedAbsence, adminJustifiedAbsence);
-        const performanceBonus = calculateConditionalMonthlyBonus(performanceMonthly, totalDaysWorked, hasUnjustifiedAbsence, adminJustifiedAbsence);
+        const attendanceBonus = calculateConditionalMonthlyBonus(attendanceMonthly, totalDaysWorked, hasUnjustifiedAbsence);
+        const performanceBonus = calculateConditionalMonthlyBonus(performanceMonthly, totalDaysWorked, hasUnjustifiedAbsence);
         seniorityBonus = Math.round(seniorityBonus * prorationRatio);
 
         const nightShiftCount = countNightShifts(timeEntries, shifts);
